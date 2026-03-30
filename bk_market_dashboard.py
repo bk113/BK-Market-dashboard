@@ -79,6 +79,11 @@ UNIVERSE = [
     ("EQ_DM",    "EWJ",     "Japan"),
     ("EQ_DM",    "EWA",     "Australia"),
     ("EQ_DM",    "EWS",     "Singapore"),
+    # ── Equities: Global Indices ──
+    ("EQ_IDX",   "EXW1.DE", "Euro STOXX 50"),
+    ("EQ_IDX",   "ISF.L",   "FTSE 100"),
+    ("EQ_IDX",   "^N225",   "Nikkei 225"),
+    ("EQ_IDX",   "^HSI",    "Hang Seng Index"),
     # ── Equities: Emerging Markets ──
     ("EQ_EM",    "EEM",     "EM Broad"),
     ("EQ_EM",    "FXI",     "China"),
@@ -111,24 +116,36 @@ UNIVERSE = [
     ("CMD",      "UNG",     "Natural Gas"),
     ("CMD",      "COPX",    "Copper Miners"),
     ("CMD",      "DBA",     "Agriculture"),
+    # ── Fixed Income: EUR & Global ──
+    ("FI_INTL",  "LQDE.L",  "EUR IG Credit"),
+    ("FI_INTL",  "IHYG.L",  "EUR HY Credit"),
+    ("FI_INTL",  "AGGG.L",  "Global Aggregate"),
     # ── Crypto ──
     ("CRYPTO",   "BTC-USD", "Bitcoin"),
     # ── FX ──
     ("FX",       "UUP",     "US Dollar Index"),
+    ("FX",       "EURUSD=X","EUR/USD"),
+    ("FX",       "GBPUSD=X","GBP/USD"),
+    ("FX",       "JPY=X",   "USD/JPY"),
+    ("FX",       "SGD=X",   "USD/SGD"),
+    ("FX",       "CNH=X",   "USD/CNH"),
+    ("FX",       "AUDUSD=X","AUD/USD"),
     # ── Volatility ──
     ("VOL",      "VIXY",    "VIX Short-Term Futures"),
     ("VOL",      "UVXY",    "Ultra VIX Short-Term"),
 ]
 
-SECTION_ORDER = ["EQ_US", "EQ_SECT", "EQ_DM", "EQ_EM", "DEFENCE", "FI", "CMD", "CRYPTO", "FX", "VOL"]
+SECTION_ORDER = ["EQ_US", "EQ_SECT", "EQ_DM", "EQ_IDX", "EQ_EM", "DEFENCE", "FI", "FI_INTL", "CMD", "CRYPTO", "FX", "VOL"]
 
 SECTION_LABELS = {
     "EQ_US":   "EQUITIES — US BROAD",
     "EQ_SECT": "EQUITIES — US SECTORS",
     "EQ_DM":   "EQUITIES — DEVELOPED MARKETS",
+    "EQ_IDX":  "EQUITIES — GLOBAL INDICES",
     "EQ_EM":   "EQUITIES — EMERGING MARKETS",
     "DEFENCE": "DEFENCE & GEOPOLITICAL",
     "FI":      "FIXED INCOME & CREDIT",
+    "FI_INTL": "FIXED INCOME — EUR & GLOBAL",
     "CMD":     "COMMODITIES",
     "CRYPTO":  "CRYPTO",
     "FX":      "FX",
@@ -727,288 +744,407 @@ def build_email_html(df: pd.DataFrame) -> str:
 </html>"""
 
 
-def build_web_html(df: pd.DataFrame) -> str:
-    """Generate a self-contained HTML page for GitHub Pages — daily auto-refresh."""
-    now      = datetime.now(SGT)
-    date_str = now.strftime("%A, %d %b %Y · %H:%M SGT")
-    gen_ts   = now.strftime("%Y-%m-%dT%H:%M:%S")
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  BK FRAGILITY ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+FRAGILITY_WEIGHTS = {"dd":0.22,"vol":0.15,"cvar":0.20,"trend":0.15,"corr":0.18,"volz":0.10}
+
+def _frag_logistic(x):
+    return 1.0 / (1.0 + np.exp(-x))
+
+def _robust_zscore(s, window=252, clip=4.0):
+    min_p = max(60, window // 3)
+    med   = s.rolling(window, min_periods=min_p).median()
+    mad   = s.rolling(window, min_periods=min_p).apply(
+        lambda x: np.median(np.abs(x - np.median(x))), raw=True)
+    return ((s - med) / (1.4826 * mad.replace(0, 1e-6))).clip(-clip, clip)
+
+def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
+    rets    = prices.pct_change().replace([np.inf,-np.inf], np.nan)
+    wdd     = min(252, len(prices))
+    peak    = prices.rolling(wdd, min_periods=20).max()
+    dd      = (prices / peak - 1.0).abs()
+    vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
+
+    def _cvar(x):
+        q = np.nanquantile(x, 0.05); tail = x[x <= q]
+        return abs(np.nanmean(tail)) if len(tail) > 0 else np.nan
+    cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)
+    ma200   = prices.rolling(200, min_periods=50).mean()
+    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)
+    wcol    = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
+    corr_w  = pd.DataFrame(index=rets.index, columns=rets.columns, dtype=float)
+    for c in rets.columns:
+        corr_w[c] = rets[c].rolling(60, min_periods=20).corr(rets[wcol]).clip(lower=0)
+    vov     = vol20.rolling(20, min_periods=10).std()
+    mu_vov  = vov.rolling(60, min_periods=20).mean()
+    sd_vov  = vov.rolling(60, min_periods=20).std().replace(0, np.nan)
+    volz    = ((vov - mu_vov) / sd_vov).abs()
+
+    zw      = min(252, len(prices) - 1)
+    t2m     = {t: (s, n) for s, t, n in UNIVERSE}
+    w       = FRAGILITY_WEIGHTS
+    tw      = sum(w.values())
+    rows    = []
+    for col in prices.columns:
+        zd = _robust_zscore(dd[col],      zw)
+        zv = _robust_zscore(vol20[col],   zw)
+        zc = _robust_zscore(cvar60[col],  zw)
+        zt = _robust_zscore(dist200[col], zw)
+        zr = _robust_zscore(corr_w[col],  zw)
+        zz = _robust_zscore(volz[col],    zw)
+        lat = (w["dd"]*zd.fillna(0)+w["vol"]*zv.fillna(0)+w["cvar"]*zc.fillna(0)+
+               w["trend"]*zt.fillna(0)+w["corr"]*zr.fillna(0)+w["volz"]*zz.fillna(0))
+        sc  = 100.0 * _frag_logistic(lat.ewm(span=10,adjust=False).mean())
+        v   = float(sc.iloc[-1]) if not sc.empty else np.nan
+        if pd.isna(v): continue
+        rag = "CRISIS" if v>=70 else "STRESSED" if v>=50 else "CALM"
+        sec, name = t2m.get(col, ("", col))
+
+        def _p(z, k): return round(float(w[k]*z.iloc[-1]/tw*100),1) if not pd.isna(z.iloc[-1]) else 0.0
+        rows.append({"ticker":col,"name":name,"section":sec,"fragility":round(v,1),"rag":rag,
+            "pillar_dd":_p(zd,"dd"),"pillar_vol":_p(zv,"vol"),"pillar_cvar":_p(zc,"cvar"),
+            "pillar_trend":_p(zt,"trend"),"pillar_corr":_p(zr,"corr"),"pillar_volz":_p(zz,"volz")})
+
+    fdf = pd.DataFrame(rows).sort_values("fragility",ascending=False).reset_index(drop=True)
+    if not fdf.empty:
+        ss = float(fdf["fragility"].median())
+        fdf.attrs["system_score"] = round(ss,1)
+        fdf.attrs["regime"] = "CRISIS" if ss>=70 else "STRESSED" if ss>=50 else "CALM"
+    return fdf
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  3-TAB WEB PAGE  (Performance | Risk | Fragility)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
+    import math
+    now         = datetime.now(SGT)
+    date_str    = now.strftime("%A, %d %b %Y %H:%M SGT")
+    gen_ts      = now.strftime("%Y-%m-%dT%H:%M:%S")
     market_open = bool(df["market_open"].iloc[0]) if "market_open" in df.columns else True
+    GA          = "G-XXXXXXXXXX"
 
-    # ── Signal counts ─────────────────────────────────────────────────────────
-    n_red   = int((df["rag_label"].str.strip() == "RED").sum())
-    n_amber = int((df["rag_label"].str.strip() == "AMBER").sum())
-    n_green = int((df["rag_label"].str.strip() == "GREEN").sum())
-    total   = len(df)
-
-    # ── Market tone ───────────────────────────────────────────────────────────
-    if n_green >= n_red * 2:
-        tone, tone_color, tone_bg = "RISK-ON", "#3fb950", "#0d2318"
-    elif n_red >= n_green * 2:
-        tone, tone_color, tone_bg = "RISK-OFF", "#f85149", "#2d0f0e"
-    else:
-        tone, tone_color, tone_bg = "MIXED", "#e3b341", "#2d2106"
-
-    # ── Top 5 MTD Gainers & Losers (ret_1m) ──────────────────────────────────
-    mtd = df[["name", "ticker", "section", "ret_1m"]].dropna(subset=["ret_1m"]).copy()
-    gainers = mtd.nlargest(5,  "ret_1m")
-    losers  = mtd.nsmallest(5, "ret_1m")
-
-    def _bar_pct(v, max_abs):
-        width = min(100, abs(v) / max_abs * 100) if max_abs > 0 else 0
-        color = "#3fb950" if v >= 0 else "#f85149"
-        sign  = "+" if v >= 0 else ""
-        return f"""
-        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #21262d;">
-          <div style="width:140px;font-size:11px;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{v[0]}</div>
-          <div style="flex:1;background:#21262d;border-radius:3px;height:8px;">
-            <div style="width:{width:.0f}%;background:{color};height:8px;border-radius:3px;"></div>
-          </div>
-          <div style="width:55px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:{color};">{sign}{v[1]*100:.2f}%</div>
-        </div>""".replace("v[0]", v[0]).replace("v[1]", str(v[1]))
-
-    def _gainer_rows(rows_df):
-        max_abs = rows_df["ret_1m"].abs().max()
-        html = ""
-        for _, r in rows_df.iterrows():
-            v     = r["ret_1m"]
-            sign  = "+" if v >= 0 else ""
-            color = "#3fb950" if v >= 0 else "#f85149"
-            width = min(100, abs(v) / max_abs * 100) if max_abs > 0 else 0
-            html += f"""
-            <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">
-              <div style="width:150px;font-size:11px;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{r['name']}">{r['name']}</div>
-              <div style="flex:1;background:#21262d;border-radius:3px;height:8px;">
-                <div style="width:{width:.0f}%;background:{color};height:8px;border-radius:3px;transition:width 0.4s;"></div>
-              </div>
-              <div style="width:60px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:{color};">{sign}{v*100:.2f}%</div>
-            </div>"""
-        return html
-
-    gainers_html = _gainer_rows(gainers)
-    losers_html  = _gainer_rows(losers)
-
-    # ── Main data table rows ──────────────────────────────────────────────────
-    def _cell(v, fmt="ret"):
-        if pd.isna(v): return '<td class="num grey">-</td>'
+    # ── shared cell helpers ───────────────────────────────────────────────────
+    def _rc(v, fmt="ret"):
+        if pd.isna(v): return '<td class="num gr">-</td>'
         if fmt == "ret":
-            pct   = v * 100
-            sign  = "+" if pct > 0 else ""
-            cls   = "pos-strong" if pct >= 2 else "pos" if pct >= 0.5 else "neg" if pct >= -2 else "neg-strong"
-            return f'<td class="num {cls}">{sign}{pct:.2f}%</td>'
+            p=v*100; s="+" if p>0 else ""
+            cl="ps" if p>=2 else "pl" if p>=0.5 else "ng" if p>=-2 else "nr"
+            return f'<td class="num {cl}">{s}{p:.2f}%</td>'
         if fmt == "vol":
-            pct = v * 100
-            cls = "neg-strong" if pct > 30 else "amber" if pct > 18 else "grey"
-            return f'<td class="num {cls}">{pct:.1f}%</td>'
+            p=v*100
+            return f'<td class="num {"nr" if p>30 else "am" if p>18 else "gr"}">{p:.1f}%</td>'
         if fmt == "dd":
-            pct = v * 100
-            cls = "neg-strong" if pct < -15 else "amber" if pct < -7 else "pos"
-            return f'<td class="num {cls}">{pct:.1f}%</td>'
-        if fmt == "sharpe":
-            cls = "pos-strong" if v > 1 else "amber" if v > 0 else "neg-strong"
-            return f'<td class="num {cls}">{v:.2f}</td>'
-        return f'<td class="num grey">{v}</td>'
+            p=v*100
+            return f'<td class="num {"nr" if p<-15 else "am" if p<-7 else "ps"}">{p:.1f}%</td>'
+        if fmt == "sh":
+            return f'<td class="num {"ps" if v>1 else "am" if v>0 else "nr"}">{v:.2f}</td>'
+        return f'<td class="num gr">{v}</td>'
 
-    def _sig_cell(rl, rc):
-        rl = rl.strip()
-        dot_color = {"RED": "#f85149", "AMBER": "#e3b341", "GREEN": "#3fb950"}.get(rl, "#8b949e")
-        cls       = {"RED": "sig-red", "AMBER": "sig-amber", "GREEN": "sig-green"}.get(rl, "")
-        return f'<td class="sig {cls}"><span style="color:{dot_color};">●</span> {rl}</td>'
+    def _sig(rl, rc_col):
+        rl=rl.strip()
+        dot={"RED":"#f85149","AMBER":"#e3b341","GREEN":"#3fb950"}.get(rl,"#8b949e")
+        cl={"RED":"sr","AMBER":"sa","GREEN":"sg"}.get(rl,"")
+        return f'<td class="sig {cl}"><span style="color:{dot};">&#9679;</span> {rl}</td>'
 
-    rows_html = ""
-    prev_sec  = None
-    for _, row in df.iterrows():
-        if row["section"] != prev_sec:
-            prev_sec  = row["section"]
-            sec_label = SECTION_LABELS.get(row["section"], row["section"])
-            rows_html += f'<tr class="sec-hdr"><td colspan="12">{sec_label}</td></tr>'
+    def _srow(sec, cs=12):
+        return f'<tr class="sh"><td colspan="{cs}">{SECTION_LABELS.get(sec,sec)}</td></tr>'
 
-        d1 = _cell(row["ret_1d"]) if market_open else ""
-        rows_html += f"""<tr>
-          <td class="asset-name">{row['name']}</td>
-          <td class="ticker">{row['ticker']}</td>
-          {d1}
-          {_cell(row['ret_1w'])}
-          {_cell(row['ret_1m'])}
-          {_cell(row['ret_3m'])}
-          {_cell(row['ret_ytd'])}
-          {_cell(row['vol_20d'], 'vol')}
-          {_cell(row['max_dd'],  'dd')}
-          {_cell(row['sharpe'],  'sharpe')}
-          {_sig_cell(row['rag_label'], row['rag_color'])}
-        </tr>"""
+    def _bar(nm, val, mx, color):
+        w=min(100, abs(val)/mx*100) if mx>0 else 0
+        s="+" if val>=0 else ""
+        return (f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">'
+                f'<div style="width:150px;font-size:11px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{nm}</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:3px;height:8px;">'
+                f'<div style="width:{w:.0f}%;background:{color};height:8px;border-radius:3px;"></div></div>'
+                f'<div style="width:62px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:{color};">{s}{val*100:.2f}%</div>'
+                f'</div>')
 
-    d1_th = '<th>1D</th>' if market_open else ''
-    market_note = "" if market_open else '<span style="color:#e3b341;font-size:10px;margin-left:10px;">⚠ Markets closed — 1D returns hidden</span>'
+    # ══ TAB 1: PERFORMANCE ════════════════════════════════════════════════════
+    nr=int((df["rag_label"].str.strip()=="RED").sum())
+    na=int((df["rag_label"].str.strip()=="AMBER").sum())
+    ng=int((df["rag_label"].str.strip()=="GREEN").sum())
+    tot=len(df)
+    if ng>=nr*2:   tone,tc,tb="RISK-ON","#3fb950","#0d2318"
+    elif nr>=ng*2: tone,tc,tb="RISK-OFF","#f85149","#2d0f0e"
+    else:          tone,tc,tb="MIXED","#e3b341","#2d2106"
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="3600">
-<title>BK Market Dashboard</title>
-<style>
-  :root {{
-    --bg:#0d1117; --card:#161b22; --dark:#21262d; --border:#30363d;
-    --white:#e6edf3; --grey:#8b949e; --accent:#58a6ff;
-    --green:#3fb950; --red:#f85149; --amber:#e3b341;
-  }}
-  * {{ box-sizing:border-box; margin:0; padding:0; }}
-  body {{ background:var(--bg); color:var(--white); font-family:'Segoe UI',system-ui,sans-serif; font-size:13px; }}
-  a {{ color:var(--accent); text-decoration:none; }}
+    mtd=df[["name","ret_1m"]].dropna(subset=["ret_1m"])
+    gain=mtd.nlargest(5,"ret_1m"); loss=mtd.nsmallest(5,"ret_1m")
+    gm=gain["ret_1m"].abs().max(); lm=loss["ret_1m"].abs().max()
+    gh="".join(_bar(r["name"],r["ret_1m"],gm,"#3fb950") for _,r in gain.iterrows())
+    lh="".join(_bar(r["name"],r["ret_1m"],lm,"#f85149") for _,r in loss.iterrows())
 
-  /* ── Layout ── */
-  .wrap {{ max-width:1400px; margin:0 auto; padding:16px 12px; }}
+    d1th="<th>1D</th>" if market_open else ""
+    pr=""; pv=None
+    for _,row in df.iterrows():
+        if row["section"]!=pv: pv=row["section"]; pr+=_srow(row["section"])
+        d1=_rc(row["ret_1d"]) if market_open else ""
+        pr+=(f'<tr><td class="an">{row["name"]}</td><td class="tk">{row["ticker"]}</td>'
+             f'{d1}{_rc(row["ret_1w"])}{_rc(row["ret_1m"])}{_rc(row["ret_3m"])}{_rc(row["ret_ytd"])}'
+             f'{_sig(row["rag_label"],row["rag_color"])}</tr>')
 
-  /* ── Header ── */
-  .header {{ background:var(--card); border:1px solid var(--border); border-radius:8px;
-             padding:18px 24px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }}
-  .logo {{ font-family:monospace; font-size:20px; font-weight:700; letter-spacing:2px; }}
-  .logo span {{ color:var(--green); }}
-  .subtitle {{ font-size:10px; color:var(--grey); letter-spacing:2px; margin-top:4px; }}
-  .ts {{ text-align:right; }}
-  .ts .date {{ font-family:monospace; font-size:11px; color:var(--grey); }}
-  .ts .next {{ font-size:9px; color:#444d56; margin-top:3px; }}
+    perf=(f'<div class="tbar"><div><div class="lbl">MARKET TONE</div>'
+          f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};">{tone}</div></div>'
+          f'<div class="dvdr"></div><div class="rb">'
+          f'<div class="ri"><div class="rn" style="color:#f85149;">{nr}</div><div class="rl">RED</div></div>'
+          f'<div class="ri"><div class="rn" style="color:#e3b341;">{na}</div><div class="rl">AMBER</div></div>'
+          f'<div class="ri"><div class="rn" style="color:#3fb950;">{ng}</div><div class="rl">GREEN</div></div>'
+          f'<div class="ri"><div class="rn" style="color:#e6edf3;">{tot}</div><div class="rl">TOTAL</div></div>'
+          f'</div></div>'
+          f'<div class="gl"><div class="gc"><div class="gt"><span class="gd" style="background:#3fb950;"></span>'
+          f'Top 5 MTD Gainers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{gh}</div>'
+          f'<div class="gc"><div class="gt"><span class="gd" style="background:#f85149;"></span>'
+          f'Top 5 MTD Losers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{lh}</div></div>'
+          f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
+          f'{d1th}<th>1W</th><th>1M</th><th>3M</th><th>YTD</th><th>Signal</th>'
+          f'</tr></thead><tbody>{pr}</tbody></table></div>')
 
-  /* ── Tone pill ── */
-  .tone-bar {{ display:flex; align-items:center; gap:12px; background:var(--card);
-               border:1px solid var(--border); border-radius:8px; padding:12px 24px;
-               margin-bottom:14px; flex-wrap:wrap; }}
-  .tone-pill {{ padding:4px 14px; border-radius:20px; font-size:11px; font-weight:700;
-                font-family:monospace; letter-spacing:1px; }}
-  .rag-block {{ display:flex; gap:20px; }}
-  .rag-item {{ text-align:center; }}
-  .rag-item .n {{ font-size:22px; font-weight:700; font-family:monospace; }}
-  .rag-item .l {{ font-size:9px; color:var(--grey); letter-spacing:1px; margin-top:2px; }}
+    # ══ TAB 2: RISK ═══════════════════════════════════════════════════════════
+    def _varrow(now_v, ago_v):
+        if pd.isna(now_v) or pd.isna(ago_v) or ago_v==0: return "gr","&#8594;","-"
+        chg=(now_v-ago_v)/ago_v; pct=f"{chg*100:+.1f}%"
+        if chg>=0.20:  return "nr","&#11014;&#11014;",pct
+        if chg>=0.05:  return "am","&#11014;",pct
+        if chg>=-0.05: return "gr","&#8594;",pct
+        return "ps","&#11015;",pct
 
-  /* ── Gainers / Losers ── */
-  .gl-grid {{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }}
-  @media(max-width:700px){{ .gl-grid {{ grid-template-columns:1fr; }} }}
-  .gl-card {{ background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px 18px; }}
-  .gl-title {{ font-size:9px; font-weight:700; letter-spacing:2px; text-transform:uppercase;
-               color:var(--grey); margin-bottom:12px; display:flex; align-items:center; gap:8px; }}
-  .gl-title .dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; }}
+    rising=stable=falling=0
+    for _,row in df.iterrows():
+        nv=row.get("vol_now",float("nan")); av=row.get("vol_1m_ago",float("nan"))
+        if pd.isna(nv) or pd.isna(av) or av==0: continue
+        chg=(nv-av)/av
+        if chg>=0.05: rising+=1
+        elif chg<=-0.05: falling+=1
+        else: stable+=1
 
-  /* ── Table ── */
-  .tbl-wrap {{ background:var(--card); border:1px solid var(--border); border-radius:8px;
-               overflow-x:auto; }}
-  table {{ width:100%; border-collapse:collapse; font-size:12px; }}
-  th {{ background:#1c2128; padding:10px 8px; font-size:9px; letter-spacing:1px;
-        text-transform:uppercase; color:var(--grey); font-family:monospace;
-        white-space:nowrap; border-bottom:2px solid var(--border); }}
-  th:first-child {{ text-align:left; padding-left:14px; }}
-  td {{ padding:7px 8px; border-bottom:1px solid var(--border); white-space:nowrap; }}
-  tr:last-child td {{ border-bottom:none; }}
-  tr:hover td {{ background:#1c2128; }}
+    vsumm=(f'<div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">'
+           f'<div class="vc" style="border-color:#f85149;"><div class="vn" style="color:#f85149;">{rising}</div>'
+           f'<div class="vl">VOL RISING &#11014;</div><div class="vs">Change &gt; +5%</div></div>'
+           f'<div class="vc" style="border-color:#8b949e;"><div class="vn" style="color:#8b949e;">{stable}</div>'
+           f'<div class="vl">VOL STABLE &#8594;</div><div class="vs">&#8722;5% to +5%</div></div>'
+           f'<div class="vc" style="border-color:#3fb950;"><div class="vn" style="color:#3fb950;">{falling}</div>'
+           f'<div class="vl">VOL EASING &#11015;</div><div class="vs">Change &lt; &#8722;5%</div></div>'
+           f'</div>')
 
-  td.asset-name {{ text-align:left; padding-left:14px; color:var(--white); min-width:150px; }}
-  td.ticker {{ font-family:monospace; font-size:10px; color:var(--grey); font-weight:700; }}
-  td.num {{ font-family:monospace; text-align:right; }}
-  td.sig {{ font-family:monospace; font-size:10px; text-align:center; }}
+    rr=""; rv=None
+    for _,row in df.iterrows():
+        if row["section"]!=rv: rv=row["section"]; rr+=_srow(row["section"],cs=8)
+        cl,arrow,pct=_varrow(row.get("vol_now",float("nan")),row.get("vol_1m_ago",float("nan")))
+        vn=f'{row["vol_now"]*100:.1f}%' if not pd.isna(row.get("vol_now",float("nan"))) else "-"
+        va=f'{row["vol_1m_ago"]*100:.1f}%' if not pd.isna(row.get("vol_1m_ago",float("nan"))) else "-"
+        rr+=(f'<tr><td class="an">{row["name"]}</td><td class="tk">{row["ticker"]}</td>'
+             f'<td class="num gr">{vn}</td><td class="num gr">{va}</td>'
+             f'<td class="num {cl}" style="font-family:monospace;">{arrow}&nbsp;{pct}</td>'
+             f'{_rc(row["max_dd"],"dd")}{_rc(row["sharpe"],"sh")}'
+             f'{_sig(row["rag_label"],row["rag_color"])}</tr>')
 
-  .pos-strong {{ color:#3fb950; }}
-  .pos         {{ color:#7ee787; }}
-  .neg         {{ color:#ff7b72; }}
-  .neg-strong  {{ color:#f85149; }}
-  .amber       {{ color:#e3b341; }}
-  .grey        {{ color:#8b949e; }}
-  .sig-green   {{ color:#3fb950; }}
-  .sig-amber   {{ color:#e3b341; }}
-  .sig-red     {{ color:#f85149; }}
+    risk=(vsumm+
+          f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
+          f'<th>Vol 20D</th><th>Vol 1M Ago</th><th>30D Change</th>'
+          f'<th>Max DD</th><th>Sharpe</th><th>Signal</th></tr></thead><tbody>{rr}</tbody></table></div>'
+          f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
+          f'&#11014;&#11014; Vol rising &ge;+20% &nbsp;&#183;&nbsp; &#11014; +5% to +20% &nbsp;&#183;&nbsp; '
+          f'&#8594; stable &#8722;5% to +5% &nbsp;&#183;&nbsp; &#11015; easing &lt;&#8722;5% &nbsp;&#183;&nbsp; '
+          f'Sharpe = 1Y excess return / vol (rf=4.5%)</div>')
 
-  tr.sec-hdr td {{ background:#1c2128; font-size:9px; font-weight:700; letter-spacing:2px;
-                   text-transform:uppercase; color:var(--accent); padding:8px 14px;
-                   border-top:2px solid var(--border); }}
+    # ══ TAB 3: FRAGILITY ══════════════════════════════════════════════════════
+    if frag_df is not None and not frag_df.empty:
+        ss=frag_df.attrs.get("system_score",float(frag_df["fragility"].median()))
+        reg=frag_df.attrs.get("regime","CALM")
+        rc_={"CRISIS":"#f85149","STRESSED":"#e3b341","CALM":"#3fb950"}.get(reg,"#8b949e")
+        rb_={"CRISIS":"#2d0f0e","STRESSED":"#2d2106","CALM":"#0d2318"}.get(reg,"#161b22")
+        ncr=int((frag_df["rag"]=="CRISIS").sum())
+        nst=int((frag_df["rag"]=="STRESSED").sum())
+        nca=int((frag_df["rag"]=="CALM").sum())
 
-  /* ── Footer ── */
-  .footer {{ margin-top:14px; padding:12px 0; border-top:1px solid var(--border);
-             display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }}
-  .footer-note {{ font-size:9px; color:var(--grey); line-height:1.9; font-family:monospace; }}
-  .footer-brand {{ font-size:20px; font-weight:700; letter-spacing:-1px; font-family:monospace; }}
-  .footer-sub {{ font-size:9px; color:var(--grey); margin-top:2px; }}
-</style>
-</head>
-<body>
-<div class="wrap">
+        def _arc(deg,r=78,cx=100,cy=88):
+            rad=math.radians(180-deg)
+            return cx+r*math.cos(rad), cy-r*math.sin(rad)
+        ga=min(179,int(ss/100*180)); gc="#f85149" if ss>=70 else "#e3b341" if ss>=50 else "#3fb950"
+        ax,ay=_arc(ga); lg=1 if ga>90 else 0
+        gauge=(f'<svg viewBox="0 0 200 108" width="190" height="108">'
+               f'<path d="M 22 88 A 78 78 0 0 1 178 88" fill="none" stroke="#21262d" stroke-width="13" stroke-linecap="round"/>'
+               f'<path d="M 22 88 A 78 78 0 {lg} 1 {ax:.1f} {ay:.1f}" fill="none" stroke="{gc}" stroke-width="13" stroke-linecap="round"/>'
+               f'<text x="100" y="76" text-anchor="middle" font-size="24" font-weight="bold" fill="{gc}" font-family="monospace">{ss:.0f}</text>'
+               f'<text x="100" y="92" text-anchor="middle" font-size="8" fill="#8b949e" font-family="monospace">/ 100</text>'
+               f'<text x="24" y="106" text-anchor="middle" font-size="8" fill="#555">0</text>'
+               f'<text x="176" y="106" text-anchor="middle" font-size="8" fill="#555">100</text></svg>')
 
-  <!-- HEADER -->
-  <div class="header">
-    <div>
-      <div class="logo">BK <span>MARKET</span> DASHBOARD</div>
-      <div class="subtitle">{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;·&nbsp; RETURNS &amp; RISK &nbsp;·&nbsp; DAILY BRIEF</div>
-    </div>
-    <div class="ts">
-      <div class="date">{date_str}</div>
-      <div class="next">Auto-refreshes every hour{market_note}</div>
-    </div>
-  </div>
+        t5h=""
+        for _,r in frag_df.head(5).iterrows():
+            fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
+            bw=min(100,r["fragility"])
+            t5h+=(f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">'
+                  f'<div style="width:150px;font-size:11px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</div>'
+                  f'<div style="flex:1;background:#21262d;border-radius:3px;height:8px;">'
+                  f'<div style="width:{bw:.0f}%;background:{fc};height:8px;border-radius:3px;"></div></div>'
+                  f'<div style="width:48px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:{fc};">{r["fragility"]:.0f}</div>'
+                  f'<div style="width:70px;text-align:center;font-size:9px;font-family:monospace;color:{fc};'
+                  f'background:{rb_};border:1px solid {fc};border-radius:10px;padding:1px 6px;">{r["rag"]}</div></div>')
 
-  <!-- TONE + RAG -->
-  <div class="tone-bar">
-    <div>
-      <div style="font-size:9px;color:var(--grey);letter-spacing:1px;margin-bottom:6px;">MARKET TONE</div>
-      <div class="tone-pill" style="background:{tone_bg};color:{tone_color};border:1px solid {tone_color};">{tone}</div>
-    </div>
-    <div style="width:1px;height:40px;background:var(--border);margin:0 8px;"></div>
-    <div class="rag-block">
-      <div class="rag-item"><div class="n" style="color:#f85149;">{n_red}</div><div class="l">RED</div></div>
-      <div class="rag-item"><div class="n" style="color:#e3b341;">{n_amber}</div><div class="l">AMBER</div></div>
-      <div class="rag-item"><div class="n" style="color:#3fb950;">{n_green}</div><div class="l">GREEN</div></div>
-      <div class="rag-item"><div class="n" style="color:var(--white);">{total}</div><div class="l">TOTAL</div></div>
-    </div>
-  </div>
+        PL={"pillar_dd":"Drawdown","pillar_vol":"Volatility","pillar_cvar":"Tail Risk",
+            "pillar_trend":"Trend","pillar_corr":"Contagion","pillar_volz":"Vol Stress"}
+        fr=""
+        for _,r in frag_df.iterrows():
+            fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
+            bw=min(100,r["fragility"])
+            pv={k:r.get(k,0) for k in PL}; top=PL[max(pv,key=pv.get)]
+            pc="".join(f'<td class="num {"ps" if r.get(k,0)>1 else "am" if r.get(k,0)>0 else "gr"}">{r.get(k,0):+.1f}</td>' for k in PL)
+            fr+=(f'<tr><td class="an">{r["name"]}</td><td class="tk">{r["ticker"]}</td>'
+                 f'<td class="num" style="color:{fc};font-weight:700;">{r["fragility"]:.0f}</td>'
+                 f'<td style="padding:7px 8px;"><div style="background:#21262d;border-radius:3px;height:6px;width:80px;">'
+                 f'<div style="width:{bw:.0f}%;background:{fc};height:6px;border-radius:3px;"></div></div></td>'
+                 f'<td style="text-align:center;"><span style="font-size:9px;font-family:monospace;color:{fc};'
+                 f'background:{rb_};border:1px solid {fc};border-radius:10px;padding:1px 8px;">{r["rag"]}</span></td>'
+                 f'<td class="num gr" style="font-size:10px;">{top}</td>{pc}</tr>')
 
-  <!-- TOP GAINERS / LOSERS MTD -->
-  <div class="gl-grid">
-    <div class="gl-card">
-      <div class="gl-title">
-        <span class="dot" style="background:#3fb950;"></span>
-        Top 5 MTD Gainers &nbsp;<span style="color:var(--grey);font-weight:400;">(1-Month Return)</span>
-      </div>
-      {gainers_html}
-    </div>
-    <div class="gl-card">
-      <div class="gl-title">
-        <span class="dot" style="background:#f85149;"></span>
-        Top 5 MTD Losers &nbsp;<span style="color:var(--grey);font-weight:400;">(1-Month Return)</span>
-      </div>
-      {losers_html}
-    </div>
-  </div>
+        frag=(f'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;">'
+              f'<div class="fc" style="text-align:center;"><div class="lbl" style="margin-bottom:8px;">SYSTEM FRAGILITY</div>'
+              f'{gauge}<div class="pill" style="background:{rb_};color:{rc_};border:1px solid {rc_};margin-top:6px;">{reg}</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">CRISIS</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#f85149;font-family:monospace;">{ncr}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &#8805; 70</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">STRESSED</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#e3b341;font-family:monospace;">{nst}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score 50&#8211;70</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">CALM</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#3fb950;font-family:monospace;">{nca}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 50</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">TOTAL</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#e6edf3;font-family:monospace;">{len(frag_df)}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Instruments</div></div></div>'
+              f'<div class="fc" style="margin-bottom:14px;">'
+              f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:12px;text-transform:uppercase;">&#9888; Top 5 Most Fragile</div>'
+              f'{t5h}</div>'
+              f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
+              f'<th>Score</th><th>Bar</th><th>Status</th><th>Top Driver</th>'
+              f'<th>Drawdown</th><th>Volatility</th><th>Tail Risk</th><th>Trend</th><th>Contagion</th><th>Vol Stress</th>'
+              f'</tr></thead><tbody>{fr}</tbody></table></div>'
+              f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
+              f'BK Fragility Framework &#183; Drawdown 22% + CVaR 20% + Contagion 18% + Volatility 15% + Trend 15% + Vol Stress 10% &#183; '
+              f'CRISIS &#8805;70 &#183; STRESSED 50&#8211;70 &#183; CALM &lt;50</div>')
+    else:
+        frag='<div style="padding:40px;text-align:center;color:#8b949e;">Fragility data unavailable.</div>'
 
-  <!-- MAIN TABLE -->
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="text-align:left;">Asset</th>
-          <th>Ticker</th>
-          {d1_th}
-          <th>1W</th><th>1M</th><th>3M</th><th>YTD</th>
-          <th>Vol 20D</th><th>Max DD</th><th>Sharpe</th><th>Signal</th>
-        </tr>
-      </thead>
-      <tbody>{rows_html}</tbody>
-    </table>
-  </div>
+    # ══ ASSEMBLE HTML ══════════════════════════════════════════════════════════
+    mn="" if market_open else ' <span style="color:#e3b341;font-size:10px;">&#9888; Markets closed</span>'
 
-  <!-- FOOTER -->
-  <div class="footer">
-    <div class="footer-note">
-      Signal: RED &lt; &minus;15% &nbsp;|&nbsp; AMBER &minus;15% to &minus;7% &nbsp;|&nbsp; GREEN &gt; &minus;7% — from 52-week high<br>
-      Sharpe = 1Y annualised excess return / vol &nbsp;(rf = 4.5%) &nbsp;|&nbsp; Prices via Yahoo Finance<br>
-      Generated: {gen_ts} SGT &nbsp;·&nbsp; Page auto-refreshes every hour
-    </div>
-    <div style="text-align:right;">
-      <div class="footer-brand">BK</div>
-      <div class="footer-sub">Market Intelligence &nbsp;·&nbsp; Singapore</div>
-    </div>
-  </div>
+    css=(":root{--bg:#0d1117;--ca:#161b22;--dk:#21262d;--br:#30363d;--w:#e6edf3;--g:#8b949e;--ac:#58a6ff;}"
+         "*{box-sizing:border-box;margin:0;padding:0;}"
+         "body{background:var(--bg);color:var(--w);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;}"
+         ".wrap{max-width:1400px;margin:0 auto;padding:16px 12px;}"
+         ".hdr{background:var(--ca);border:1px solid var(--br);border-radius:8px;padding:18px 24px;"
+         "margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}"
+         ".logo{font-family:monospace;font-size:20px;font-weight:700;letter-spacing:2px;}"
+         ".logo span{color:#3fb950;}"
+         ".sub{font-size:10px;color:var(--g);letter-spacing:2px;margin-top:4px;}"
+         ".badge{display:inline-flex;align-items:center;gap:6px;background:var(--dk);border:1px solid var(--br);"
+         "border-radius:20px;padding:3px 10px;font-size:9px;font-family:monospace;color:var(--g);margin-top:6px;}"
+         ".dot{width:6px;height:6px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite;display:inline-block;}"
+         "@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}"
+         ".tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--br);}"
+         ".tb{padding:10px 22px;font-size:12px;font-weight:600;font-family:monospace;letter-spacing:1px;"
+         "border:none;background:transparent;color:var(--g);cursor:pointer;"
+         "border-bottom:3px solid transparent;margin-bottom:-2px;text-transform:uppercase;}"
+         ".tb:hover{color:var(--w);}"
+         ".tb.on{color:var(--ac);border-bottom:3px solid var(--ac);}"
+         ".tab{display:none;}.tab.on{display:block;}"
+         ".tbar{display:flex;align-items:center;gap:12px;background:var(--ca);border:1px solid var(--br);"
+         "border-radius:8px;padding:12px 24px;margin-bottom:14px;flex-wrap:wrap;}"
+         ".lbl{font-size:9px;color:var(--g);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}"
+         ".pill{padding:4px 14px;border-radius:20px;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:1px;}"
+         ".dvdr{width:1px;height:40px;background:var(--br);margin:0 8px;}"
+         ".rb{display:flex;gap:20px;}"
+         ".ri{text-align:center;}"
+         ".rn{font-size:22px;font-weight:700;font-family:monospace;}"
+         ".rl{font-size:9px;color:var(--g);letter-spacing:1px;margin-top:2px;}"
+         ".gl{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}"
+         "@media(max-width:700px){.gl{grid-template-columns:1fr;}}"
+         ".gc{background:var(--ca);border:1px solid var(--br);border-radius:8px;padding:16px 18px;}"
+         ".gt{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--g);margin-bottom:12px;"
+         "display:flex;align-items:center;gap:8px;text-transform:uppercase;}"
+         ".gd{width:8px;height:8px;border-radius:50%;display:inline-block;}"
+         ".tw{background:var(--ca);border:1px solid var(--br);border-radius:8px;overflow-x:auto;}"
+         "table{width:100%;border-collapse:collapse;font-size:12px;}"
+         "th{background:#1c2128;padding:10px 8px;font-size:9px;letter-spacing:1px;text-transform:uppercase;"
+         "color:var(--g);font-family:monospace;white-space:nowrap;border-bottom:2px solid var(--br);}"
+         "th:first-child{text-align:left;padding-left:14px;}"
+         "td{padding:7px 8px;border-bottom:1px solid var(--br);white-space:nowrap;}"
+         "tr:last-child td{border-bottom:none;}"
+         "tr:hover td{background:#1c2128;}"
+         "td.an{text-align:left;padding-left:14px;color:var(--w);min-width:150px;}"
+         "td.tk{font-family:monospace;font-size:10px;color:var(--g);font-weight:700;}"
+         "td.num{font-family:monospace;text-align:right;}"
+         "td.sig{font-family:monospace;font-size:10px;text-align:center;}"
+         ".ps{color:#3fb950;}.pl{color:#7ee787;}.ng{color:#ff7b72;}.nr{color:#f85149;}"
+         ".am{color:#e3b341;}.gr{color:#8b949e;}"
+         ".sg{color:#3fb950;}.sa{color:#e3b341;}.sr{color:#f85149;}"
+         "tr.sh td{background:#1c2128;font-size:9px;font-weight:700;letter-spacing:2px;"
+         "text-transform:uppercase;color:var(--ac);padding:8px 14px;border-top:2px solid var(--br);}"
+         ".vc{background:var(--ca);border:1px solid;border-radius:8px;padding:14px 20px;text-align:center;min-width:140px;}"
+         ".vn{font-size:26px;font-weight:700;font-family:monospace;}"
+         ".vl{font-size:9px;font-weight:700;letter-spacing:1px;margin-top:4px;}"
+         ".vs{font-size:9px;color:var(--g);margin-top:2px;}"
+         ".fc{background:var(--ca);border:1px solid var(--br);border-radius:8px;padding:16px 20px;}"
+         ".footer{margin-top:14px;padding:12px 0;border-top:1px solid var(--br);"
+         "display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}"
+         ".fn{font-size:9px;color:var(--g);line-height:1.9;font-family:monospace;}"
+         ".fb{font-size:20px;font-weight:700;letter-spacing:-1px;font-family:monospace;}"
+         ".fs{font-size:9px;color:var(--g);margin-top:2px;}"
+         "@media(max-width:600px){"
+         ".logo{font-size:15px;}.hdr{padding:12px 16px;}.wrap{padding:10px 8px;}"
+         "th,td{padding:5px 6px;font-size:11px;}td.an{min-width:100px;}"
+         ".tb{padding:8px 12px;font-size:10px;}.rn{font-size:16px;}}")
 
-</div>
-</body>
-</html>"""
+    return (
+        "<!DOCTYPE html><html lang='en'><head>"
+        "<meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<meta http-equiv='refresh' content='3600'>"
+        "<title>BK Market Dashboard</title>"
+        f"<script async src='https://www.googletagmanager.com/gtag/js?id={GA}'></script>"
+        f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
+        f"gtag('js',new Date());gtag('config','{GA}');</script>"
+        f"<style>{css}</style>"
+        "</head><body><div class='wrap'>"
+        "<div class='hdr'><div>"
+        "<div class='logo'>BK <span>MARKET</span> DASHBOARD</div>"
+        f"<div class='sub'>{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;&#183;&nbsp; PERFORMANCE &#183; RISK &#183; FRAGILITY</div>"
+        f"<div class='badge'><span class='dot'></span> Last updated: {date_str}</div>"
+        "</div><div style='text-align:right;'>"
+        f"<div style='font-family:monospace;font-size:13px;color:#e6edf3;font-weight:600;'>{date_str}</div>"
+        f"<div style='font-size:9px;color:#8b949e;margin-top:4px;'>Auto-refreshes every hour{mn}</div>"
+        "<div style='font-size:9px;color:#444d56;margin-top:3px;font-family:monospace;'>07:00 SGT &#183; MON&#8211;FRI</div>"
+        "</div></div>"
+        "<div class='tabs'>"
+        "<button class='tb on' onclick=\"sw('perf',this)\">&#128200; Performance</button>"
+        "<button class='tb' onclick=\"sw('risk',this)\">&#128202; Risk</button>"
+        "<button class='tb' onclick=\"sw('frag',this)\">&#9889; Fragility</button>"
+        "</div>"
+        f"<div id='t-perf' class='tab on'>{perf}</div>"
+        f"<div id='t-risk' class='tab'>{risk}</div>"
+        f"<div id='t-frag' class='tab'>{frag}</div>"
+        "<div class='footer'><div class='fn'>"
+        "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
+        "Fragility: CRISIS &#8805;70 &#183; STRESSED 50&#8211;70 &#183; CALM &lt;50 &#183; BK Fragility Framework<br>"
+        f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Auto-refreshes every hour"
+        "</div><div style='text-align:right;'>"
+        "<div class='fb'>BK</div>"
+        "<div class='fs'>Market Intelligence &#183; Singapore</div>"
+        "</div></div></div>"
+        "<script>"
+        "function sw(n,b){"
+        "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));"
+        "document.querySelectorAll('.tb').forEach(x=>x.classList.remove('on'));"
+        "document.getElementById('t-'+n).classList.add('on');b.classList.add('on');}"
+        "</script>"
+        "</body></html>"
+    )
 
 
 def send_email(html_body: str) -> bool:
