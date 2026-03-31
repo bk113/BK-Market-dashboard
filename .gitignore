@@ -1,0 +1,5 @@
+market_dashboard/*.png 
+market_dashboard/*.pdf 
+market_dashboard/*.pptx 
+*.pyc 
+__pycache__/ 
