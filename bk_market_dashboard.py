@@ -1,14 +1,21 @@
 """
 BK Market Dashboard — Consolidated
 ====================================
-47-instrument universe · Returns, risk metrics, visual report & email brief.
+60-instrument universe · 12 asset classes · Performance, Risk & Fragility.
+
+Outputs:
+  docs/index.html   3-tab web page (GitHub Pages — auto-updated daily)
+  PNG + PDF         visual report
+  PPTX              PowerPoint deck
+  Email             HTML brief via Gmail
 
 Usage:
-  python bk_market_dashboard.py                    # PNG + PDF report only
-  python bk_market_dashboard.py --pptx             # PowerPoint deck (5 slides per asset class)
-  python bk_market_dashboard.py --email            # report + send email
-  python bk_market_dashboard.py --schedule         # daily scheduler at 07:00 SGT Mon–Fri
-  python bk_market_dashboard.py --now --email      # run once immediately (testing)
+  python bk_market_dashboard.py --html             # Generate web page (GitHub Pages)
+  python bk_market_dashboard.py --pptx             # PowerPoint deck
+  python bk_market_dashboard.py --email            # Send HTML email brief
+  python bk_market_dashboard.py --html --pptx      # Web page + PowerPoint
+  python bk_market_dashboard.py --schedule         # Daily scheduler at 07:00 SGT Mon–Fri
+  python bk_market_dashboard.py --now --html       # Run once immediately (testing)
 
 Dependencies:
   pip install yfinance pandas numpy matplotlib schedule pytz python-pptx
@@ -80,10 +87,10 @@ UNIVERSE = [
     ("EQ_DM",    "EWA",     "Australia"),
     ("EQ_DM",    "EWS",     "Singapore"),
     # ── Equities: Global Indices ──
-    ("EQ_IDX",   "EXW1.DE", "Euro STOXX 50"),
-    ("EQ_IDX",   "ISF.L",   "FTSE 100"),
-    ("EQ_IDX",   "^N225",   "Nikkei 225"),
-    ("EQ_IDX",   "^HSI",    "Hang Seng Index"),
+    ("EQ_IDX",   "FEZ",     "Euro STOXX 50"),
+    ("EQ_IDX",   "EWH",     "Hang Seng / HK"),
+    ("EQ_IDX",   "DBJP",    "Nikkei 225 (Japan)"),
+    ("EQ_IDX",   "FLGB",    "FTSE 100 (UK)"),
     # ── Equities: Emerging Markets ──
     ("EQ_EM",    "EEM",     "EM Broad"),
     ("EQ_EM",    "FXI",     "China"),
@@ -117,9 +124,9 @@ UNIVERSE = [
     ("CMD",      "COPX",    "Copper Miners"),
     ("CMD",      "DBA",     "Agriculture"),
     # ── Fixed Income: EUR & Global ──
-    ("FI_INTL",  "LQDE.L",  "EUR IG Credit"),
-    ("FI_INTL",  "IHYG.L",  "EUR HY Credit"),
-    ("FI_INTL",  "AGGG.L",  "Global Aggregate"),
+    ("FI_INTL",  "IGIB",    "USD IG Credit (Int)"),
+    ("FI_INTL",  "IHY",     "Intl High Yield"),
+    ("FI_INTL",  "BNDW",    "Global Aggregate"),
     # ── Crypto ──
     ("CRYPTO",   "BTC-USD", "Bitcoin"),
     # ── FX ──
@@ -128,7 +135,7 @@ UNIVERSE = [
     ("FX",       "GBPUSD=X","GBP/USD"),
     ("FX",       "JPY=X",   "USD/JPY"),
     ("FX",       "SGD=X",   "USD/SGD"),
-    ("FX",       "CNH=X",   "USD/CNH"),
+    ("FX",       "CNY=X",   "USD/CNY"),
     ("FX",       "AUDUSD=X","AUD/USD"),
     # ── Volatility ──
     ("VOL",      "VIXY",    "VIX Short-Term Futures"),
@@ -153,6 +160,17 @@ SECTION_LABELS = {
 }
 
 N_INSTRUMENTS = len(UNIVERSE)
+
+# ── CURRENCY MAP ──────────────────────────────────────────────────────────────
+# Returns are price return in the instrument's local currency
+CURRENCY_MAP = {
+    "EQ_US": "USD", "EQ_SECT": "USD", "EQ_IDX": "USD",
+    "EQ_DM": "USD", "EQ_EM": "USD", "DEFENCE": "USD",
+    "FI": "USD", "FI_INTL": "USD", "CMD": "USD",
+    "CRYPTO": "USD", "FX": "USD", "VOL": "USD",
+}
+
+
 
 
 # ── COLORS (report) ───────────────────────────────────────────────────────────
@@ -197,7 +215,7 @@ def _rag(dd: float) -> tuple[str, str]:
 #  DATA
 # ══════════════════════════════════════════════════════════════════════════════
 
-def download(lookback_days: int = 420) -> pd.DataFrame:
+def download(lookback_days: int = 2520) -> pd.DataFrame:
     tickers = [t for _, t, _ in UNIVERSE]
     print(f"[Download] {len(tickers)} tickers | last {lookback_days} days ...")
     start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
@@ -259,9 +277,14 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     spark_window = min(20, len(prices))
     spark_prices = prices.tail(spark_window)
 
-    # Detect if market was closed today (all 1D returns are ~0)
+    # Detect if market was closed today
+    # Only check equity tickers (FX/Crypto trade 24/7 and skew the signal)
     ret1d_vals = _ret(1)
-    market_open_today = not (ret1d_vals.abs().dropna() < 1e-6).all()
+    eq_tickers = [t for _, t, _ in UNIVERSE if t in prices.columns and
+                  t not in ["BTC-USD","EURUSD=X","GBPUSD=X","JPY=X","SGD=X","CNY=X","AUDUSD=X","UUP"]]
+    eq_ret1d = ret1d_vals.reindex(eq_tickers).dropna()
+    nonzero_eq = (eq_ret1d.abs() > 1e-4).sum()
+    market_open_today = nonzero_eq >= max(3, len(eq_ret1d) * 0.15)
 
     rows = []
     for sec, ticker, name in UNIVERSE:
@@ -289,6 +312,7 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
             "rag_label":        rl,
             "spark":            spark,
             "market_open":      market_open_today,
+            "currency":         CURRENCY_MAP.get(sec, "USD"),
         })
 
     ord_map = {s: i for i, s in enumerate(SECTION_ORDER)}
@@ -656,7 +680,7 @@ def build_email_html(df: pd.DataFrame) -> str:
           BK <span style="color:#34d399;">MARKET</span> DASHBOARD
         </div>
         <div style="font-size:9px;color:#6b7280;letter-spacing:2px;margin-top:4px;">
-          {N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;·&nbsp; RETURNS &amp; RISK
+          {N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;·&nbsp; PERFORMANCE &amp; RISK &amp; FRAGILITY
         </div>
       </div>
       <div style="text-align:right;">
@@ -783,7 +807,7 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
     sd_vov  = vov.rolling(60, min_periods=20).std().replace(0, np.nan)
     volz    = ((vov - mu_vov) / sd_vov).abs()
 
-    zw      = min(252, len(prices) - 1)
+    zw      = min(756, len(prices) - 1)  # 3-year rolling window for robust calibration
     t2m     = {t: (s, n) for s, t, n in UNIVERSE}
     w       = FRAGILITY_WEIGHTS
     tw      = sum(w.values())
@@ -797,7 +821,8 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
         zz = _robust_zscore(volz[col],    zw)
         lat = (w["dd"]*zd.fillna(0)+w["vol"]*zv.fillna(0)+w["cvar"]*zc.fillna(0)+
                w["trend"]*zt.fillna(0)+w["corr"]*zr.fillna(0)+w["volz"]*zz.fillna(0))
-        sc  = 100.0 * _frag_logistic(lat.ewm(span=10,adjust=False).mean())
+        # Scale by 0.5 to spread scores — prevents saturation at extremes
+        sc  = 100.0 * _frag_logistic(lat.ewm(span=10,adjust=False).mean() * 0.5)
         v   = float(sc.iloc[-1]) if not sc.empty else np.nan
         if pd.isna(v): continue
         rag = "CRISIS" if v>=70 else "STRESSED" if v>=50 else "CALM"
@@ -820,7 +845,299 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
 #  3-TAB WEB PAGE  (Performance | Risk | Fragility)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
+# ══════════════════════════════════════════════════════════════════════════════
+#  REGIME ENGINE  (State Machine — deterministic, governance-friendly)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_regime(prices: pd.DataFrame) -> dict:
+    """
+    Compute market regime using deterministic state machine on ACWI (world proxy).
+    Returns dict with current regime, timeline, stats and drivers.
+    """
+    world_col = "ACWI" if "ACWI" in prices.columns else prices.columns[0]
+    rets  = prices[world_col].pct_change().replace([np.inf,-np.inf], np.nan)
+    vol20 = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
+    window_dd = min(2520, len(prices))  # full 10yr window for episodes
+    peak  = prices[world_col].rolling(window_dd, min_periods=20).max()
+    dd    = prices[world_col] / peak - 1.0
+
+    s = pd.DataFrame({"vol": vol20, "dd": dd}).dropna()
+    min_history = 252
+
+    # Ex-ante expanding quantile thresholds (no look-ahead)
+    vol70 = s["vol"].expanding(min_periods=min_history).quantile(0.70).shift(1)
+    vol90 = s["vol"].expanding(min_periods=min_history).quantile(0.90).shift(1)
+    dd30  = s["dd"].expanding(min_periods=min_history).quantile(0.30).shift(1)
+    dd10  = s["dd"].expanding(min_periods=min_history).quantile(0.10).shift(1)
+
+    valid  = vol70.notna() & vol90.notna() & dd30.notna() & dd10.notna()
+    regime = pd.Series("Calm", index=s.index, dtype="object")
+    regime.loc[~valid] = np.nan
+    stressed = valid & ((s["vol"] >= vol70) | (s["dd"] <= dd30))
+    crisis   = valid & ((s["vol"] >= vol90) | (s["dd"] <= dd10))
+    regime.loc[stressed] = "Stressed"
+    regime.loc[crisis]   = "Crisis"
+    regime = regime.dropna()
+
+    if regime.empty:
+        return {"regime": "Calm", "days_in_regime": 0, "timeline": [], "stats": {}, "drivers": {}}
+
+    # Current regime
+    current = regime.iloc[-1]
+
+    # Days in current streak
+    streak = 1
+    for i in range(len(regime)-2, -1, -1):
+        if regime.iloc[i] == current:
+            streak += 1
+        else:
+            break
+
+    # Timeline: last 504 trading days (2 years) — daily regime
+    timeline_raw = regime.tail(504)
+    timeline = []
+    for date, reg in timeline_raw.items():
+        timeline.append({
+            "date": date.strftime("%Y-%m-%d"),
+            "regime": reg,
+            "color": "#f85149" if reg=="Crisis" else "#e3b341" if reg=="Stressed" else "#3fb950"
+        })
+
+    # Stats: days in each regime over full history
+    total = len(regime)
+    stats = {
+        "Calm":     {"days": int((regime=="Calm").sum()),     "pct": round((regime=="Calm").sum()/total*100,1)},
+        "Stressed": {"days": int((regime=="Stressed").sum()), "pct": round((regime=="Stressed").sum()/total*100,1)},
+        "Crisis":   {"days": int((regime=="Crisis").sum()),   "pct": round((regime=="Crisis").sum()/total*100,1)},
+    }
+
+    # Average duration per regime
+    durations = {"Calm":[], "Stressed":[], "Crisis":[]}
+    cur_reg = regime.iloc[0]; cur_len = 1
+    for i in range(1, len(regime)):
+        if regime.iloc[i] == cur_reg:
+            cur_len += 1
+        else:
+            durations[cur_reg].append(cur_len)
+            cur_reg = regime.iloc[i]; cur_len = 1
+    durations[cur_reg].append(cur_len)
+    for r in durations:
+        stats[r]["avg_duration"] = round(float(np.mean(durations[r])), 0) if durations[r] else 0
+
+    # Drivers: current vol and dd vs historical percentiles
+    cur_vol = float(vol20.iloc[-1]) if not pd.isna(vol20.iloc[-1]) else 0
+    cur_dd  = float(dd.iloc[-1])    if not pd.isna(dd.iloc[-1])    else 0
+    vol_pct = float((vol20.dropna() <= cur_vol).mean() * 100)
+    dd_pct  = float((dd.dropna()   >= cur_dd).mean()  * 100)  # pct ABOVE current dd
+
+    # Crisis episodes (drawdown < -15%)
+    episodes = []
+    in_ep = False; ep_start = None
+    for date, val in dd.items():
+        if val < -0.15 and not in_ep:
+            in_ep = True; ep_start = date
+        elif val >= -0.10 and in_ep:
+            in_ep = False
+            episodes.append({"start": ep_start.strftime("%b %Y"),
+                              "end":   date.strftime("%b %Y"),
+                              "depth": round(float(dd[ep_start:date].min()*100),1)})
+    if in_ep:
+        episodes.append({"start": ep_start.strftime("%b %Y"), "end": "Present",
+                          "depth": round(float(dd[ep_start:].min()*100),1)})
+
+    return {
+        "regime":         current,
+        "days_in_regime": streak,
+        "timeline":       timeline,
+        "stats":          stats,
+        "drivers": {
+            "vol_now":   round(cur_vol*100, 1),
+            "vol_pct":   round(vol_pct, 0),
+            "dd_now":    round(cur_dd*100,  1),
+            "dd_pct":    round(dd_pct,  0),
+        },
+        "episodes": episodes[-8:],  # last 8 crisis episodes
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  FEAR & GREED ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_fear_greed(prices: pd.DataFrame) -> dict:
+    """
+    7-component Fear & Greed Index (0=Extreme Fear, 100=Extreme Greed).
+    Each component scored 0-100 then equally weighted.
+    """
+    rets = prices.pct_change().replace([np.inf,-np.inf], np.nan)
+    scores = {}
+    details = {}
+
+    def _pct_rank(series, val):
+        """Where does val sit in historical distribution? 0-100."""
+        clean = series.dropna()
+        if clean.empty or pd.isna(val): return 50.0
+        return float((clean <= val).mean() * 100)
+
+    # ── 1. Volatility: VIXY vs 50D MA (high vol = fear) ──────────────────────
+    if "VIXY" in prices.columns:
+        vixy = prices["VIXY"].dropna()
+        ma50 = vixy.rolling(50, min_periods=20).mean()
+        ratio = vixy / ma50 - 1
+        cur   = float(ratio.iloc[-1]) if not ratio.empty else 0
+        # High ratio = high vol vs norm = fear → invert
+        raw = _pct_rank(ratio, cur)
+        scores["Volatility"] = max(0, min(100, 100 - raw))
+        details["Volatility"] = {"value": f"VIXY {cur*100:+.1f}% vs 50D MA", "score": scores["Volatility"]}
+
+    # ── 2. Market Momentum: SPY vs 125D MA ───────────────────────────────────
+    if "SPY" in prices.columns:
+        spy  = prices["SPY"].dropna()
+        ma125= spy.rolling(125, min_periods=50).mean()
+        ratio= spy / ma125 - 1
+        cur  = float(ratio.iloc[-1]) if not ratio.empty else 0
+        raw  = _pct_rank(ratio, cur)
+        scores["Momentum"] = max(0, min(100, raw))
+        details["Momentum"] = {"value": f"SPY {cur*100:+.1f}% vs 125D MA", "score": scores["Momentum"]}
+
+    # ── 3. Market Breadth: % instruments above their 50D MA ──────────────────
+    ma50_all = prices.rolling(50, min_periods=20).mean()
+    above = (prices.iloc[-1] > ma50_all.iloc[-1]).sum()
+    total_avail = prices.shape[1]
+    breadth_pct = above / total_avail * 100 if total_avail > 0 else 50
+    scores["Breadth"] = float(breadth_pct)
+    details["Breadth"] = {"value": f"{above}/{total_avail} above 50D MA", "score": scores["Breadth"]}
+
+    # ── 4. Safe Haven Demand: TLT outperformance vs SPY (20D) ────────────────
+    if "TLT" in prices.columns and "SPY" in prices.columns:
+        tlt_ret = prices["TLT"].pct_change(20)
+        spy_ret = prices["SPY"].pct_change(20)
+        spread  = tlt_ret - spy_ret  # positive = bonds beating equities = fear
+        cur     = float(spread.iloc[-1]) if not spread.dropna().empty else 0
+        raw     = _pct_rank(spread.dropna(), cur)
+        # High spread (bonds beating) = fear → invert
+        scores["Safe Haven"] = max(0, min(100, 100 - raw))
+        details["Safe Haven"] = {"value": f"TLT vs SPY 20D: {cur*100:+.1f}%", "score": scores["Safe Haven"]}
+
+    # ── 5. Junk Bond Demand: HYG vs IEF (credit risk appetite) ──────────────
+    if "HYG" in prices.columns and "IEF" in prices.columns:
+        hyg_ret = prices["HYG"].pct_change(20)
+        ief_ret = prices["IEF"].pct_change(20)
+        spread  = hyg_ret - ief_ret  # positive = junk beating govt = greed
+        cur     = float(spread.iloc[-1]) if not spread.dropna().empty else 0
+        raw     = _pct_rank(spread.dropna(), cur)
+        scores["Junk Bonds"] = max(0, min(100, raw))
+        details["Junk Bonds"] = {"value": f"HYG vs IEF 20D: {cur*100:+.1f}%", "score": scores["Junk Bonds"]}
+
+    # ── 6. Market Strength: % instruments within 5% of 52W high ─────────────
+    hi52 = prices.rolling(252, min_periods=100).max()
+    near_high = ((prices.iloc[-1] / hi52.iloc[-1]) >= 0.95).sum()
+    strength_pct = near_high / total_avail * 100 if total_avail > 0 else 50
+    scores["Strength"] = float(strength_pct)
+    details["Strength"] = {"value": f"{near_high}/{total_avail} within 5% of 52W high", "score": scores["Strength"]}
+
+    # ── 7. Put/Call Proxy: UVXY vs VIXY ratio (panic hedging) ────────────────
+    if "UVXY" in prices.columns and "VIXY" in prices.columns:
+        ratio_ts = prices["UVXY"] / prices["VIXY"].replace(0, np.nan)
+        ratio_ts = ratio_ts.dropna()
+        cur      = float(ratio_ts.iloc[-1]) if not ratio_ts.empty else 1
+        raw      = _pct_rank(ratio_ts, cur)
+        # High ratio = panic = fear → invert
+        scores["Put/Call Proxy"] = max(0, min(100, 100 - raw))
+        details["Put/Call Proxy"] = {"value": f"UVXY/VIXY ratio: {cur:.2f}", "score": scores["Put/Call Proxy"]}
+
+    # ── Composite ─────────────────────────────────────────────────────────────
+    if not scores:
+        return {"score": 50, "label": "Neutral", "emoji": "😐", "details": {}}
+
+    composite = float(np.mean(list(scores.values())))
+
+    if composite <= 25:   label, emoji, color = "Extreme Fear",  "😱", "#f85149"
+    elif composite <= 45: label, emoji, color = "Fear",          "😟", "#ff7b72"
+    elif composite <= 55: label, emoji, color = "Neutral",       "😐", "#e3b341"
+    elif composite <= 75: label, emoji, color = "Greed",         "😊", "#7ee787"
+    else:                 label, emoji, color = "Extreme Greed", "🤑", "#3fb950"
+
+    return {
+        "score":   round(composite, 1),
+        "label":   label,
+        "emoji":   emoji,
+        "color":   color,
+        "details": details,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  FRAGILITY HISTORICAL TREND ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_fragility_trend(prices: pd.DataFrame) -> dict:
+    """
+    Compute system-level fragility score timeseries (last 504 days = 2 years).
+    Returns daily scores + regime for chart rendering.
+    """
+    rets    = prices.pct_change().replace([np.inf,-np.inf], np.nan)
+    wdd     = min(252, len(prices))
+    peak    = prices.rolling(wdd, min_periods=20).max()
+    dd      = (prices / peak - 1.0).abs()
+    vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
+
+    def _cvar(x):
+        q = np.nanquantile(x, 0.05); tail = x[x <= q]
+        return abs(np.nanmean(tail)) if len(tail) > 0 else np.nan
+    cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)
+    ma200   = prices.rolling(200, min_periods=50).mean()
+    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)
+    wcol    = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
+    corr_w  = pd.DataFrame(index=rets.index, columns=prices.columns, dtype=float)
+    for c in prices.columns:
+        corr_w[c] = rets[c].rolling(60, min_periods=20).corr(rets[wcol]).clip(lower=0)
+    vov     = vol20.rolling(20, min_periods=10).std()
+    mu_vov  = vov.rolling(60, min_periods=20).mean()
+    sd_vov  = vov.rolling(60, min_periods=20).std().replace(0, np.nan)
+    volz    = ((vov - mu_vov) / sd_vov).abs()
+
+    w   = FRAGILITY_WEIGHTS
+    zw  = min(756, len(prices) - 1)
+
+    # Compute per-asset latent scores then take cross-sectional median daily
+    latents = pd.DataFrame(index=prices.index)
+    for col in prices.columns:
+        zd = _robust_zscore(dd[col],      zw)
+        zv = _robust_zscore(vol20[col],   zw)
+        zc = _robust_zscore(cvar60[col],  zw)
+        zt = _robust_zscore(dist200[col], zw)
+        zr = _robust_zscore(corr_w[col],  zw)
+        zz = _robust_zscore(volz[col],    zw)
+        lat = (w["dd"]*zd.fillna(0) + w["vol"]*zv.fillna(0) + w["cvar"]*zc.fillna(0) +
+               w["trend"]*zt.fillna(0) + w["corr"]*zr.fillna(0) + w["volz"]*zz.fillna(0))
+        latents[col] = lat
+
+    sys_lat  = latents.median(axis=1).ewm(span=10, adjust=False).mean()
+    sys_score= 100.0 / (1.0 + np.exp(-sys_lat * 0.5))
+
+    # Last 504 days
+    trend_raw = sys_score.tail(504).dropna()
+    trend = []
+    for date, val in trend_raw.items():
+        reg = "Crisis" if val >= 70 else "Stressed" if val >= 50 else "Calm"
+        trend.append({
+            "date":  date.strftime("%Y-%m-%d"),
+            "score": round(float(val), 1),
+            "regime": reg,
+            "color": "#f85149" if reg=="Crisis" else "#e3b341" if reg=="Stressed" else "#3fb950",
+        })
+
+    return {
+        "trend":       trend,
+        "current":     round(float(sys_score.iloc[-1]), 1) if not sys_score.empty else 50,
+        "peak_2y":     round(float(sys_score.tail(504).max()), 1),
+        "trough_2y":   round(float(sys_score.tail(504).min()), 1),
+        "avg_2y":      round(float(sys_score.tail(504).mean()), 1),
+    }
+
+
+def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None) -> str:
     import math
     now         = datetime.now(SGT)
     date_str    = now.strftime("%A, %d %b %Y %H:%M SGT")
@@ -833,7 +1150,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
         if pd.isna(v): return '<td class="num gr">-</td>'
         if fmt == "ret":
             p=v*100; s="+" if p>0 else ""
-            cl="ps" if p>=2 else "pl" if p>=0.5 else "ng" if p>=-2 else "nr"
+            cl="ps" if p>=2 else "pl" if p>=0 else "ng" if p>=-2 else "nr"
             return f'<td class="num {cl}">{s}{p:.2f}%</td>'
         if fmt == "vol":
             p=v*100
@@ -851,7 +1168,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
         cl={"RED":"sr","AMBER":"sa","GREEN":"sg"}.get(rl,"")
         return f'<td class="sig {cl}"><span style="color:{dot};">&#9679;</span> {rl}</td>'
 
-    def _srow(sec, cs=12):
+    def _srow(sec, cs=14):
         return f'<tr class="sh"><td colspan="{cs}">{SECTION_LABELS.get(sec,sec)}</td></tr>'
 
     def _bar(nm, val, mx, color):
@@ -880,11 +1197,36 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
     lh="".join(_bar(r["name"],r["ret_1m"],lm,"#f85149") for _,r in loss.iterrows())
 
     d1th="<th>1D</th>" if market_open else ""
+    def _sparkline(spark_data, width=80, height=24):
+        """Generate inline SVG sparkline from 20-day normalised data."""
+        if not spark_data or len(spark_data) < 2:
+            return '<td style="padding:7px 8px;"></td>'
+        mn, mx = min(spark_data), max(spark_data)
+        rng = mx - mn if mx != mn else 1.0
+        pts = []
+        for i, v in enumerate(spark_data):
+            x = i / (len(spark_data)-1) * width
+            y = height - (v - mn) / rng * (height - 4) - 2
+            pts.append(f"{x:.1f},{y:.1f}")
+        color = "#3fb950" if spark_data[-1] >= spark_data[0] else "#f85149"
+        polyline = " ".join(pts)
+        last_x, last_y = pts[-1].split(",")
+        svg = (f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+               f'style="display:block;">'
+               f'<polyline points="{polyline}" fill="none" stroke="{color}" stroke-width="1.5" stroke-linejoin="round"/>'
+               f'<circle cx="{last_x}" cy="{last_y}" r="2" fill="{color}"/>'
+               f'</svg>')
+        return f'<td style="padding:4px 8px;">{svg}</td>'
+
     pr=""; pv=None
     for _,row in df.iterrows():
         if row["section"]!=pv: pv=row["section"]; pr+=_srow(row["section"])
         d1=_rc(row["ret_1d"]) if market_open else ""
+        ccy = row.get("currency","USD")
+        spark_td = _sparkline(row.get("spark",[]))
         pr+=(f'<tr><td class="an">{row["name"]}</td><td class="tk">{row["ticker"]}</td>'
+             f'<td class="num gr" style="font-size:9px;">{ccy}</td>'
+             f'{spark_td}'
              f'{d1}{_rc(row["ret_1w"])}{_rc(row["ret_1m"])}{_rc(row["ret_3m"])}{_rc(row["ret_ytd"])}'
              f'{_sig(row["rag_label"],row["rag_color"])}</tr>')
 
@@ -900,7 +1242,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
           f'Top 5 MTD Gainers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{gh}</div>'
           f'<div class="gc"><div class="gt"><span class="gd" style="background:#f85149;"></span>'
           f'Top 5 MTD Losers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{lh}</div></div>'
-          f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
+          f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th><th>CCY</th><th style="min-width:80px;">Trend 20D</th>'
           f'{d1th}<th>1W</th><th>1M</th><th>3M</th><th>YTD</th><th>Signal</th>'
           f'</tr></thead><tbody>{pr}</tbody></table></div>')
 
@@ -951,6 +1293,104 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
           f'&#11014;&#11014; Vol rising &ge;+20% &nbsp;&#183;&nbsp; &#11014; +5% to +20% &nbsp;&#183;&nbsp; '
           f'&#8594; stable &#8722;5% to +5% &nbsp;&#183;&nbsp; &#11015; easing &lt;&#8722;5% &nbsp;&#183;&nbsp; '
           f'Sharpe = 1Y excess return / vol (rf=4.5%)</div>')
+
+
+    # ── Build Fragility Trend SVG chart ──────────────────────────────────────
+    if frag_trend and frag_trend.get("trend"):
+        trend_pts  = frag_trend["trend"]
+        ft_current = frag_trend.get("current", 50)
+        ft_peak    = frag_trend.get("peak_2y", 50)
+        ft_trough  = frag_trend.get("trough_2y", 50)
+        ft_avg     = frag_trend.get("avg_2y", 50)
+        ft_color   = "#f85149" if ft_current>=70 else "#e3b341" if ft_current>=50 else "#3fb950"
+
+        # Build SVG
+        svg_w = 900; svg_h = 180; pad_l = 40; pad_r = 10; pad_t = 10; pad_b = 30
+        chart_w = svg_w - pad_l - pad_r
+        chart_h = svg_h - pad_t - pad_b
+        n_pts   = len(trend_pts)
+
+        def _x(i):   return pad_l + i / max(n_pts-1,1) * chart_w
+        def _y(val): return pad_t + (1 - val/100) * chart_h
+
+        # Background regime bands
+        bands = []
+        band_start = 0; band_reg = trend_pts[0]["regime"] if trend_pts else "Calm"
+        for i, pt in enumerate(trend_pts):
+            if pt["regime"] != band_reg or i == n_pts-1:
+                x1 = _x(band_start); x2 = _x(i)
+                bc = {"Crisis":"rgba(248,81,73,0.12)","Stressed":"rgba(227,179,65,0.10)","Calm":"rgba(63,185,80,0.06)"}.get(band_reg,"rgba(0,0,0,0)")
+                bands.append(f'<rect x="{x1:.1f}" y="{pad_t}" width="{x2-x1:.1f}" height="{chart_h}" fill="{bc}"/>')
+                band_start = i; band_reg = pt["regime"]
+
+        # Threshold lines
+        y50 = _y(50); y70 = _y(70)
+        thresholds = (
+            f'<line x1="{pad_l}" y1="{y70:.1f}" x2="{svg_w-pad_r}" y2="{y70:.1f}" stroke="#f85149" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.6"/>'
+            f'<text x="{pad_l-4}" y="{y70+3:.1f}" text-anchor="end" font-size="8" fill="#f85149" opacity="0.8">70</text>'
+            f'<line x1="{pad_l}" y1="{y50:.1f}" x2="{svg_w-pad_r}" y2="{y50:.1f}" stroke="#e3b341" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.6"/>'
+            f'<text x="{pad_l-4}" y="{y50+3:.1f}" text-anchor="end" font-size="8" fill="#e3b341" opacity="0.8">50</text>'
+        )
+
+        # Y axis labels
+        y_labels = "".join(
+            f'<text x="{pad_l-4}" y="{_y(v)+3:.1f}" text-anchor="end" font-size="8" fill="#8b949e">{v}</text>'
+            for v in [0, 25, 75, 100]
+        )
+
+        # X axis month labels every ~21 pts
+        x_labels = ""
+        prev_month = ""
+        for i, pt in enumerate(trend_pts):
+            m = pt["date"][:7]
+            if m != prev_month and i % 42 == 0:
+                prev_month = m
+                x_labels += f'<text x="{_x(i):.1f}" y="{svg_h-4}" text-anchor="middle" font-size="8" fill="#8b949e">{m}</text>'
+
+        # Line path + fill
+        pts_str = " ".join(f"{_x(i):.1f},{_y(pt['score']):.1f}" for i, pt in enumerate(trend_pts))
+        fill_pts = f"{_x(0):.1f},{pad_t+chart_h} " + pts_str + f" {_x(n_pts-1):.1f},{pad_t+chart_h}"
+        line_color = ft_color
+
+        # Last point dot
+        last_x = _x(n_pts-1); last_y = _y(ft_current)
+        dot = f'<circle cx="{last_x:.1f}" cy="{last_y:.1f}" r="4" fill="{ft_color}" stroke="#0d1117" stroke-width="2"/>'
+
+        svg_parts = (
+            f'<svg viewBox="0 0 {svg_w} {svg_h}" width="100%" style="max-width:{svg_w}px;display:block;overflow:visible;">'
+            + "".join(bands)
+            + thresholds + y_labels + x_labels
+            + f'<polyline points="{fill_pts}" fill="{ft_color}" opacity="0.08" stroke="none"/>'
+            + f'<polyline points="{pts_str}" fill="none" stroke="{ft_color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'
+            + dot
+            + '</svg>'
+        )
+
+        frag_trend_html = (
+            f'<div class="fc" style="margin-bottom:14px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">'
+            f'<div class="lbl">SYSTEM FRAGILITY TREND — LAST 2 YEARS</div>'
+            f'<div style="display:flex;gap:16px;">'
+            f'<div style="text-align:center;"><div style="font-size:9px;color:#8b949e;">CURRENT</div>'
+            f'<div style="font-size:18px;font-weight:700;color:{ft_color};font-family:monospace;">{ft_current:.0f}</div></div>'
+            f'<div style="text-align:center;"><div style="font-size:9px;color:#8b949e;">2Y PEAK</div>'
+            f'<div style="font-size:18px;font-weight:700;color:#f85149;font-family:monospace;">{ft_peak:.0f}</div></div>'
+            f'<div style="text-align:center;"><div style="font-size:9px;color:#8b949e;">2Y AVG</div>'
+            f'<div style="font-size:18px;font-weight:700;color:#8b949e;font-family:monospace;">{ft_avg:.0f}</div></div>'
+            f'<div style="text-align:center;"><div style="font-size:9px;color:#8b949e;">2Y LOW</div>'
+            f'<div style="font-size:18px;font-weight:700;color:#3fb950;font-family:monospace;">{ft_trough:.0f}</div></div>'
+            f'</div></div>'
+            f'{svg_parts}'
+            f'<div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:#8b949e;">'
+            f'<span><span style="color:#f85149;">&#9632;</span> CRISIS &#8805;70</span>'
+            f'<span><span style="color:#e3b341;">&#9632;</span> STRESSED 50&#8211;70</span>'
+            f'<span><span style="color:#3fb950;">&#9632;</span> CALM &lt;50</span>'
+            f'<span style="margin-left:8px;">Dashed lines = regime thresholds</span>'
+            f'</div></div>'
+        )
+    else:
+        frag_trend_html = ""
+
 
     # ══ TAB 3: FRAGILITY ══════════════════════════════════════════════════════
     if frag_df is not None and not frag_df.empty:
@@ -1003,7 +1443,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
                  f'background:{rb_};border:1px solid {fc};border-radius:10px;padding:1px 8px;">{r["rag"]}</span></td>'
                  f'<td class="num gr" style="font-size:10px;">{top}</td>{pc}</tr>')
 
-        frag=(f'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;">'
+        frag= frag_trend_html + (f'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;">'
               f'<div class="fc" style="text-align:center;"><div class="lbl" style="margin-bottom:8px;">SYSTEM FRAGILITY</div>'
               f'{gauge}<div class="pill" style="background:{rb_};color:{rc_};border:1px solid {rc_};margin-top:6px;">{reg}</div></div>'
               f'<div class="fc" style="text-align:center;"><div class="lbl">CRISIS</div>'
@@ -1031,6 +1471,583 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
     else:
         frag='<div style="padding:40px;text-align:center;color:#8b949e;">Fragility data unavailable.</div>'
 
+
+
+    def _build_rsr(df_in):
+        """Build Relative Strength Rankings — sorted within each asset class."""
+        sections_order = SECTION_ORDER
+        html = (
+            '<div style="margin-top:14px;">'
+            '<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;'
+            'text-transform:uppercase;margin-bottom:12px;">RELATIVE STRENGTH RANKINGS — BY ASSET CLASS</div>'
+            '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">'
+        )
+        for sec in sections_order:
+            sec_df = df_in[df_in["section"]==sec].copy()
+            if sec_df.empty: continue
+            sec_df = sec_df.dropna(subset=["ret_1m"]).sort_values("ret_1m", ascending=False)
+            if sec_df.empty: continue
+            sec_label = SECTION_LABELS.get(sec, sec)
+            best_ret  = sec_df["ret_1m"].max()
+            worst_ret = sec_df["ret_1m"].min()
+            rng       = max(abs(best_ret), abs(worst_ret), 0.001)
+            rows_html = ""
+            for rank, (_, r) in enumerate(sec_df.iterrows(), 1):
+                v     = r["ret_1m"]; s = "+" if v>=0 else ""
+                color = "#3fb950" if v>=0 else "#f85149"
+                bar_w = min(100, abs(v)/rng*100)
+                bar_dir = "right" if v>=0 else "left"
+                medal = {1:"🥇",2:"🥈",3:"🥉"}.get(rank,"")
+                rows_html += (
+                    f'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #21262d;">'
+                    f'<div style="width:16px;font-size:10px;text-align:center;">{medal if rank<=3 else str(rank)}</div>'
+                    f'<div style="flex:1;font-size:10px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</div>'
+                    f'<div style="width:50px;text-align:right;font-family:monospace;font-size:10px;font-weight:700;color:{color};">{s}{v*100:.1f}%</div>'
+                    f'</div>'
+                )
+            html += (
+                f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 14px;">'
+                f'<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:#58a6ff;'
+                f'text-transform:uppercase;margin-bottom:8px;">{sec_label}</div>'
+                f'{rows_html}'
+                f'<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#8b949e;">'
+                f'<span>Best: <span style="color:#3fb950;">+{best_ret*100:.1f}%</span></span>'
+                f'<span>Worst: <span style="color:#f85149;">{worst_ret*100:.1f}%</span></span>'
+                f'</div></div>'
+            )
+        html += '</div></div>'
+        return html
+
+
+    # ══ TAB 4: ANALYSIS — Correlation Heatmap ════════════════════════════════
+
+    # Key 20 representative instruments
+    HEATMAP_TICKERS = {
+        "S&P 500":      "SPY",
+        "Nasdaq 100":   "QQQ",
+        "Europe Dev":   "EFA",
+        "Euro STOXX 50":"FEZ",
+        "EM Broad":     "EEM",
+        "China":        "FXI",
+        "India":        "INDA",
+        "Japan":        "DBJP",
+        "Energy":       "XLE",
+        "Financials":   "XLF",
+        "Defence":      "ITA",
+        "Treasuries 10Y":"IEF",
+        "Treasuries 20Y":"TLT",
+        "HY Credit":    "HYG",
+        "Gold":         "GLD",
+        "WTI Oil":      "USO",
+        "Bitcoin":      "BTC-USD",
+        "USD Index":    "UUP",
+        "EUR/USD":      "EURUSD=X",
+        "VIX Futures":  "VIXY",
+    }
+
+    # Build correlation matrix from prices
+    def _build_heatmap(prices_df):
+        # Filter to available heatmap tickers
+        available = {name: tk for name, tk in HEATMAP_TICKERS.items() if tk in prices_df.columns}
+        if len(available) < 4:
+            return None, None
+        tickers  = list(available.values())
+        names    = list(available.keys())
+        rets     = prices_df[tickers].pct_change().dropna()
+        # 60-day rolling correlation — use last 60 days
+        corr_df  = rets.tail(60).corr()
+        corr_df.columns = names
+        corr_df.index   = names
+        return corr_df, names
+
+    def _corr_color(v):
+        """Map correlation -1..+1 to a red-white-blue color."""
+        if v >= 0:
+            # white to deep red
+            intensity = int(v * 200)
+            r = min(255, 200 + intensity // 4)
+            g = max(0,   200 - intensity)
+            b = max(0,   200 - intensity)
+        else:
+            # white to deep blue
+            intensity = int(-v * 200)
+            r = max(0,   200 - intensity)
+            g = max(0,   200 - intensity)
+            b = min(255, 200 + intensity // 4)
+        return f"rgb({r},{g},{b})"
+
+    def _text_color(v):
+        return "#111" if abs(v) < 0.5 else "#fff"
+
+    corr_df, hm_names = _build_heatmap(prices)
+
+    if corr_df is not None:
+        n = len(hm_names)
+        cell_size = 40  # px per cell
+        label_w   = 120
+        total_w   = label_w + n * cell_size
+        total_h   = label_w + n * cell_size
+        assert total_w == label_w + n * cell_size  # guard
+
+        # Build SVG heatmap
+        svg_parts = [
+            f'<svg viewBox="0 0 {total_w} {total_h}" width="100%" '
+            f'style="max-width:{total_w}px;font-family:monospace;">'
+        ]
+
+        # Column labels (rotated)
+        for j, name in enumerate(hm_names):
+            x = label_w + j * cell_size + cell_size // 2
+            svg_parts.append(
+                f'<text x="{x}" y="{label_w - 4}" text-anchor="end" '
+                f'transform="rotate(-45,{x},{label_w-4})" '
+                f'font-size="9" fill="#8b949e">{name[:12]}</text>'
+            )
+
+        # Row labels + cells
+        for i, row_name in enumerate(hm_names):
+            y_center = label_w + i * cell_size + cell_size // 2
+
+            # Row label
+            svg_parts.append(
+                f'<text x="{label_w - 6}" y="{y_center + 3}" '
+                f'text-anchor="end" font-size="9" fill="#8b949e">{row_name[:14]}</text>'
+            )
+
+            for j, col_name in enumerate(hm_names):
+                v    = corr_df.loc[row_name, col_name]
+                x    = label_w + j * cell_size
+                y    = label_w + i * cell_size
+                bg   = _corr_color(v)
+                tc   = _text_color(v)
+                diag = ' opacity="0.6"' if i == j else ''
+                svg_parts.append(
+                    f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" '
+                    f'fill="{bg}"{diag} rx="1"/>'
+                )
+                svg_parts.append(
+                    f'<text x="{x + cell_size//2}" y="{y + cell_size//2 + 3}" '
+                    f'text-anchor="middle" font-size="8" fill="{tc}">{v:.2f}</text>'
+                )
+
+        svg_parts.append('</svg>')
+        heatmap_svg = "".join(svg_parts)
+
+        # Colour legend
+        legend_svg = (
+            '<svg width="260" height="20" style="margin-top:8px;">'
+            '<defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="0">'
+            '<stop offset="0%" stop-color="rgb(0,0,255)"/>'
+            '<stop offset="50%" stop-color="rgb(200,200,200)"/>'
+            '<stop offset="100%" stop-color="rgb(255,0,0)"/>'
+            '</linearGradient></defs>'
+            '<rect x="30" y="2" width="200" height="12" fill="url(#lg)" rx="2"/>'
+            '<text x="28" y="18" text-anchor="end" font-size="9" fill="#8b949e">-1.0</text>'
+            '<text x="130" y="18" text-anchor="middle" font-size="9" fill="#8b949e">0</text>'
+            '<text x="232" y="18" text-anchor="start" font-size="9" fill="#8b949e">+1.0</text>'
+            '</svg>'
+        )
+
+        # Top correlations (most correlated pairs, excluding diagonal)
+        pairs = []
+        for i in range(n):
+            for j in range(i+1, n):
+                v = corr_df.iloc[i, j]
+                pairs.append((v, hm_names[i], hm_names[j]))
+        pairs.sort(key=lambda x: abs(x[0]), reverse=True)
+
+        top_pairs_html = ""
+        for v, a, b in pairs[:8]:
+            color = "#f85149" if v > 0 else "#58a6ff"
+            sign  = "+" if v > 0 else ""
+            top_pairs_html += (
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'padding:5px 0;border-bottom:1px solid #21262d;">'
+                f'<div style="font-size:11px;color:#e6edf3;">{a} <span style="color:#8b949e;">vs</span> {b}</div>'
+                f'<div style="font-family:monospace;font-size:12px;font-weight:700;color:{color};">{sign}{v:.2f}</div>'
+                f'</div>'
+            )
+
+        analysis_tab = (
+            # Summary stats
+            f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">'
+            f'<div class="fc"><div class="lbl">CORRELATION WINDOW</div>'
+            f'<div style="font-size:22px;font-weight:700;color:#e6edf3;font-family:monospace;">60D</div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Rolling daily returns</div></div>'
+            f'<div class="fc"><div class="lbl">INSTRUMENTS</div>'
+            f'<div style="font-size:22px;font-weight:700;color:#e6edf3;font-family:monospace;">{n}</div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Key representatives</div></div>'
+            f'<div class="fc"><div class="lbl">AVG CORRELATION</div>'
+            f'<div style="font-size:22px;font-weight:700;'
+            f'color:{"#f85149" if corr_df.values[corr_df.values < 1].mean() > 0.5 else "#e3b341" if corr_df.values[corr_df.values < 1].mean() > 0.3 else "#3fb950"};font-family:monospace;">'
+            f'{corr_df.values[corr_df.values < 1].mean():.2f}</div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Ex-diagonal (high = contagion risk)</div></div>'
+            f'</div>'
+            # Heatmap
+            f'<div class="fc" style="margin-bottom:14px;overflow-x:auto;">'
+            f'<div class="lbl" style="margin-bottom:12px;">CROSS-ASSET CORRELATION MATRIX — 60D</div>'
+            f'{heatmap_svg}'
+            f'<div style="margin-top:6px;">{legend_svg}</div>'
+            f'</div>'
+            # Top correlated pairs
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            f'<div class="fc"><div class="lbl" style="margin-bottom:10px;">STRONGEST CORRELATIONS</div>'
+            f'{top_pairs_html}</div>'
+            f'<div class="fc"><div class="lbl" style="margin-bottom:10px;">HOW TO READ</div>'
+            f'<div style="font-size:11px;color:#8b949e;line-height:1.9;">'
+            f'<span style="color:#f85149;">&#9632;</span> Red = move together (+1.0)<br>'
+            f'<span style="color:#aaa;">&#9632;</span> White = no relationship (0.0)<br>'
+            f'<span style="color:#58a6ff;">&#9632;</span> Blue = move opposite (&#8722;1.0)<br><br>'
+            f'High average correlation = contagion risk<br>'
+            f'Diversification works when colours are mixed<br>'
+            f'60-day window captures current market regime'
+            f'</div></div></div>'
+            f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;">'
+            f'Correlation = 60-day rolling Pearson correlation of daily returns &#183; '
+            f'Key 20 instruments selected as representatives of each asset class</div>'
+        ) + _build_rsr(df)
+    else:
+        analysis_tab = '<div style="padding:40px;text-align:center;color:#8b949e;">Insufficient data for correlation analysis.</div>' + _build_rsr(df)
+
+
+
+    # ══ TAB 5: REGIME ═════════════════════════════════════════════════════════
+    if regime_data:
+        reg      = regime_data.get("regime","Calm")
+        streak   = regime_data.get("days_in_regime", 0)
+        stats    = regime_data.get("stats", {})
+        drivers  = regime_data.get("drivers", {})
+        timeline = regime_data.get("timeline", [])
+        episodes = regime_data.get("episodes", [])
+
+        rc_ = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg,"#8b949e")
+        rb_ = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg,"#161b22")
+
+        reg_desc = {
+            "Calm":     "Markets are operating within normal historical ranges. Volatility and drawdowns are contained. Risk appetite is stable.",
+            "Stressed": "Elevated volatility or meaningful drawdown detected. Markets are pricing in uncertainty. Monitor closely.",
+            "Crisis":   "Extreme volatility or severe drawdown detected. Historical crisis-level conditions. Defensive positioning warranted.",
+        }.get(reg, "")
+
+        # ── Regime timeline SVG ───────────────────────────────────────────────
+        if timeline:
+            tl_w = 900; tl_h = 60; bar_w = max(1, tl_w // len(timeline))
+            tl_parts = [f'<svg viewBox="0 0 {tl_w} {tl_h}" width="100%" style="max-width:{tl_w}px;display:block;">']
+            for i, pt in enumerate(timeline):
+                x = i * bar_w
+                tl_parts.append(f'<rect x="{x}" y="0" width="{bar_w+1}" height="{tl_h}" fill="{pt["color"]}" opacity="0.85"/>')
+            # Month labels every ~21 bars
+            prev_month = ""
+            for i, pt in enumerate(timeline):
+                month = pt["date"][:7]
+                if month != prev_month and i % 21 == 0:
+                    prev_month = month
+                    x = i * bar_w
+                    tl_parts.append(f'<text x="{x+2}" y="{tl_h-4}" font-size="8" fill="#e6edf3" opacity="0.7">{month}</text>')
+            tl_parts.append('</svg>')
+            timeline_svg = "".join(tl_parts)
+        else:
+            timeline_svg = "<div style='color:#8b949e;'>Insufficient history for timeline.</div>"
+
+        # ── Stats table ───────────────────────────────────────────────────────
+        stats_rows = ""
+        for rname, rcolor in [("Calm","#3fb950"),("Stressed","#e3b341"),("Crisis","#f85149")]:
+            rs = stats.get(rname, {})
+            stats_rows += (
+                f'<tr><td style="padding:8px 12px;color:{rcolor};font-weight:700;font-family:monospace;">{rname}</td>'
+                f'<td class="num gr">{rs.get("days",0):,}</td>'
+                f'<td class="num gr">{rs.get("pct",0):.1f}%</td>'
+                f'<td class="num gr">{rs.get("avg_duration",0):.0f} days</td></tr>'
+            )
+
+        # ── Episodes table ────────────────────────────────────────────────────
+        ep_rows = ""
+        for ep in reversed(episodes):
+            ep_rows += (
+                f'<tr><td style="padding:7px 12px;color:#e6edf3;font-size:11px;">{ep["start"]}</td>'
+                f'<td style="padding:7px 12px;color:#8b949e;font-size:11px;">{ep["end"]}</td>'
+                f'<td class="num nr" style="font-size:11px;">{ep["depth"]:.1f}%</td></tr>'
+            )
+
+        vol_pct_color = "#f85149" if drivers.get("vol_pct",0)>90 else "#e3b341" if drivers.get("vol_pct",0)>70 else "#3fb950"
+        dd_pct_color  = "#f85149" if drivers.get("dd_pct",0)<20  else "#e3b341" if drivers.get("dd_pct",0)<40  else "#3fb950"
+
+        regime_tab = (
+            # Current regime hero
+            f'<div style="background:{rb_};border:2px solid {rc_};border-radius:12px;padding:24px 28px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">'
+            f'<div>'
+            f'<div style="font-size:9px;color:{rc_};letter-spacing:3px;font-family:monospace;margin-bottom:8px;">CURRENT MARKET REGIME</div>'
+            f'<div style="font-size:42px;font-weight:700;color:{rc_};font-family:monospace;letter-spacing:2px;">{reg.upper()}</div>'
+            f'<div style="font-size:11px;color:#e6edf3;margin-top:8px;max-width:500px;line-height:1.6;">{reg_desc}</div>'
+            f'</div>'
+            f'<div style="text-align:center;">'
+            f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;margin-bottom:6px;">DAYS IN REGIME</div>'
+            f'<div style="font-size:48px;font-weight:700;color:{rc_};font-family:monospace;">{streak}</div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">consecutive trading days</div>'
+            f'</div></div>'
+
+            # Drivers
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
+            f'<div class="fc">'
+            f'<div class="lbl">VOL DRIVER — WORLD (ACWI)</div>'
+            f'<div style="display:flex;align-items:baseline;gap:10px;margin:8px 0;">'
+            f'<div style="font-size:28px;font-weight:700;color:{vol_pct_color};font-family:monospace;">{drivers.get("vol_now",0):.1f}%</div>'
+            f'<div style="font-size:12px;color:#8b949e;">annualised vol</div></div>'
+            f'<div style="font-size:11px;color:#e6edf3;">At <span style="color:{vol_pct_color};font-weight:700;">{drivers.get("vol_pct",0):.0f}th percentile</span> of 10-year history</div>'
+            f'<div style="background:#21262d;border-radius:4px;height:8px;margin-top:10px;">'
+            f'<div style="width:{min(100,drivers.get("vol_pct",0)):.0f}%;background:{vol_pct_color};height:8px;border-radius:4px;"></div></div>'
+            f'</div>'
+            f'<div class="fc">'
+            f'<div class="lbl">DRAWDOWN DRIVER — WORLD (ACWI)</div>'
+            f'<div style="display:flex;align-items:baseline;gap:10px;margin:8px 0;">'
+            f'<div style="font-size:28px;font-weight:700;color:{dd_pct_color};font-family:monospace;">{drivers.get("dd_now",0):.1f}%</div>'
+            f'<div style="font-size:12px;color:#8b949e;">from 1Y peak</div></div>'
+            f'<div style="font-size:11px;color:#e6edf3;"><span style="color:{dd_pct_color};font-weight:700;">{drivers.get("dd_pct",0):.0f}%</span> of history had smaller drawdowns</div>'
+            f'<div style="background:#21262d;border-radius:4px;height:8px;margin-top:10px;">'
+            f'<div style="width:{min(100,100-drivers.get("dd_pct",0)):.0f}%;background:{dd_pct_color};height:8px;border-radius:4px;"></div></div>'
+            f'</div></div>'
+
+            # Timeline
+            f'<div class="fc" style="margin-bottom:14px;">'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME TIMELINE — LAST 2 YEARS</div>'
+            f'<div style="display:flex;gap:16px;margin-bottom:8px;">'
+            f'<span style="font-size:10px;color:#3fb950;">&#9632; CALM</span>'
+            f'<span style="font-size:10px;color:#e3b341;">&#9632; STRESSED</span>'
+            f'<span style="font-size:10px;color:#f85149;">&#9632; CRISIS</span>'
+            f'</div>'
+            f'{timeline_svg}</div>'
+
+            # Stats + Episodes
+            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            f'<div class="fc">'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME STATISTICS — 10 YEAR HISTORY</div>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            f'<thead><tr><th style="text-align:left;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Regime</th>'
+            f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Days</th>'
+            f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">% Time</th>'
+            f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Avg Duration</th>'
+            f'</tr></thead><tbody>{stats_rows}</tbody></table></div>'
+            f'<div class="fc">'
+            f'<div class="lbl" style="margin-bottom:10px;">CRISIS EPISODES — WORLD DRAWDOWN &lt; &#8722;15%</div>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            f'<thead><tr>'
+            f'<th style="text-align:left;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Start</th>'
+            f'<th style="text-align:left;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">End</th>'
+            f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Peak DD</th>'
+            f'</tr></thead><tbody>{ep_rows if ep_rows else "<tr><td colspan=3 style=padding:8px;color:#8b949e;>No episodes detected</td></tr>"}</tbody></table></div></div>'
+            f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;">'
+            f'Regime = deterministic state machine on ACWI (World ETF) &#183; '
+            f'Crisis: vol &ge; 90th pct OR dd &le; 10th pct &#183; '
+            f'Stressed: vol &ge; 70th pct OR dd &le; 30th pct &#183; '
+            f'Ex-ante expanding quantile thresholds (no look-ahead bias)</div>'
+        )
+    else:
+        regime_tab = '<div style="padding:40px;text-align:center;color:#8b949e;">Regime data unavailable.</div>'
+
+
+    # ── Build Fear & Greed HTML ───────────────────────────────────────────────
+    if fg_data:
+        fg_score  = fg_data.get("score", 50)
+        fg_label  = fg_data.get("label", "Neutral")
+        fg_emoji  = fg_data.get("emoji", "😐")
+        fg_color  = fg_data.get("color", "#e3b341")
+        fg_details= fg_data.get("details", {})
+
+        # Gauge needle SVG
+        fg_angle  = int(fg_score / 100 * 180)
+        fg_bg     = "#2d0f0e" if fg_score<=25 else "#2d1a0e" if fg_score<=45 else "#2d2106" if fg_score<=55 else "#0d2318" if fg_score<=75 else "#052e16"
+
+        # Component bars
+        comp_bars = ""
+        for comp_name, comp_data in fg_details.items():
+            cs = comp_data.get("score", 50)
+            cv = comp_data.get("value", "")
+            cc = "#f85149" if cs<=25 else "#ff7b72" if cs<=45 else "#e3b341" if cs<=55 else "#7ee787" if cs<=75 else "#3fb950"
+            comp_bars += (
+                f'<div style="margin-bottom:8px;">'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+                f'<span style="font-size:10px;color:#e6edf3;">{comp_name}</span>'
+                f'<span style="font-size:10px;font-family:monospace;color:{cc};">{cs:.0f}</span></div>'
+                f'<div style="background:#21262d;border-radius:3px;height:6px;">'
+                f'<div style="width:{cs:.0f}%;background:{cc};height:6px;border-radius:3px;"></div></div>'
+                f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">{cv}</div>'
+                f'</div>'
+            )
+
+        # Gradient scale bar
+        scale_html = (
+            '<div style="margin:10px 0 4px;">'
+            '<div style="height:10px;border-radius:5px;background:linear-gradient(to right,#f85149,#ff7b72,#e3b341,#7ee787,#3fb950);position:relative;">'
+            f'<div style="position:absolute;left:{fg_score:.0f}%;top:-4px;transform:translateX(-50%);">'
+            '<div style="width:3px;height:18px;background:#fff;border-radius:2px;"></div></div></div>'
+            '<div style="display:flex;justify-content:space-between;font-size:8px;color:#8b949e;margin-top:3px;">'
+            '<span>Extreme Fear</span><span>Fear</span><span>Neutral</span><span>Greed</span><span>Extreme Greed</span>'
+            '</div></div>'
+        )
+
+        fg_html = (
+            f'<div style="background:{fg_bg};border:1px solid {fg_color};border-radius:10px;'
+            f'padding:18px 20px;margin-bottom:14px;">'
+            f'<div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;">'
+            # Left: score display
+            f'<div style="text-align:center;min-width:140px;">'
+            f'<div style="font-size:9px;color:{fg_color};letter-spacing:2px;margin-bottom:6px;font-family:monospace;">FEAR & GREED INDEX</div>'
+            f'<div style="font-size:56px;">{fg_emoji}</div>'
+            f'<div style="font-size:36px;font-weight:700;color:{fg_color};font-family:monospace;line-height:1;">{fg_score:.0f}</div>'
+            f'<div style="font-size:12px;font-weight:700;color:{fg_color};margin-top:4px;">{fg_label}</div>'
+            f'{scale_html}'
+            f'</div>'
+            # Right: components
+            f'<div>'
+            f'<div style="font-size:9px;color:#8b949e;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">COMPONENTS</div>'
+            f'{comp_bars}'
+            f'</div>'
+            f'</div></div>'
+        )
+    else:
+        fg_html = ""
+
+
+    # ══ TAB 6: SUMMARY — GRAND ACTIONABLE INSIGHT ═════════════════════════════
+    # Define rc_ for summary tab (fragility color) — may not be in scope
+    _frag_score = frag_df.attrs.get('system_score', 50) if frag_df is not None and not frag_df.empty else 50
+    rc_ = '#f85149' if _frag_score >= 70 else '#e3b341' if _frag_score >= 50 else '#3fb950'
+    # ══ TAB 6: SUMMARY — GRAND ACTIONABLE INSIGHT ═════════════════════════════
+    # Derive key signals
+    reg_now   = regime_data.get("regime","Calm") if regime_data else "Calm"
+    reg_color = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now,"#8b949e")
+    reg_bg    = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now,"#161b22")
+    frag_sys  = _frag_score
+    frag_reg  = frag_df.attrs.get("regime","CALM") if frag_df is not None and not frag_df.empty else "CALM"
+
+    # Grand verdict
+    if reg_now == "Crisis" or frag_sys >= 70:
+        verdict = "DEFENSIVE — Reduce Risk Exposure"
+        verdict_detail = "Both regime and fragility signal extreme stress. Capital preservation is the priority. Avoid adding risk."
+        verdict_color  = "#f85149"; verdict_bg = "#2d0f0e"
+        actions = [
+            "Reduce equity exposure — rotate to cash, short-duration bonds or gold",
+            "Monitor HY credit spreads — widening signals further deterioration",
+            "Avoid leveraged positions — volatility regime is elevated",
+            "Watch VIX trajectory — sustained >25 confirms crisis regime",
+        ]
+    elif reg_now == "Stressed" or frag_sys >= 50:
+        verdict = "CAUTIOUS — Selective Risk Taking"
+        verdict_detail = "Markets are stressed but not in crisis. Opportunities exist but selectivity is essential."
+        verdict_color  = "#e3b341"; verdict_bg = "#2d2106"
+        actions = [
+            "Favour quality over momentum — reduce high-beta positions",
+            "Increase diversification — correlation is rising, reducing hedge value",
+            "Monitor fragility leaders — highest-scoring instruments signal contagion risk",
+            "Consider defensive sectors — utilities, healthcare, short-duration bonds",
+        ]
+    else:
+        verdict = "CONSTRUCTIVE — Risk-On Environment"
+        verdict_detail = "Markets are calm with contained volatility and drawdowns. Risk appetite can be maintained or increased."
+        verdict_color  = "#3fb950"; verdict_bg = "#0d2318"
+        actions = [
+            "Maintain or increase risk exposure — regime supports it",
+            "Look for laggards with improving momentum within asset classes",
+            "Monitor fragility creep — early warning before regime shifts",
+            "Diversification less critical in calm regimes but maintain core hedges",
+        ]
+
+    # Top 3 opportunities (best MTD green instruments)
+    opps = df[df["rag_label"].str.strip()=="GREEN"].nlargest(3,"ret_1m")[["name","ticker","ret_1m","ret_ytd"]]
+
+    # Top 3 risks (most fragile + red signal)
+    risks_df = frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"])].head(3) if frag_df is not None and not frag_df.empty else pd.DataFrame()
+
+    opp_cards = ""
+    for _, r in opps.iterrows():
+        m = r["ret_1m"]; y = r["ret_ytd"] if not pd.isna(r["ret_ytd"]) else 0
+        opp_cards += (
+            f'<div style="background:#0d2318;border:1px solid #3fb950;border-radius:8px;padding:14px 16px;">'
+            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{r["name"]}</div>'
+            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;margin-top:2px;">{r["ticker"]}</div>'
+            f'<div style="font-size:20px;font-weight:700;color:#3fb950;font-family:monospace;margin-top:6px;">+{m*100:.1f}%</div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">MTD &nbsp;&#183;&nbsp; YTD: {"+"+str(round(y*100,1))+"%"  if y>=0 else str(round(y*100,1))+"%"}</div>'
+            f'</div>'
+        )
+
+    risk_cards = ""
+    for _, r in risks_df.iterrows():
+        fc = "#f85149" if r["rag"]=="CRISIS" else "#e3b341"
+        rb = "#2d0f0e" if r["rag"]=="CRISIS" else "#2d2106"
+        risk_cards += (
+            f'<div style="background:{rb};border:1px solid {fc};border-radius:8px;padding:14px 16px;">'
+            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{r["name"]}</div>'
+            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;margin-top:2px;">{r["ticker"]}</div>'
+            f'<div style="font-size:20px;font-weight:700;color:{fc};font-family:monospace;margin-top:6px;">{r["fragility"]:.0f}<span style="font-size:12px;">/100</span></div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">Fragility score &nbsp;&#183;&nbsp; {r["rag"]}</div>'
+            f'</div>'
+        )
+
+    action_items = "".join(
+        f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #21262d;">'
+        f'<div style="color:{verdict_color};font-size:14px;margin-top:1px;">&#10148;</div>'
+        f'<div style="font-size:12px;color:#e6edf3;line-height:1.5;">{a}</div></div>'
+        for a in actions
+    )
+
+    summary_tab = (
+        # Grand verdict
+        f'<div style="background:{verdict_bg};border:2px solid {verdict_color};border-radius:12px;'
+        f'padding:24px 28px;margin-bottom:14px;">'
+        f'<div style="font-size:9px;color:{verdict_color};letter-spacing:3px;font-family:monospace;margin-bottom:8px;">MARKET VERDICT</div>'
+        f'<div style="font-size:28px;font-weight:700;color:{verdict_color};font-family:monospace;">{verdict}</div>'
+        f'<div style="font-size:12px;color:#e6edf3;margin-top:10px;line-height:1.6;max-width:700px;">{verdict_detail}</div>'
+        f'</div>'
+
+        # Signal summary row
+        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">'
+        f'<div class="fc" style="text-align:center;">'
+        f'<div class="lbl">MARKET TONE</div>'
+        f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;">{tone}</div>'
+        f'</div>'
+        f'<div class="fc" style="text-align:center;">'
+        f'<div class="lbl">REGIME</div>'
+        f'<div class="pill" style="background:{reg_bg};color:{reg_color};border:1px solid {reg_color};margin-top:6px;">{reg_now.upper()}</div>'
+        f'</div>'
+        f'<div class="fc" style="text-align:center;">'
+        f'<div class="lbl">FRAGILITY</div>'
+        f'<div style="font-size:26px;font-weight:700;color:{rc_};font-family:monospace;margin-top:4px;">{frag_sys:.0f}</div>'
+        f'<div style="font-size:9px;color:#8b949e;">{frag_reg}</div>'
+        f'</div>'
+        f'<div class="fc" style="text-align:center;">'
+        f'<div class="lbl">RAG SIGNALS</div>'
+        f'<div style="display:flex;justify-content:center;gap:10px;margin-top:6px;">'
+        f'<span style="color:#f85149;font-size:18px;font-weight:700;font-family:monospace;">{nr}</span>'
+        f'<span style="color:#8b949e;font-size:18px;">·</span>'
+        f'<span style="color:#e3b341;font-size:18px;font-weight:700;font-family:monospace;">{na}</span>'
+        f'<span style="color:#8b949e;font-size:18px;">·</span>'
+        f'<span style="color:#3fb950;font-size:18px;font-weight:700;font-family:monospace;">{ng}</span>'
+        f'</div>'
+        f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">RED · AMBER · GREEN</div>'
+        f'</div></div>'
+
+        # Fear & Greed
+        + fg_html
+        # Recommended actions
+        + f'<div class="fc" style="margin-bottom:14px;">'
+        f'<div class="lbl" style="margin-bottom:4px;">RECOMMENDED ACTIONS</div>'
+        f'{action_items}</div>'
+
+        # Opportunities + Risks
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
+        f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;'
+        f'text-transform:uppercase;margin-bottom:10px;">&#128200; Top Opportunities (MTD)</div>'
+        f'<div style="display:flex;flex-direction:column;gap:8px;">{opp_cards if opp_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
+        f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;'
+        f'text-transform:uppercase;margin-bottom:10px;">&#9888; Top Risks (Fragility)</div>'
+        f'<div style="display:flex;flex-direction:column;gap:8px;">{risk_cards if risk_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
+        f'</div>'
+
+        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
+        f'Verdict = BK proprietary synthesis of Market Tone + Regime State Machine + Fragility Score &#183; '
+        f'For informational purposes only &#183; Not investment advice</div>'
+    )
+
     # ══ ASSEMBLE HTML ══════════════════════════════════════════════════════════
     mn="" if market_open else ' <span style="color:#e3b341;font-size:10px;">&#9888; Markets closed</span>'
 
@@ -1047,12 +2064,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
          "border-radius:20px;padding:3px 10px;font-size:9px;font-family:monospace;color:var(--g);margin-top:6px;}"
          ".dot{width:6px;height:6px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite;display:inline-block;}"
          "@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}"
-         ".tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--br);}"
-         ".tb{padding:10px 22px;font-size:12px;font-weight:600;font-family:monospace;letter-spacing:1px;"
+         ".tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:3px solid var(--br);}"
+         ".tb{padding:14px 28px;font-size:14px;font-weight:700;font-family:'Segoe UI',sans-serif;letter-spacing:0.3px;"
          "border:none;background:transparent;color:var(--g);cursor:pointer;"
-         "border-bottom:3px solid transparent;margin-bottom:-2px;text-transform:uppercase;}"
-         ".tb:hover{color:var(--w);}"
-         ".tb.on{color:var(--ac);border-bottom:3px solid var(--ac);}"
+         "border-bottom:3px solid transparent;margin-bottom:-3px;border-radius:6px 6px 0 0;transition:all 0.15s;}"
+         ".tb:hover{color:var(--w);background:#1c2128;}"
+         ".tb.on{color:var(--ac);border-bottom:3px solid var(--ac);background:#1c2128;}"
          ".tab{display:none;}.tab.on{display:block;}"
          ".tbar{display:flex;align-items:center;gap:12px;background:var(--ca);border:1px solid var(--br);"
          "border-radius:8px;padding:12px 24px;margin-bottom:14px;flex-wrap:wrap;}"
@@ -1099,7 +2116,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
          "@media(max-width:600px){"
          ".logo{font-size:15px;}.hdr{padding:12px 16px;}.wrap{padding:10px 8px;}"
          "th,td{padding:5px 6px;font-size:11px;}td.an{min-width:100px;}"
-         ".tb{padding:8px 12px;font-size:10px;}.rn{font-size:16px;}}")
+         ".tb{padding:10px 14px;font-size:11px;font-weight:700;}.rn{font-size:16px;}}")
 
     return (
         "<!DOCTYPE html><html lang='en'><head>"
@@ -1125,12 +2142,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None) -> str:
         "<button class='tb on' onclick=\"sw('perf',this)\">&#128200; Performance</button>"
         "<button class='tb' onclick=\"sw('risk',this)\">&#128202; Risk</button>"
         "<button class='tb' onclick=\"sw('frag',this)\">&#9889; Fragility</button>"
+        "<button class='tb' onclick=\"sw('analysis',this)\">&#128257; Analysis</button>"
+        "<button class='tb' onclick=\"sw('regime',this)\">&#127787; Regime</button>"
+        "<button class='tb' onclick=\"sw('summary',this)\">&#128161; Summary</button>"
         "</div>"
         f"<div id='t-perf' class='tab on'>{perf}</div>"
         f"<div id='t-risk' class='tab'>{risk}</div>"
         f"<div id='t-frag' class='tab'>{frag}</div>"
+        f"<div id='t-analysis' class='tab'>{analysis_tab}</div>"
+        f"<div id='t-regime' class='tab'>{regime_tab}</div>"
+        f"<div id='t-summary' class='tab'>{summary_tab}</div>"
         "<div class='footer'><div class='fn'>"
-        "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
+        "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>""Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
         "Fragility: CRISIS &#8805;70 &#183; STRESSED 50&#8211;70 &#183; CALM &lt;50 &#183; BK Fragility Framework<br>"
         f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Auto-refreshes every hour"
         "</div><div style='text-align:right;'>"
@@ -1746,12 +2769,20 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
         render_pptx(df, prices, as_of, out_dir)
 
     if html_flag:
-        web_html = build_web_html(df)
+        print("[HTML]   Computing fragility scores...")
+        frag_df     = compute_fragility(prices)
+        print("[HTML]   Computing market regime...")
+        regime_data = compute_regime(prices)
+        print("[HTML]   Computing Fear & Greed index...")
+        fg_data     = compute_fear_greed(prices)
+        print("[HTML]   Computing fragility trend...")
+        frag_trend  = compute_fragility_trend(prices)
+        web_html    = build_web_html(df, frag_df, prices, regime_data, fg_data, frag_trend)
         docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
         os.makedirs(docs_dir, exist_ok=True)
         html_path = os.path.join(docs_dir, "index.html")
-        with open(html_path, "w", encoding="utf-8") as f:
-            f.write(web_html)
+        with open(html_path, "w", encoding="utf-8") as fh:
+            fh.write(web_html)
         print(f"[HTML]   {html_path}")
 
     if send_email_flag:
