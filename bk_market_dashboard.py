@@ -10,8 +10,9 @@ Outputs:
   Email             HTML brief via Gmail
 
 Usage:
-  python bk_market_dashboard.py --html             # Generate web page (GitHub Pages)
-  python bk_market_dashboard.py --pptx             # PowerPoint deck
+  python bk_market_dashboard.py --html                      # Generate web page (10yr history)
+  python bk_market_dashboard.py --html --lookback 504       # GitHub Actions (2yr, faster)
+  python bk_market_dashboard.py --pptx                      # PowerPoint deck
   python bk_market_dashboard.py --email            # Send HTML email brief
   python bk_market_dashboard.py --html --pptx      # Web page + PowerPoint
   python bk_market_dashboard.py --schedule         # Daily scheduler at 07:00 SGT Mon–Fri
@@ -2747,12 +2748,13 @@ def _now_sgt() -> str:
 
 
 def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
-             html_flag: bool = False, out_dir: str = OUT_DIR) -> None:
+             html_flag: bool = False, out_dir: str = OUT_DIR,
+             lookback_days: int = 2520) -> None:
     print("=" * 60)
     print(f"  BK Market Dashboard  |  {_now_sgt()}")
     print("=" * 60)
 
-    prices = download()
+    prices = download(lookback_days=lookback_days)
     df     = compute_metrics(prices)
 
     n_red   = (df["rag_label"].str.strip() == "RED").sum()
@@ -2836,6 +2838,8 @@ examples:
                         help="Generate PowerPoint deck (5 slides per asset class)")
     parser.add_argument("--html",     action="store_true",
                         help="Generate docs/index.html for GitHub Pages")
+    parser.add_argument("--lookback",  type=int, default=2520, metavar="DAYS",
+                        help="Price history lookback in days (default: 2520 = 10yr, use 504 for 2yr)")
     parser.add_argument("--schedule", action="store_true",
                         help=f"Start daily scheduler at {SEND_TIME_SGT} SGT Mon–Fri")
     parser.add_argument("--now",      action="store_true",
@@ -2848,7 +2852,8 @@ examples:
         run_scheduler(out_dir=args.out_dir)
     else:
         run_once(send_email_flag=args.email, pptx_flag=args.pptx,
-                 html_flag=args.html, out_dir=args.out_dir)
+                 html_flag=args.html, out_dir=args.out_dir,
+                 lookback_days=args.lookback)
 
 
 # ── BACKGROUND EXECUTION ──────────────────────────────────────────────────────
