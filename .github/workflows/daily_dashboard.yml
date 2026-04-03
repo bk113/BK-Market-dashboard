@@ -1,0 +1,35 @@
+name: Daily Market Dashboard
+
+on:
+  schedule:
+    - cron: '0 23 * * 0-4'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy matplotlib pytz schedule python-pptx anthropic
+
+      - name: Run dashboard
+        run: python bk_market_dashboard.py --html --lookback 2520
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/index.html data/prices_cache.csv || true
+          git diff --staged --quiet || git commit -m "chore: daily update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
