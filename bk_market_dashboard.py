@@ -57,7 +57,7 @@ SENDER_EMAIL    = "your.gmail@gmail.com"     # Your Gmail address
 GMAIL_APP_PASS  = "xxxx xxxx xxxx xxxx"      # Gmail App Password (not login password)
                                               # Get: myaccount.google.com > Security > App Passwords
 SEND_TIME_SGT   = "07:00"                    # Daily send time (SGT)
-OUT_DIR         = "market_dashboard"         # Output folder for PNG/PDF
+OUT_DIR         = "."                         # Output folder for PNG/PDF (current directory)
 RISK_FREE_RATE  = 0.045                      # 4.5% annualised risk-free rate
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -66,84 +66,138 @@ SGT = pytz.timezone("Asia/Singapore")
 
 
 # ── UNIVERSE ──────────────────────────────────────────────────────────────────
-# (section_key, ticker, display_name)
+# (section_key, ticker, display_name, bucket)
+# Bucket feeds dynamic allocation + regime-fit matrix + BK Opportunity Score.
 
 UNIVERSE = [
-    # ── Equities: US Broad ──
-    ("EQ_US",    "ACWI",    "World (ACWI)"),
-    ("EQ_US",    "SPY",     "S&P 500"),
-    ("EQ_US",    "QQQ",     "Nasdaq 100"),
-    ("EQ_US",    "IWM",     "Russell 2000"),
-    # ── Equities: US Sectors ──
-    ("EQ_SECT",  "XLF",     "Financials"),
-    ("EQ_SECT",  "XLE",     "Energy"),
-    ("EQ_SECT",  "XLU",     "Utilities"),
-    ("EQ_SECT",  "VNQ",     "Real Estate (REITs)"),
-    # ── Equities: Developed Markets ──
-    ("EQ_DM",    "EFA",     "Europe Dev (EAFE)"),
-    ("EQ_DM",    "EZU",     "Eurozone"),
-    ("EQ_DM",    "EWU",     "UK"),
-    ("EQ_DM",    "EWG",     "Germany"),
-    ("EQ_DM",    "EWJ",     "Japan"),
-    ("EQ_DM",    "EWA",     "Australia"),
-    ("EQ_DM",    "EWS",     "Singapore"),
-    # ── Equities: Global Indices ──
-    ("EQ_IDX",   "FEZ",     "Euro STOXX 50"),
-    ("EQ_IDX",   "EWH",     "Hang Seng / HK"),
-    ("EQ_IDX",   "DBJP",    "Nikkei 225 (Japan)"),
-    ("EQ_IDX",   "FLGB",    "FTSE 100 (UK)"),
-    # ── Equities: Emerging Markets ──
-    ("EQ_EM",    "EEM",     "EM Broad"),
-    ("EQ_EM",    "FXI",     "China"),
-    ("EQ_EM",    "INDA",    "India"),
-    ("EQ_EM",    "EWY",     "Korea"),
-    ("EQ_EM",    "EWT",     "Taiwan"),
-    ("EQ_EM",    "EWZ",     "Brazil"),
-    ("EQ_EM",    "EZA",     "South Africa"),
-    # ── Defence & Geopolitical ──
-    ("DEFENCE",  "ITA",     "US Aerospace & Defence"),
-    ("DEFENCE",  "XAR",     "S&P Aerospace & Defence"),
-    ("DEFENCE",  "DFEN",    "Defence Bull 3x"),
-    # ── Fixed Income & Credit ──
-    ("FI",       "BIL",     "Cash (T-Bills)"),
-    ("FI",       "SHY",     "Treasuries 1-3Y"),
-    ("FI",       "IEF",     "Treasuries 7-10Y"),
-    ("FI",       "TLT",     "Treasuries 20Y+"),
-    ("FI",       "AGG",     "US Aggregate"),
-    ("FI",       "TIP",     "US TIPS"),
-    ("FI",       "LQD",     "IG Credit"),
-    ("FI",       "HYG",     "HY Credit"),
-    ("FI",       "EMB",     "EM USD Sovereigns"),
-    ("FI",       "EMLC",    "EM Local Currency"),
-    ("FI",       "BKLN",    "Senior Loans"),
-    # ── Commodities ──
-    ("CMD",      "DBC",     "Broad Commodities"),
-    ("CMD",      "GLD",     "Gold"),
-    ("CMD",      "SLV",     "Silver"),
-    ("CMD",      "USO",     "WTI Oil"),
-    ("CMD",      "UNG",     "Natural Gas"),
-    ("CMD",      "COPX",    "Copper Miners"),
-    ("CMD",      "DBA",     "Agriculture"),
-    # ── Fixed Income: EUR & Global ──
-    ("FI_INTL",  "IGIB",    "USD IG Credit (Int)"),
-    ("FI_INTL",  "IHY",     "Intl High Yield"),
-    ("FI_INTL",  "BNDW",    "Global Aggregate"),
-    # ── Crypto ──
-    ("CRYPTO",   "BTC-USD", "Bitcoin"),
-    # ── FX ──
-    ("FX",       "UUP",     "US Dollar Index"),
-    ("FX",       "EURUSD=X","EUR/USD"),
-    ("FX",       "GBPUSD=X","GBP/USD"),
-    ("FX",       "JPY=X",   "USD/JPY"),
-    ("FX",       "SGD=X",   "USD/SGD"),
-    ("FX",       "CNY=X",   "USD/CNY"),
-    ("FX",       "AUDUSD=X","AUD/USD"),
-    # ── Volatility ──
-    ("VOL",      "VIXY",    "VIX Short-Term Futures"),
-    ("VOL",      "UVXY",    "Ultra VIX Short-Term"),
+    # ── EQ_US — US Equity (4) ────────────────────────────────
+    ("EQ_US",    "QQQ",      "Nasdaq 100",              "EQ Growth"),
+    ("EQ_US",    "IWM",      "Russell 2000",            "EQ Growth"),
+    ("EQ_US",    "SPY",      "S&P 500",                 "EQ Growth"),
+    ("EQ_US",    "ACWI",     "World (ACWI)",            "EQ Growth"),
+
+    # ── EQ_SECT — US Sectors, all 11 GICS (11) ───────────────
+    ("EQ_SECT",  "XLE",      "Energy",                  "EQ Defensive"),
+    ("EQ_SECT",  "XLF",      "Financials",              "EQ Growth"),
+    ("EQ_SECT",  "VNQ",      "Real Estate (REITs)",     "Real Assets"),
+    ("EQ_SECT",  "XLU",      "Utilities",               "EQ Defensive"),
+    ("EQ_SECT",  "XLV",      "Healthcare",              "EQ Defensive"),
+    ("EQ_SECT",  "XLK",      "Technology",              "EQ Growth"),
+    ("EQ_SECT",  "XLP",      "Consumer Staples",        "EQ Defensive"),
+    ("EQ_SECT",  "XLY",      "Consumer Discretionary",  "EQ Growth"),
+    ("EQ_SECT",  "XLI",      "Industrials",             "EQ Growth"),
+    ("EQ_SECT",  "XLB",      "Materials",               "Real Assets"),
+    ("EQ_SECT",  "XLC",      "Communications",          "EQ Growth"),
+
+    # ── EQ_DM — Developed Markets (7) ────────────────────────
+    ("EQ_DM",    "EWA",      "Australia",               "EQ Growth"),
+    ("EQ_DM",    "EFA",      "Europe Dev (EFA)",        "EQ Growth"),
+    ("EQ_DM",    "EZU",      "Eurozone",                "EQ Growth"),
+    ("EQ_DM",    "EWG",      "Germany",                 "EQ Growth"),
+    ("EQ_DM",    "EWJ",      "Japan",                   "EQ Growth"),
+    ("EQ_DM",    "EWS",      "Singapore",               "EQ Growth"),
+    ("EQ_DM",    "EWU",      "UK",                      "EQ Defensive"),
+
+    # ── EQ_IDX — Global Indices (3) ──────────────────────────
+    ("EQ_IDX",   "GURU",     "Global X Guru ETF",       "EQ Growth"),
+    ("EQ_IDX",   "FLGB",     "FTSE 100 (UK)",           "EQ Defensive"),
+    ("EQ_IDX",   "EWH",      "Hang Seng / HK",          "EQ Growth"),
+
+    # ── EQ_EM — Emerging Markets (11) ────────────────────────
+    ("EQ_EM",    "EWZ",      "Brazil",                  "EQ Growth"),
+    ("EQ_EM",    "FXI",      "China",                   "EQ Growth"),
+    ("EQ_EM",    "EEM",      "EM Broad",                "EQ Growth"),
+    ("EQ_EM",    "INDA",     "India",                   "EQ Growth"),
+    ("EQ_EM",    "EWY",      "Korea",                   "EQ Growth"),
+    ("EQ_EM",    "EZA",      "South Africa",            "EQ Growth"),
+    ("EQ_EM",    "EWT",      "Taiwan",                  "EQ Growth"),
+    ("EQ_EM",    "EWW",      "Mexico",                  "EQ Growth"),
+    ("EQ_EM",    "EIDO",     "Indonesia",               "EQ Growth"),
+    ("EQ_EM",    "VNM",      "Vietnam",                 "EQ Growth"),
+    ("EQ_EM",    "KSA",      "Saudi Arabia",            "Real Assets"),
+
+    # ── DEFENCE — Defence & Geopolitical (3) ─────────────────
+    ("DEFENCE",  "XAR",      "BAE Aerospace & Defence", "Alts"),
+    ("DEFENCE",  "ITA",      "US Aerospace & Defence",  "Alts"),
+    ("DEFENCE",  "DFEN",     "Defence Bull 3x ⚠",       "Alts"),
+
+    # ── FI — Fixed Income & Credit (15) ──────────────────────
+    ("FI",       "BIL",      "Cash (T-Bills)",          "Cash"),
+    ("FI",       "EMLC",     "EM Local Currency",       "Fixed Income"),
+    ("FI",       "EMB",      "EM USD Sovereign",        "Fixed Income"),
+    ("FI",       "HYG",      "HY Credit",               "EQ Growth"),
+    ("FI",       "LQD",      "IG Credit",               "Fixed Income"),
+    ("FI",       "BKLN",     "Senior Loans",            "Fixed Income"),
+    ("FI",       "SHY",      "Treasuries 0-3Y",         "Cash"),
+    ("FI",       "TLT",      "Treasuries 20Y+",         "Fixed Income"),
+    ("FI",       "IEF",      "Treasuries 7-10Y",        "Fixed Income"),
+    ("FI",       "AGG",      "US Aggregate",            "Fixed Income"),
+    ("FI",       "TIP",      "US TIPS",                 "Real Assets"),
+    ("FI",       "MUB",      "Municipal Bonds",         "Fixed Income"),
+    ("FI",       "CWB",      "Convertible Bonds",       "EQ Growth"),
+    ("FI",       "VCSH",     "ST IG Corporates",        "Fixed Income"),
+    ("FI",       "PFF",      "Preferred Securities",    "Fixed Income"),
+
+    # ── FI_INTL — FI International (3) ───────────────────────
+    ("FI_INTL",  "BNDW",     "Global Aggregate",        "Fixed Income"),
+    ("FI_INTL",  "IHY",      "Intl High Yield",         "EQ Growth"),
+    ("FI_INTL",  "IGIB",     "US IG Credit (Intl)",     "Fixed Income"),
+
+    # ── RATES — Sovereign Rates (4) NEW ──────────────────────
+    ("RATES",    "^TNX",     "10Y Treasury Yield",      "Fixed Income"),
+    ("RATES",    "^IRX",     "2Y Treasury Yield",       "Fixed Income"),
+    ("RATES",    "^FVX",     "5Y Treasury Yield",       "Fixed Income"),
+    ("RATES",    "^TYX",     "30Y Treasury Yield",      "Fixed Income"),
+
+    # ── CMD — Commodities (12) ───────────────────────────────
+    ("CMD",      "DBA",      "Agriculture",             "Real Assets"),
+    ("CMD",      "DBC",      "Broad Commodities",       "Real Assets"),
+    ("CMD",      "COPX",     "Copper Miners",           "Real Assets"),
+    ("CMD",      "GLD",      "Gold",                    "Real Assets"),
+    ("CMD",      "UNG",      "Natural Gas",             "Real Assets"),
+    ("CMD",      "SLV",      "Silver",                  "Real Assets"),
+    ("CMD",      "BNO",      "WTI Oil (BNO proxy)",     "Real Assets"),
+    ("CMD",      "PPLT",     "Platinum",                "Real Assets"),
+    ("CMD",      "URA",      "Uranium",                 "Alts"),
+    ("CMD",      "WEAT",     "Wheat",                   "Real Assets"),
+    ("CMD",      "LIT",      "Lithium",                 "Alts"),
+    ("CMD",      "VALE",     "Iron Ore (VALE)",         "Real Assets"),
+
+    # ── CRYPTO (3) ───────────────────────────────────────────
+    ("CRYPTO",   "BTC-USD",  "Bitcoin",                 "Alts"),
+    ("CRYPTO",   "ETH-USD",  "Ethereum",                "Alts"),
+    ("CRYPTO",   "SOL-USD",  "Solana",                  "Alts"),
+
+    # ── FX (12) ──────────────────────────────────────────────
+    ("FX",       "AUDUSD=X", "AUD/USD",                 "Alts"),
+    ("FX",       "EURUSD=X", "EUR/USD",                 "Alts"),
+    ("FX",       "GBPUSD=X", "GBP/USD",                 "Alts"),
+    ("FX",       "DX-Y.NYB", "US Dollar Index",         "Cash"),
+    ("FX",       "CHF=X",    "USD/CHF",                 "Cash"),
+    ("FX",       "JPY=X",    "USD/JPY",                 "Cash"),
+    ("FX",       "SGD=X",    "USD/SGD",                 "Alts"),
+    ("FX",       "CYB",      "Chinese Yuan (CYB)",      "Alts"),
+    ("FX",       "CAD=X",    "Canadian Dollar",         "Real Assets"),
+    ("FX",       "MXN=X",    "Mexican Peso",            "Alts"),
+    ("FX",       "KRW=X",    "Korean Won",              "Alts"),
+    ("FX",       "BRL=X",    "Brazilian Real",          "Alts"),
+
+    # ── VOL — Volatility (5; GVZ/OVX computed from GLD/BNO) ─
+    ("VOL",      "^VIX",     "VIX Index",               "Alts"),
+    ("VOL",      "VXX",      "VIX Futures ETN",         "Alts"),
+    ("VOL",      "VIXY",     "ST VIX ETF",              "Alts"),
+    ("VOL",      "GVZ",      "Gold Volatility (proxy)", "Alts"),
+    ("VOL",      "OVX",      "Oil Volatility (proxy)",  "Alts"),
+
+    # ── ALT — Listed Alternatives (4) NEW ────────────────────
+    ("ALT",      "IFRA",     "US Infrastructure",       "Real Assets"),
+    ("ALT",      "PSP",      "Listed Private Equity",   "Alts"),
+    ("ALT",      "AMLP",     "Energy Infrastructure",   "Real Assets"),
+    ("ALT",      "REET",     "Global REITs",            "Real Assets"),
 ]
 
-SECTION_ORDER = ["EQ_US", "EQ_SECT", "EQ_DM", "EQ_IDX", "EQ_EM", "DEFENCE", "FI", "FI_INTL", "CMD", "CRYPTO", "FX", "VOL"]
+SECTION_ORDER = ["EQ_US", "EQ_SECT", "EQ_DM", "EQ_IDX", "EQ_EM", "DEFENCE",
+                 "FI", "FI_INTL", "RATES", "CMD", "CRYPTO", "FX", "VOL", "ALT"]
 
 SECTION_LABELS = {
     "EQ_US":   "EQUITIES — US BROAD",
@@ -153,28 +207,120 @@ SECTION_LABELS = {
     "EQ_EM":   "EQUITIES — EMERGING MARKETS",
     "DEFENCE": "DEFENCE & GEOPOLITICAL",
     "FI":      "FIXED INCOME & CREDIT",
-    "FI_INTL": "FIXED INCOME — EUR & GLOBAL",
+    "FI_INTL": "FIXED INCOME — INTERNATIONAL",
+    "RATES":   "SOVEREIGN RATES",
     "CMD":     "COMMODITIES",
     "CRYPTO":  "CRYPTO",
     "FX":      "FX",
     "VOL":     "VOLATILITY",
+    "ALT":     "LISTED ALTERNATIVES",
 }
 
 N_INSTRUMENTS = len(UNIVERSE)
+
+# ── BUCKET + REGIME FIT ──────────────────────────────────────────────────────
+INSTRUMENT_BUCKETS = {t: b for _sec, t, _n, b in UNIVERSE}
+
+BUCKET_TICKERS = {
+    "EQ Growth":    [t for _s, t, _n, b in UNIVERSE if b == "EQ Growth"],
+    "EQ Defensive": [t for _s, t, _n, b in UNIVERSE if b == "EQ Defensive"],
+    "Fixed Income": [t for _s, t, _n, b in UNIVERSE if b == "Fixed Income"],
+    "Real Assets":  [t for _s, t, _n, b in UNIVERSE if b == "Real Assets"],
+    "Cash":         [t for _s, t, _n, b in UNIVERSE if b == "Cash"],
+    "Alts":         [t for _s, t, _n, b in UNIVERSE if b == "Alts"],
+}
+
+REGIME_FIT_MATRIX = {
+    "EQ Growth":    {"Bull": 100, "Neutral":  50, "Volatile":  25, "Bear":   0, "Crisis":   0},
+    "EQ Defensive": {"Bull":  50, "Neutral": 100, "Volatile":  75, "Bear":  75, "Crisis":  50},
+    "Fixed Income": {"Bull":  25, "Neutral":  75, "Volatile":  75, "Bear": 100, "Crisis": 100},
+    "Real Assets":  {"Bull":  75, "Neutral":  75, "Volatile":  75, "Bear":  50, "Crisis":  50},
+    "Cash":         {"Bull":  10, "Neutral":  50, "Volatile":  75, "Bear": 100, "Crisis": 100},
+    "Alts":         {"Bull": 100, "Neutral":  25, "Volatile":  50, "Bear":   0, "Crisis":   0},
+}
+
+# Map internal regime labels onto the matrix's 5 states.
+INTERNAL_REGIME_TO_FIT = {"Calm": "Neutral", "Stressed": "Bear", "Crisis": "Crisis"}
+
+
+def get_regime_fit_score(ticker: str, current_regime: str) -> int:
+    bucket = INSTRUMENT_BUCKETS.get(ticker, "EQ Growth")
+    regime = INTERNAL_REGIME_TO_FIT.get(current_regime, current_regime)
+    return REGIME_FIT_MATRIX.get(bucket, {}).get(regime, 50)
+
+
+# ── SPECIAL TICKERS ───────────────────────────────────────────────────────────
+# Yield tickers from yfinance come back x10 (45.0 = 4.5%). Divide after download.
+YIELD_TICKERS = ["^TNX", "^IRX", "^FVX", "^TYX"]
+
+# Synthetic tickers — NOT fetched from yfinance. Computed from underlying series.
+SYNTHETIC_TICKERS = {"GVZ": "GLD", "OVX": "BNO"}  # proxy -> source for 20D vol
+
+# ── RANKING EXCLUSIONS ────────────────────────────────────────────────────────
+# Tickers excluded from Top 5 Gainers/Losers, Top Picks, RSR rankings.
+# These are data/index instruments — not directly investable ETFs.
+RANKING_EXCLUSIONS = [
+    # Computed vol proxies
+    "GVZ", "OVX",
+    # Yield indices (divided by 10 for display, but not investable)
+    "^TNX", "^IRX", "^FVX", "^TYX",
+    # Volatility instruments — ranking them confuses "up = bad"
+    "^VIX", "VIXY", "VXX",
+    # Raw FX index
+    "DX-Y.NYB",
+]
+
+
+def is_rankable(ticker: str) -> bool:
+    """True if instrument is eligible for performance / opportunity rankings."""
+    return ticker not in RANKING_EXCLUSIONS
+
+
+# Tickers for which fragility scoring is meaningless (computed proxies,
+# fear-gauge indices). These show N/A in the Fragility tab.
+FRAGILITY_EXCLUSIONS = ["GVZ", "OVX", "^VIX"]
+
+
+# Tickers entirely hidden from all user-facing tabs (Performance, Risk,
+# Fragility, Analysis RSR, accordion headers). These are computed proxies
+# held internally for vol-regime signals but never shown as instruments.
+DISPLAY_EXCLUSIONS = ["GVZ", "OVX"]
+
+
+def is_displayable(ticker: str) -> bool:
+    return ticker not in DISPLAY_EXCLUSIONS
+
+
+# Tickers for which the Sharpe ratio is meaningless (yield indices are
+# rate levels, not tradable returns). Show N/A in Risk tab Sharpe column.
+SHARPE_EXCLUSIONS = ["^TNX", "^IRX", "^FVX", "^TYX"]
+
+
+# Vol-of-vol is not a sensible display metric for volatility indices
+# themselves (they routinely swing 50%+ in a day). Show N/A for their
+# vol columns in the Risk tab and Performance sparkline.
+VOL_VALUE_EXCLUSIONS = ["^VIX"]
+
 
 # ── CURRENCY MAP ──────────────────────────────────────────────────────────────
 # Returns are price return in the instrument's local currency
 CURRENCY_MAP = {
     "EQ_US": "USD", "EQ_SECT": "USD", "EQ_IDX": "USD",
     "EQ_DM": "USD", "EQ_EM": "USD", "DEFENCE": "USD",
-    "FI": "USD", "FI_INTL": "USD", "CMD": "USD",
-    "CRYPTO": "USD", "VOL": "USD", "FX": "USD",
+    "FI": "USD", "FI_INTL": "USD", "RATES": "USD", "CMD": "USD",
+    "CRYPTO": "USD", "VOL": "USD", "FX": "USD", "ALT": "USD",
 }
-# Per-ticker currency override for FX pairs
+# Per-ticker currency override for FX / cross-currency instruments
 FX_CCY_MAP = {
     "EURUSD=X": "EUR", "GBPUSD=X": "GBP", "JPY=X": "JPY",
-    "SGD=X": "SGD", "CNY=X": "CNY", "AUDUSD=X": "AUD",
-    "UUP": "USD",
+    "SGD=X": "SGD", "AUDUSD=X": "AUD", "CHF=X": "CHF",
+    "CAD=X": "CAD", "MXN=X": "MXN", "KRW=X": "KRW", "BRL=X": "BRL",
+    "DX-Y.NYB": "USD", "CYB": "CNY",
+    # EQ_DM / EQ_EM display currencies (underlying local market)
+    "EWA": "AUD", "EWG": "EUR", "EWJ": "JPY", "EWS": "SGD", "EWU": "GBP",
+    "EWZ": "BRL", "FXI": "CNY", "INDA": "INR", "EWY": "KRW",
+    "EZA": "ZAR", "EWT": "TWD", "EWW": "MXN", "EIDO": "IDR", "VNM": "VND",
+    "KSA": "SAR", "EWH": "HKD", "FLGB": "GBP",
 }
 
 
@@ -211,11 +357,62 @@ def _sharpe_color(v: float) -> str:
 
 
 def _rag(dd: float) -> tuple[str, str]:
-    """RAG signal based on max drawdown from 52-week high."""
-    if pd.isna(dd): return GREY,  "  -  "
+    """RAG signal based on max drawdown from 52-week high.
+    Missing data falls back to AMBER so every instrument has a signal
+    and the RED/AMBER/GREEN counts reconcile with the universe size.
+    """
+    if pd.isna(dd): return AMBER, "AMBER"
     if dd < -0.15:  return RED,   " RED "
     if dd < -0.07:  return AMBER, "AMBER"
     return GREEN, "GREEN"
+
+
+# ── MARKET TONE (three-way gate) ──────────────────────────────────────────────
+# Supports both the briefing's 5-state regime labels and the internal
+# "Calm / Stressed / Crisis" labels produced by compute_regime().
+REGIME_SCORE_MAP = {
+    'Bull': 5, 'Neutral': 4, 'Volatile': 3, 'Bear': 2, 'Crisis': 1,
+    'Calm': 4, 'Stressed': 2,
+}
+
+
+def calculate_market_tone(regime, fragility_score, rising_risk_count, total_instruments):
+    """
+    Three-way gate. ALL conditions must align for RISK-ON.
+    Any single condition failing -> MIXED.
+    Multiple conditions failing badly -> RISK-OFF.
+    Returns (label, fg_color, bg_color).
+    """
+    rising_risk_pct = (rising_risk_count / total_instruments) if total_instruments > 0 else 0
+    r_score = REGIME_SCORE_MAP.get(regime, 3)
+
+    regime_ok    = r_score >= 4           # Calm / Neutral / Bull
+    fragility_ok = fragility_score < 55   # below Stressed threshold
+    risk_ok      = rising_risk_pct < 0.40
+
+    if regime_ok and fragility_ok and risk_ok:
+        return 'RISK-ON', '#3fb950', '#0d2318'
+
+    # RISK-OFF only when conditions are genuinely severe — was previously
+    # too aggressive (firing on a single gate). Now requires Crisis regime
+    # or Crisis-level fragility (>= 75). Stressed regime alone maps to MIXED.
+    if r_score <= 1 or fragility_score >= 75:
+        return 'RISK-OFF', '#f85149', '#2d0f0e'
+
+    return 'MIXED', '#e3b341', '#2d2106'
+
+
+def _count_rising_risk(df) -> int:
+    """Count instruments whose 20D vol is >= 5% above vol 1M ago."""
+    n = 0
+    for _, row in df.iterrows():
+        nv = row.get("vol_now", float("nan"))
+        av = row.get("vol_1m_ago", float("nan"))
+        if pd.isna(nv) or pd.isna(av) or av == 0:
+            continue
+        if (nv - av) / av >= 0.05:
+            n += 1
+    return n
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -225,7 +422,8 @@ def _rag(dd: float) -> tuple[str, str]:
 CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "prices_cache.csv")
 
 def download(lookback_days: int = 2520) -> pd.DataFrame:
-    tickers = [t for _, t, _ in UNIVERSE]
+    # Real fetch list excludes synthetic tickers (computed post-download)
+    tickers = [t for _s, t, _n, _b in UNIVERSE if t not in SYNTHETIC_TICKERS]
     print(f"[Download] {len(tickers)} tickers | lookback={lookback_days} days ...")
 
     # ── Load cache ─────────────────────────────────────────────────────────────
@@ -240,20 +438,47 @@ def download(lookback_days: int = 2520) -> pd.DataFrame:
             print(f"[Cache]  Load failed: {e}")
             cached = None
 
+    # ── Identify new tickers missing from cache (need full history) ───────────
+    new_tickers = []
+    if cached is not None:
+        new_tickers = [t for t in tickers if t not in cached.columns]
+        if new_tickers:
+            print(f"[Download] New tickers (full history): {len(new_tickers)} -> "
+                  f"{', '.join(new_tickers[:8])}{'...' if len(new_tickers) > 8 else ''}")
+
     # ── Decide how far back to download ───────────────────────────────────────
-    if cached is not None and len(cached) >= 756:
+    if cached is not None and len(cached) >= 756 and not new_tickers:
         start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
         print(f"[Download] Cache hit — refreshing last 60 days ...")
+        fetch_list = tickers
+    elif cached is not None and new_tickers:
+        # Refresh existing tickers (short window) + full-history pull for new ones
+        start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
+        existing = [t for t in tickers if t in cached.columns]
+        print(f"[Download] Incremental refresh + full history for {len(new_tickers)} new tickers ...")
+        full_start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        raw_new = yf.download(new_tickers, start=full_start, auto_adjust=True, progress=False)
+        if not raw_new.empty:
+            new_close = raw_new["Close"] if "Close" in raw_new.columns else raw_new.xs("Close", axis=1, level=0)
+            if isinstance(new_close, pd.Series):
+                new_close = new_close.to_frame(name=new_tickers[0])
+            if new_close.index.tz is not None:
+                new_close.index = new_close.index.tz_localize(None)
+            cached = cached.join(new_close, how="outer")
+        fetch_list = existing
     else:
         start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
         print(f"[Download] No cache — full {lookback_days}-day download ...")
+        fetch_list = tickers
 
-    raw = yf.download(tickers, start=start, auto_adjust=True, progress=False)
+    raw = yf.download(fetch_list, start=start, auto_adjust=True, progress=False)
     if raw.empty and cached is None:
         raise RuntimeError("No data returned from Yahoo Finance.")
 
     if not raw.empty:
         prices_new = raw["Close"] if "Close" in raw.columns else raw.xs("Close", axis=1, level=0)
+        if isinstance(prices_new, pd.Series):
+            prices_new = prices_new.to_frame(name=fetch_list[0])
         if prices_new.index.tz is not None:
             prices_new.index = prices_new.index.tz_localize(None)
         if cached is not None:
@@ -275,7 +500,20 @@ def download(lookback_days: int = 2520) -> pd.DataFrame:
     prices = prices.ffill(limit=3).dropna(how="all")
     prices = prices[[t for t in tickers if t in prices.columns]]
 
-    print(f"[Download] {len(prices)} days  |  last close: {prices.index[-1].date()}")
+    # ── Yield ticker correction: yfinance returns x10 values ──────────────────
+    for yt in YIELD_TICKERS:
+        if yt in prices.columns:
+            prices[yt] = prices[yt] / 10.0
+
+    # ── Synthetic tickers: compute GVZ/OVX as 20D rolling vol of GLD/BNO ──────
+    for proxy, source in SYNTHETIC_TICKERS.items():
+        if source in prices.columns:
+            rets = prices[source].pct_change()
+            rolling_vol = rets.rolling(window=20).std() * (252 ** 0.5) * 100.0
+            prices[proxy] = rolling_vol.bfill()
+
+    print(f"[Download] {len(prices)} days  |  last close: {prices.index[-1].date()}  "
+          f"|  cols: {len(prices.columns)}")
     return prices
 
 
@@ -295,6 +533,45 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
         else pd.Series(np.nan, index=prices.columns)
     )
 
+    # Sanity check: flag suspicious return values (likely unadjusted corporate
+    # actions upstream in yfinance — we confirmed all oil ETFs including BNO/UCO
+    # show the same corruption, so swapping source doesn't help).
+    # Cap by horizon: (ytd_cap, ret_1m_cap, ret_3m_cap)
+    RETURN_SANITY_MAX = {
+        'BNO':  (0.50, 0.30, 0.40),
+        'UNG':  (1.00, 0.50, 0.75),
+        'SLV':  (1.00, 0.40, 0.60),
+        'GLD':  (0.75, 0.30, 0.50),
+        'DBC':  (0.75, 0.30, 0.50),
+        'DBA':  (0.75, 0.30, 0.50),
+        'COPX': (1.00, 0.50, 0.75),
+    }
+    # Pre-compute ret_1m / ret_3m once for sanity-clipping (not just YTD).
+    _ret_1m_series = _ret(21)
+    _ret_3m_series = _ret(63)
+    data_review_tickers = set()
+    for _tk, (_ytd_cap, _m1_cap, _m3_cap) in RETURN_SANITY_MAX.items():
+        if _tk not in ytd.index:
+            continue
+        _yv = ytd.get(_tk)
+        _mv = _ret_1m_series.get(_tk) if _tk in _ret_1m_series.index else np.nan
+        _qv = _ret_3m_series.get(_tk) if _tk in _ret_3m_series.index else np.nan
+        _flag = False
+        if pd.notna(_yv) and abs(_yv) > _ytd_cap:
+            print(f"[Data Sanity] {_tk} YTD={_yv*100:+.1f}% > ±{_ytd_cap*100:.0f}% — flagged")
+            ytd[_tk] = np.nan; _flag = True
+        if pd.notna(_mv) and abs(_mv) > _m1_cap:
+            print(f"[Data Sanity] {_tk} 1M={_mv*100:+.1f}% > ±{_m1_cap*100:.0f}% — flagged")
+            _ret_1m_series[_tk] = np.nan; _flag = True
+        if pd.notna(_qv) and abs(_qv) > _m3_cap:
+            print(f"[Data Sanity] {_tk} 3M={_qv*100:+.1f}% > ±{_m3_cap*100:.0f}% — flagged")
+            _ret_3m_series[_tk] = np.nan; _flag = True
+        if _flag:
+            data_review_tickers.add(_tk)
+    if data_review_tickers:
+        print(f"[Data Sanity] Data under review: {sorted(data_review_tickers)} "
+              f"— suspected unadjusted corporate actions in yfinance source")
+
     # Vol as of latest date: 5-day realised vol annualised (captures current regime)
     vol_now  = prices.pct_change().tail(6).std()  * np.sqrt(252)
 
@@ -313,7 +590,9 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     daily_ret_1y = prices.pct_change().tail(252)
     vol_1y       = daily_ret_1y.std() * np.sqrt(252)
     ann_ret_1y   = daily_ret_1y.mean() * 252
-    sharpe       = ((ann_ret_1y - RISK_FREE_RATE) / vol_1y.replace(0, np.nan)).clip(-5, 5)
+    # For very low-vol instruments (e.g. T-Bills), cap vol at 0.5% minimum to prevent extreme Sharpe
+    vol_1y_adj   = vol_1y.clip(lower=0.005)
+    sharpe       = ((ann_ret_1y - RISK_FREE_RATE) / vol_1y_adj.replace(0, np.nan)).clip(-5, 5)
 
     # Max drawdown from 252-day rolling peak
     window  = min(252, len(prices))
@@ -327,15 +606,20 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     # Detect if market was closed today
     # Only check equity tickers (FX/Crypto trade 24/7 and skew the signal)
     ret1d_vals = _ret(1)
-    eq_tickers = [t for _, t, _ in UNIVERSE if t in prices.columns and
-                  t not in ["BTC-USD","EURUSD=X","GBPUSD=X","JPY=X","SGD=X","CNY=X","AUDUSD=X","UUP"]]
+    _non_eq_sections = {"FX", "CRYPTO", "VOL", "RATES"}
+    eq_tickers = [t for s, t, _n, _b in UNIVERSE
+                  if t in prices.columns and s not in _non_eq_sections
+                  and t not in SYNTHETIC_TICKERS]
     eq_ret1d = ret1d_vals.reindex(eq_tickers).dropna()
     nonzero_eq = (eq_ret1d.abs() > 1e-4).sum()
     market_open_today = nonzero_eq >= max(3, len(eq_ret1d) * 0.15)
 
     rows = []
-    for sec, ticker, name in UNIVERSE:
+    for sec, ticker, name, _bucket in UNIVERSE:
         if ticker not in prices.columns:
+            continue
+        # Internal-only tickers (GVZ/OVX proxies) — never surface as rows.
+        if ticker in DISPLAY_EXCLUSIONS:
             continue
         rc, rl = _rag(max_dd.get(ticker, np.nan))
         # Normalised sparkline series (percent from 20-day-ago base)
@@ -347,9 +631,10 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
             "name":             name,
             "ret_1d":           ret1d_vals.get(ticker, np.nan),
             "ret_1w":           _ret(5).get(ticker, np.nan),
-            "ret_1m":           _ret(21).get(ticker, np.nan),
-            "ret_3m":           _ret(63).get(ticker, np.nan),
+            "ret_1m":           _ret_1m_series.get(ticker, np.nan),
+            "ret_3m":           _ret_3m_series.get(ticker, np.nan),
             "ret_ytd":          ytd.get(ticker, np.nan),
+            "data_review":      ticker in data_review_tickers,
             "vol_20d":          vol_20d.get(ticker, np.nan),
             "vol_now":          vol_now.get(ticker, np.nan),
             "vol_1m_ago":       vol_1m_ago.get(ticker, np.nan),
@@ -855,11 +1140,25 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
     volz    = ((vov - mu_vov) / sd_vov).abs()
 
     zw      = min(756, len(prices) - 1)  # 3-year rolling window for robust calibration
-    t2m     = {t: (s, n) for s, t, n in UNIVERSE}
+    t2m     = {t: (s, n) for s, t, n, _b in UNIVERSE}
     w       = FRAGILITY_WEIGHTS
     tw      = sum(w.values())
     rows    = []
     for col in prices.columns:
+        # Never display computed proxies anywhere
+        if col in DISPLAY_EXCLUSIONS:
+            continue
+        if col in FRAGILITY_EXCLUSIONS:
+            # Fear indices (^VIX) — score is meaningless. Emit N/A row so the
+            # tab shows them as N/A instead of dropping them.
+            sec, name = t2m.get(col, ("", col))
+            rows.append({
+                "ticker": col, "name": name, "section": sec,
+                "fragility": np.nan, "rag": "N/A",
+                "pillar_dd": 0.0, "pillar_vol": 0.0, "pillar_cvar": 0.0,
+                "pillar_trend": 0.0, "pillar_corr": 0.0, "pillar_volz": 0.0,
+            })
+            continue
         zd = _robust_zscore(dd[col],      zw)
         zv = _robust_zscore(vol20[col],   zw)
         zc = _robust_zscore(cvar60[col],  zw)
@@ -872,7 +1171,7 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
         sc  = 100.0 * _frag_logistic(lat.ewm(span=10,adjust=False).mean() * 0.5)
         v   = float(sc.iloc[-1]) if not sc.empty else np.nan
         if pd.isna(v): continue
-        rag = "CRISIS" if v>=70 else "STRESSED" if v>=50 else "CALM"
+        rag = "CRISIS" if v>=70 else "STRESSED" if v>=55 else "MODERATE"
         sec, name = t2m.get(col, ("", col))
 
         def _p(z, k): return round(float(w[k]*z.iloc[-1]/tw*100),1) if not pd.isna(z.iloc[-1]) else 0.0
@@ -884,7 +1183,7 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
     if not fdf.empty:
         ss = float(fdf["fragility"].median())
         fdf.attrs["system_score"] = round(ss,1)
-        fdf.attrs["regime"] = "CRISIS" if ss>=70 else "STRESSED" if ss>=50 else "CALM"
+        fdf.attrs["regime"] = "CRISIS" if ss>=70 else "STRESSED" if ss>=55 else "MODERATE"
     return fdf
 
 
@@ -978,6 +1277,8 @@ def compute_regime(prices: pd.DataFrame) -> dict:
     dd_pct  = float((dd.dropna()   >= cur_dd).mean()  * 100)  # pct ABOVE current dd
 
     # Crisis episodes (drawdown < -15%)
+    # Use day-level range when start and end are in the same calendar month
+    # so it doesn't display "Apr 2025 → Apr 2025" and look like a bug.
     episodes = []
     in_ep = False; ep_start = None
     for date, val in dd.items():
@@ -985,12 +1286,31 @@ def compute_regime(prices: pd.DataFrame) -> dict:
             in_ep = True; ep_start = date
         elif val >= -0.10 and in_ep:
             in_ep = False
+            # If same calendar month, display as "1–28 Apr 2025"; else
+            # "Mar 2020 → Apr 2020". Use %#d on Windows / %-d on Unix.
+            try:
+                day_fmt = "%#d" if os.name == "nt" else "%-d"
+                if ep_start.year == date.year and ep_start.month == date.month:
+                    _range_ascii = f"{ep_start.strftime(day_fmt)}-{date.strftime(day_fmt + ' %b %Y')}"
+                    _range_html  = f"{ep_start.strftime(day_fmt)}&ndash;{date.strftime(day_fmt + ' %b %Y')}"
+                else:
+                    _range_ascii = f"{ep_start.strftime('%b %Y')} -> {date.strftime('%b %Y')}"
+                    _range_html  = f"{ep_start.strftime('%b %Y')} &rarr; {date.strftime('%b %Y')}"
+            except Exception:
+                _range_ascii = f"{ep_start} -> {date}"
+                _range_html  = _range_ascii
             episodes.append({"start": ep_start.strftime("%b %Y"),
                               "end":   date.strftime("%b %Y"),
+                              "range": _range_html,
                               "depth": round(float(dd[ep_start:date].min()*100),1)})
+            print(f"[Regime Episode] {_range_ascii} | depth {round(float(dd[ep_start:date].min()*100),1)}%")
     if in_ep:
-        episodes.append({"start": ep_start.strftime("%b %Y"), "end": "Present",
+        episodes.append({"start": ep_start.strftime("%b %Y"),
+                          "end":   "Ongoing",
+                          "range": f"{ep_start.strftime('%b %Y')} &rarr; Ongoing",
                           "depth": round(float(dd[ep_start:].min()*100),1)})
+        print(f"[Regime Episode] {ep_start.strftime('%b %Y')} -> Ongoing | "
+              f"depth {round(float(dd[ep_start:].min()*100),1)}%")
 
     return {
         "regime":         current,
@@ -1083,15 +1403,15 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
     scores["Strength"] = float(strength_pct)
     details["Strength"] = {"value": f"{near_high}/{total_avail} within 5% of 52W high", "score": scores["Strength"]}
 
-    # ── 7. Put/Call Proxy: UVXY vs VIXY ratio (panic hedging) ────────────────
-    if "UVXY" in prices.columns and "VIXY" in prices.columns:
-        ratio_ts = prices["UVXY"] / prices["VIXY"].replace(0, np.nan)
+    # ── 7. Put/Call Proxy: VXX vs VIXY ratio (panic hedging) ─────────────────
+    if "VXX" in prices.columns and "VIXY" in prices.columns:
+        ratio_ts = prices["VXX"] / prices["VIXY"].replace(0, np.nan)
         ratio_ts = ratio_ts.dropna()
         cur      = float(ratio_ts.iloc[-1]) if not ratio_ts.empty else 1
         raw      = _pct_rank(ratio_ts, cur)
         # High ratio = panic = fear → invert
         scores["Put/Call Proxy"] = max(0, min(100, 100 - raw))
-        details["Put/Call Proxy"] = {"value": f"UVXY/VIXY ratio: {cur:.2f}", "score": scores["Put/Call Proxy"]}
+        details["Put/Call Proxy"] = {"value": f"VXX/VIXY ratio: {cur:.2f}", "score": scores["Put/Call Proxy"]}
 
     # ── Composite ─────────────────────────────────────────────────────────────
     if not scores:
@@ -1169,7 +1489,7 @@ def compute_fragility_trend(prices: pd.DataFrame) -> dict:
     trend_raw = sys_score.tail(504).dropna()
     trend = []
     for date, val in trend_raw.items():
-        reg = "Crisis" if val >= 70 else "Stressed" if val >= 50 else "Calm"
+        reg = "Crisis" if val >= 70 else "Stressed" if val >= 55 else "Moderate"
         trend.append({
             "date":  date.strftime("%Y-%m-%d"),
             "score": round(float(val), 1),
@@ -1186,13 +1506,398 @@ def compute_fragility_trend(prices: pd.DataFrame) -> dict:
     }
 
 
-def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None) -> str:
+# ══════════════════════════════════════════════════════════════════════════════
+#  AI COMMENTARY ENGINE — Claude API
+# ══════════════════════════════════════════════════════════════════════════════
+
+def generate_ai_commentary(market_data: dict) -> dict:
+    """
+    Generate AI-powered market commentary using Claude API.
+    Falls back to empty strings if API unavailable.
+    """
+    import os, json
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    
+    if not api_key:
+        print("[AI] No API key found — skipping AI commentary")
+        return {}
+    
+    try:
+        import urllib.request
+        
+        prompt = f"""You are a senior market analyst writing a professional daily intelligence brief for institutional clients (family offices, private banks, hedge funds).
+
+Current market data as of {market_data.get('date', 'today')}:
+- Market Regime: {market_data.get('regime', 'Unknown')} (for {market_data.get('regime_days', 0)} consecutive trading days)
+- System Fragility Score: {market_data.get('fragility_score', 50)}/100 ({market_data.get('fragility_label', 'STRESSED')})
+- Fear & Greed Index: {market_data.get('fg_score', 50)}/100 ({market_data.get('fg_label', 'Neutral')})
+- World Volatility Percentile: {market_data.get('vol_pct', 50)}th percentile of 10-year history
+- World Drawdown: {market_data.get('dd_pct', 0):.1f}% from peak
+- Instruments in RED signal: {market_data.get('n_red', 0)} of {market_data.get('n_total', 60)}
+- Instruments with Rising Vol: {market_data.get('vol_rising', 0)}
+- Top 1M Gainers: {', '.join(market_data.get('top_gainers', []))}
+- Top 1M Losers: {', '.join(market_data.get('top_losers', []))}
+- Average Cross-Asset Correlation: {market_data.get('avg_corr', 0.3):.2f}
+- Backtest 5Y: BK Allocation {market_data.get('bt_bk', 'N/A')}, SPY {market_data.get('bt_spy', 'N/A')}, 60/40 {market_data.get('bt_6040', 'N/A')}
+
+Generate a JSON response with exactly these fields:
+{{
+  "narrative": "4-5 sentence professional market narrative. Be specific, reference actual instruments and numbers. No generic statements. Sound like a senior analyst, not a robot.",
+  "actions": [
+    "Specific action 1 with instrument name and reason based on data",
+    "Specific action 2 with instrument name and reason based on data", 
+    "Specific action 3 with instrument name and reason based on data",
+    "Specific action 4 with instrument name and reason based on data"
+  ],
+  "watchlist": [
+    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}},
+    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}},
+    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}}
+  ],
+  "fg_summary": "One sentence explaining what the Fear & Greed score of {market_data.get('fg_score', 50)} means in current context",
+  "regime_interpretation": "2-3 sentences interpreting the current regime, what caused it and what would signal a shift",
+  "edge_rationale": "2-3 sentences explaining why the current portfolio allocation is appropriate for this regime, referencing specific asset classes and current signals"
+}}
+
+Return ONLY valid JSON. No preamble, no markdown, no explanation."""
+
+        payload = json.dumps({
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 1000,
+            "messages": [{"role": "user", "content": prompt}]
+        }).encode()
+        
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            }
+        )
+        
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            text = result["content"][0]["text"]
+            # Clean any markdown fences
+            text = text.replace("```json", "").replace("```", "").strip()
+            commentary = json.loads(text)
+            print(f"[AI] Commentary generated successfully")
+            return commentary
+            
+    except Exception as e:
+        print(f"[AI] Commentary generation failed: {e}")
+        return {}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  BACKTESTING ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_backtest(prices: pd.DataFrame, regime_series: pd.Series) -> dict:
+    """
+    Backtest regime-aware allocation vs SPY buy-and-hold and 60/40.
+    Uses last 5 years of data.
+    Monthly rebalancing.
+    """
+    # Allocation weights per regime
+    ALLOC = {
+        "Crisis":   {"SPY":0.10,"TLT":0.20,"GLD":0.25,"BIL":0.35,"HYG":0.05,"EEM":0.05},
+        "Stressed": {"SPY":0.25,"TLT":0.20,"GLD":0.15,"BIL":0.20,"HYG":0.15,"EEM":0.05},
+        "Calm":     {"SPY":0.45,"TLT":0.10,"GLD":0.10,"BIL":0.05,"HYG":0.15,"EEM":0.15},
+    }
+    
+    # Get 5 years of data
+    lookback = min(1260, len(prices))
+    px = prices.tail(lookback).copy()
+    reg = regime_series.reindex(px.index).ffill().fillna("Calm")
+    # Eliminate one-day look-ahead: regime detected at close of day i can only
+    # be traded starting day i+1. Shift forward by one so the rebalance on the
+    # first trading day of month M uses the regime from the last day of M-1.
+    reg = reg.shift(1).ffill().fillna("Calm")
+    
+    # Check required tickers available
+    required = ["SPY","TLT","GLD","BIL","HYG","EEM"]
+    available = [t for t in required if t in px.columns]
+    if len(available) < 4:
+        return {}
+    
+    # Fill missing tickers with SPY
+    for t in required:
+        if t not in px.columns:
+            px[t] = px["SPY"]
+    
+    rets = px[required].pct_change().fillna(0)
+    
+    # BK Regime Allocation — monthly rebalance
+    bk_val = [1.0]; spy_val = [1.0]; port6040_val = [1.0]
+    dates = [px.index[0]]
+    
+    cur_month = px.index[0].month
+    cur_weights = ALLOC["Calm"]
+    
+    for i in range(1, len(rets)):
+        date = rets.index[i]
+        r = rets.iloc[i]
+        
+        # Rebalance monthly
+        if date.month != cur_month:
+            cur_month = date.month
+            regime_now = reg.iloc[i] if i < len(reg) else "Calm"
+            if regime_now not in ALLOC: regime_now = "Calm"
+            cur_weights = ALLOC[regime_now]
+        
+        # BK portfolio daily return
+        bk_ret = sum(cur_weights.get(t,0) * r.get(t,0) for t in required)
+        # SPY buy and hold
+        spy_ret = r.get("SPY", 0)
+        # 60/40
+        port_ret = 0.6 * r.get("SPY",0) + 0.4 * r.get("TLT",0)
+        
+        bk_val.append(bk_val[-1] * (1 + bk_ret))
+        spy_val.append(spy_val[-1] * (1 + spy_ret))
+        port6040_val.append(port6040_val[-1] * (1 + port_ret))
+        dates.append(date)
+    
+    import math
+    def _stats(vals):
+        total_ret = vals[-1] / vals[0] - 1
+        n_years   = len(vals) / 252
+        cagr      = (vals[-1] / vals[0]) ** (1/max(n_years,0.1)) - 1
+        daily_rets = [vals[i]/vals[i-1]-1 for i in range(1,len(vals))]
+        vol       = (sum(r**2 for r in daily_rets)/len(daily_rets))**0.5 * math.sqrt(252)
+        sharpe    = (cagr - 0.045) / max(vol, 0.001)
+        # Max drawdown
+        peak = vals[0]; max_dd = 0
+        for v in vals:
+            if v > peak: peak = v
+            dd = v/peak - 1
+            if dd < max_dd: max_dd = dd
+        return {
+            "total":  round(total_ret*100, 1),
+            "cagr":   round(cagr*100, 1),
+            "sharpe": round(sharpe, 2),
+            "max_dd": round(max_dd*100, 1),
+        }
+    
+    # SINGLE SOURCE OF TRUTH for all backtest stats. Both the Intel tab mini
+    # snapshot and the Edge tab full panel must read from this one dict —
+    # never compute CAGR/Sharpe/MaxDD independently anywhere else.
+    bk_stats   = _stats(bk_val)
+    spy_stats  = _stats(spy_val)
+    p6040_stats= _stats(port6040_val)
+    
+    # Timeline for chart (monthly points)
+    timeline = []
+    step = max(1, len(dates)//60)
+    for i in range(0, len(dates), step):
+        timeline.append({
+            "date":  dates[i].strftime("%Y-%m"),
+            "bk":    round(bk_val[i], 4),
+            "spy":   round(spy_val[i], 4),
+            "p6040": round(port6040_val[i], 4),
+            "regime": reg.iloc[i] if i < len(reg) else "Calm",
+        })
+    
+    return {
+        "bk":     bk_stats,
+        "spy":    spy_stats,
+        "p6040":  p6040_stats,
+        "timeline": timeline,
+        "years":  round(len(dates)/252, 1),
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  BK OPPORTUNITY SCORE + RISK APPETITE SCORE (S2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def compute_bk_opportunity_scores(df: pd.DataFrame,
+                                  prices: pd.DataFrame,
+                                  frag_df: pd.DataFrame,
+                                  current_regime: str) -> dict:
+    """
+    Return {ticker: score (0-100)} across the universe.
+
+    Components (weights):
+      Momentum 30%  — percentile rank of (ret_1m*0.2 + ret_3m*0.5 + ret_6m*0.3)
+      Fragility-Inverted 25% — 100 - BK fragility score
+      Regime Fit 20% — matrix lookup by bucket
+      RAG Signal 15% — GREEN=100 / AMBER=50 / RED=0
+      Vol Trend 10% — 100 if vol_now < vol_1m_ago else 0
+    """
+    scores: dict = {}
+
+    # Map fragility
+    frag_map = {}
+    if frag_df is not None and not frag_df.empty and "ticker" in frag_df.columns:
+        frag_map = dict(zip(frag_df["ticker"], frag_df["fragility"]))
+
+    # Pre-compute momentum blend universe-wide for percentile ranking
+    momentum_raw = {}
+    for tk in prices.columns:
+        p = prices[tk].dropna()
+        if len(p) < 126:
+            continue
+        r1 = (p.iloc[-1] / p.iloc[-21]  - 1) * 100 if len(p) >= 21  else 0
+        r3 = (p.iloc[-1] / p.iloc[-63]  - 1) * 100 if len(p) >= 63  else 0
+        r6 = (p.iloc[-1] / p.iloc[-126] - 1) * 100 if len(p) >= 126 else 0
+        momentum_raw[tk] = r1 * 0.20 + r3 * 0.50 + r6 * 0.30
+    all_mom = sorted(momentum_raw.values())
+
+    def _pct_rank(v):
+        if not all_mom:
+            return 50.0
+        below = sum(1 for x in all_mom if x <= v)
+        return below / len(all_mom) * 100.0
+
+    # Map df rag_label by ticker for signal scoring
+    rag_map = dict(zip(df["ticker"], df["rag_label"].str.strip()))
+    vol_now_map    = dict(zip(df["ticker"], df["vol_now"]))
+    vol_prev_map   = dict(zip(df["ticker"], df["vol_1m_ago"]))
+
+    for tk, mom_raw in momentum_raw.items():
+        try:
+            mom_score = _pct_rank(mom_raw)
+
+            frag_val = frag_map.get(tk, 50.0)
+            if pd.isna(frag_val):
+                frag_val = 50.0
+            frag_inv = 100.0 - float(frag_val)
+
+            regime_fit = get_regime_fit_score(tk, current_regime)
+
+            rag = rag_map.get(tk, "AMBER")
+            sig_score = {"GREEN": 100, "AMBER": 50, "RED": 0}.get(rag, 50)
+
+            vn = vol_now_map.get(tk, float("nan"))
+            vp = vol_prev_map.get(tk, float("nan"))
+            if pd.isna(vn) or pd.isna(vp):
+                vol_trend = 50
+            else:
+                vol_trend = 100 if vn < vp else 0
+
+            total = (mom_score   * 0.30 +
+                     frag_inv    * 0.25 +
+                     regime_fit  * 0.20 +
+                     sig_score   * 0.15 +
+                     vol_trend   * 0.10)
+            scores[tk] = round(total, 1)
+        except Exception as e:
+            print(f"[BK Opp] error {tk}: {e}")
+    return scores
+
+
+def compute_risk_appetite_score(regime: str,
+                                fragility_score: float,
+                                fear_greed: float,
+                                vol_percentile: float) -> float:
+    """
+    RAS (0-100):
+      regime_norm   35%  (score 1..5 normalised)
+      fragility_inv 30%
+      fear_greed    20%
+      vol_inv       15%
+    """
+    _r5 = REGIME_SCORE_MAP.get(regime, 3)
+    regime_norm   = (_r5 / 5.0) * 100.0
+    fragility_inv = max(0.0, 100.0 - float(fragility_score))
+    vol_inv       = max(0.0, 100.0 - float(vol_percentile))
+    ras = (regime_norm   * 0.35 +
+           fragility_inv * 0.30 +
+           float(fear_greed) * 0.20 +
+           vol_inv       * 0.15)
+    return round(ras, 1)
+
+
+def get_allocation_weights(ras: float):
+    """Map RAS to (label, bucket-weight dict)."""
+    if ras >= 75:
+        return ("Risk-On", {
+            "EQ Growth": 45, "EQ Defensive": 10, "Fixed Income": 15,
+            "Real Assets": 15, "Cash": 5, "Alts": 10})
+    if ras >= 55:
+        return ("Mild Risk-On", {
+            "EQ Growth": 35, "EQ Defensive": 15, "Fixed Income": 20,
+            "Real Assets": 15, "Cash": 10, "Alts": 5})
+    if ras >= 40:
+        return ("Neutral", {
+            "EQ Growth": 25, "EQ Defensive": 20, "Fixed Income": 25,
+            "Real Assets": 15, "Cash": 15, "Alts": 0})
+    if ras >= 25:
+        return ("Defensive", {
+            "EQ Growth": 15, "EQ Defensive": 25, "Fixed Income": 30,
+            "Real Assets": 15, "Cash": 15, "Alts": 0})
+    return ("Risk-Off", {
+        "EQ Growth": 5, "EQ Defensive": 20, "Fixed Income": 35,
+        "Real Assets": 20, "Cash": 20, "Alts": 0})
+
+
+CASH_PRIORITY = ["BIL", "SHY"]  # prefer real cash instruments over FX pairs
+
+
+def get_top_instruments_per_bucket(bk_opp_scores: dict, bucket: str, n: int = 2):
+    """
+    Return top-N *investable* tickers in a bucket by BK Opp Score desc.
+    Strict bucket membership: a ticker can only be picked for its assigned bucket.
+    Cash bucket has a priority override — if BIL or SHY have non-None scores,
+    they are surfaced first regardless of score rank (FX pairs like CHF=X are
+    real safe-haven proxies but the Cash bucket should display cash-like assets).
+    """
+    tks = BUCKET_TICKERS.get(bucket, [])
+    scored = [(t, bk_opp_scores[t]) for t in tks
+              if t in bk_opp_scores and bk_opp_scores[t] is not None
+              and is_rankable(t)]
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    if bucket == "Cash":
+        priority_hits = [s for s in scored if s[0] in CASH_PRIORITY]
+        others        = [s for s in scored if s[0] not in CASH_PRIORITY]
+        scored = priority_hits + others
+
+    return scored[:n]
+
+
+def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None, ai_commentary: dict = None, backtest_data: dict = None) -> str:
     import math
     now         = datetime.now(SGT)
     date_str    = now.strftime("%A, %d %b %Y %H:%M SGT")
     gen_ts      = now.strftime("%Y-%m-%dT%H:%M:%S")
     market_open = bool(df["market_open"].iloc[0]) if "market_open" in df.columns else True
-    GA          = "G-XXXXXXXXXX"
+    GA          = ""  # Set your GA4 ID here e.g. "G-XXXXXXXXXX"
+
+    # ── S2: BK Opportunity Score + Risk Appetite Score + Dynamic Allocation ──
+    _cur_regime = regime_data.get("regime", "Calm") if regime_data else "Calm"
+    _frag_sys   = (frag_df.attrs.get("system_score", float(frag_df["fragility"].median()))
+                   if frag_df is not None and not frag_df.empty else 50.0)
+    _fg_score   = round(fg_data.get("score", 50)) if fg_data else 50
+    # Vol percentile: median 20D vol now vs 1Y history
+    _vol_pct = 50.0
+    try:
+        if prices is not None and not prices.empty:
+            _rets_all = prices.pct_change()
+            _vol_series = _rets_all.rolling(20, min_periods=10).std().median(axis=1) * (252 ** 0.5) * 100
+            _vol_series = _vol_series.dropna().tail(252)
+            if len(_vol_series) >= 20:
+                _cur_vol = float(_vol_series.iloc[-1])
+                _vol_pct = float((_vol_series <= _cur_vol).sum() / len(_vol_series) * 100)
+    except Exception as _e:
+        print(f"[RAS] vol percentile fallback: {_e}")
+
+    bk_opp_scores = {}
+    if prices is not None and not prices.empty:
+        try:
+            bk_opp_scores = compute_bk_opportunity_scores(df, prices, frag_df, _cur_regime)
+        except Exception as _e:
+            print(f"[BK Opp] compute error: {_e}")
+
+    ras_score = compute_risk_appetite_score(_cur_regime, _frag_sys, _fg_score, _vol_pct)
+    ras_label, bucket_weights = get_allocation_weights(ras_score)
+    print(f"[RAS]  regime={_cur_regime}  fragility={_frag_sys:.1f}  "
+          f"fear_greed={_fg_score}  vol_pct={_vol_pct:.1f}  "
+          f"-> RAS={ras_score}  label={ras_label}")
+    print(f"[RAS]  weights = {bucket_weights}")
 
     # ── shared cell helpers ───────────────────────────────────────────────────
     def _rc(v, fmt="ret"):
@@ -1220,8 +1925,37 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     def _srow(sec, cs=14):
         return f'<tr class="sh"><td colspan="{cs}">{SECTION_LABELS.get(sec,sec)}</td></tr>'
 
+    def _srow_acc(sec, tab_prefix, summary, count, cs=14):
+        """Accordion-header variant of _srow. Adds click target + summary."""
+        key = f"{tab_prefix}_{sec.lower()}"
+        label = SECTION_LABELS.get(sec, sec)
+        return (
+            f'<tr class="sh bk-acc-header" data-key="{key}">'
+            f'<td colspan="{cs}">'
+            f'<span class="bk-acc-icon">&#9654;</span>'
+            f'{label}'
+            f'<span class="bk-acc-count">({count})</span>'
+            f'<span class="bk-acc-summary">{summary}</span>'
+            f'<span class="bk-acc-hint">Click to expand</span>'
+            f'</td></tr>'
+        )
+
+    def _acc_controls(tab_prefix):
+        return (f'<div class="bk-acc-controls">'
+                f'<button class="bk-acc-btn" onclick="bkSetAllAccordions(\'open\',\'{tab_prefix}\')">Expand All</button>'
+                f'<button class="bk-acc-btn" onclick="bkSetAllAccordions(\'closed\',\'{tab_prefix}\')">Collapse All</button>'
+                f'</div>')
+
     def _bar(nm, val, mx, color):
-        w=min(100, abs(val)/mx*100) if mx>0 else 0
+        # Proportional scaling capped at 75% (prevents outlier dominance /
+        # tight-cluster bunching), with 5% floor for visibility when val != 0.
+        if mx > 0:
+            w = abs(val) / mx * 75
+            if val != 0:
+                w = max(5, w)
+            w = min(75, w)
+        else:
+            w = 0
         s="+" if val>=0 else ""
         return (f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">'
                 f'<div style="width:150px;font-size:11px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{nm}</div>'
@@ -1235,11 +1969,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     na=int((df["rag_label"].str.strip()=="AMBER").sum())
     ng=int((df["rag_label"].str.strip()=="GREEN").sum())
     tot=len(df)
-    if ng>=nr*2:   tone,tc,tb="RISK-ON","#3fb950","#0d2318"
-    elif nr>=ng*2: tone,tc,tb="RISK-OFF","#f85149","#2d0f0e"
-    else:          tone,tc,tb="MIXED","#e3b341","#2d2106"
 
-    mtd=df[["name","ret_1m"]].dropna(subset=["ret_1m"])
+    # Market tone: three-way gate over regime, fragility, and rising-risk share.
+    _regime_now_tone = regime_data.get("regime", "Calm") if regime_data else "Calm"
+    _frag_sys_tone = (frag_df.attrs.get("system_score", float(frag_df["fragility"].median()))
+                      if frag_df is not None and not frag_df.empty else 50.0)
+    _rising_tone = _count_rising_risk(df)
+    tone, tc, tb = calculate_market_tone(_regime_now_tone, _frag_sys_tone, _rising_tone, tot)
+
+    # Rolling-1M gainers / losers — exclude non-investable tickers
+    # (yield indices, vol instruments, computed proxies, raw FX index).
+    _rankable = df[df["ticker"].apply(is_rankable)]
+    mtd=_rankable[["name","ticker","ret_1m"]].dropna(subset=["ret_1m"])
     gain=mtd.nlargest(5,"ret_1m"); loss=mtd.nsmallest(5,"ret_1m")
     gm=gain["ret_1m"].abs().max(); lm=loss["ret_1m"].abs().max()
     gh="".join(_bar(r["name"],r["ret_1m"],gm,"#3fb950") for _,r in gain.iterrows())
@@ -1267,13 +2008,38 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                f'</svg>')
         return f'<td style="padding:4px 8px;">{svg}</td>'
 
+    # Per-section summaries for Performance accordion headers
+    _perf_sum = {}
+    for _sec in df["section"].unique():
+        _sub = df[df["section"] == _sec].dropna(subset=["ret_1m"])
+        if _sub.empty:
+            _perf_sum[_sec] = ("", len(df[df["section"] == _sec]))
+            continue
+        _best = _sub.loc[_sub["ret_1m"].idxmax()]
+        _worst = _sub.loc[_sub["ret_1m"].idxmin()]
+        _txt = (f'Best: <span style="color:#3fb950;">{_best["name"]} {_best["ret_1m"]*100:+.1f}%</span>'
+                f' &nbsp;|&nbsp; Worst: <span style="color:#f85149;">{_worst["name"]} {_worst["ret_1m"]*100:+.1f}%</span>')
+        _perf_sum[_sec] = (_txt, int((df["section"] == _sec).sum()))
+
+    _perf_cs = 10  # colspan: Asset,Ticker,CCY,Trend,[1D],1W,1M,3M,YTD,Signal
     pr=""; pv=None
     for _,row in df.iterrows():
-        if row["section"]!=pv: pv=row["section"]; pr+=_srow(row["section"])
+        if row["section"]!=pv:
+            pv=row["section"]
+            _sum, _cnt = _perf_sum.get(pv, ("", 0))
+            pr += _srow_acc(pv, "perf", _sum, _cnt, cs=_perf_cs)
         d1=_rc(row["ret_1d"]) if market_open else ""
         ccy = row.get("currency","USD")
         spark_td = _sparkline(row.get("spark",[]))
-        pr+=(f'<tr><td class="an">{row["name"]}</td><td class="tk">{row["ticker"]}</td>'
+        _dr_badge = (' <span title="Data under review — yfinance source suspected unadjusted" '
+                     'style="color:#e3b341;font-size:9px;font-weight:700;">&#9888; DATA REVIEW</span>'
+                     if row.get("data_review") else '')
+        # BNO (WTI oil proxy): flag elevated vol as market dislocation, not bad data
+        _disloc_badge = (' <span title="Vol elevated — reflects recent crude market dislocation" '
+                         'style="color:#e3b341;font-size:9px;font-weight:700;">&#9888; VOL DISLOCATION</span>'
+                         if row.get("ticker") == "BNO" and not pd.isna(row.get("vol_now", float("nan")))
+                         and row.get("vol_now", 0) > 0.50 else '')
+        pr+=(f'<tr><td class="an">{row["name"]}{_dr_badge}{_disloc_badge}</td><td class="tk">{row["ticker"]}</td>'
              f'<td class="num gr" style="font-size:9px;">{ccy}</td>'
              f'{spark_td}'
              f'{d1}{_rc(row["ret_1w"])}{_rc(row["ret_1m"])}{_rc(row["ret_3m"])}{_rc(row["ret_ytd"])}'
@@ -1288,10 +2054,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
           f'<div class="ri"><div class="rn" style="color:#e6edf3;">{tot}</div><div class="rl">TOTAL</div></div>'
           f'</div></div>'
           f'<div class="gl"><div class="gc"><div class="gt"><span class="gd" style="background:#3fb950;"></span>'
-          f'Top 5 MTD Gainers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{gh}</div>'
+          f'Top 5 &mdash; Rolling 1M &nbsp;<span style="color:#8b949e;font-weight:400;">(21 trading days)</span></div>{gh}</div>'
           f'<div class="gc"><div class="gt"><span class="gd" style="background:#f85149;"></span>'
-          f'Top 5 MTD Losers &nbsp;<span style="color:#8b949e;font-weight:400;">(1-Month)</span></div>{lh}</div></div>'
-          f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th><th>CCY</th><th style="min-width:80px;">Trend 20D</th>'
+          f'Top 5 Laggards &mdash; Rolling 1M &nbsp;<span style="color:#8b949e;font-weight:400;">(21 trading days)</span></div>{lh}</div></div>'
+          + _acc_controls("perf")
+          + f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th><th>CCY</th><th style="min-width:80px;">Trend 20D</th>'
           f'{d1th}<th>1W</th><th>1M</th><th>3M</th><th>YTD</th><th>Signal</th>'
           f'</tr></thead><tbody>{pr}</tbody></table></div>')
 
@@ -1329,26 +2096,56 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
            f'<div class="vl">VOL EASING &#11015;</div><div class="vs">Change &lt; &#8722;5%</div></div>'
            f'</div>')
 
+    # Per-section summaries for Risk accordion headers: avg vol, avg DD, avg Sharpe
+    _risk_sum = {}
+    for _sec in df["section"].unique():
+        _sub = df[df["section"] == _sec]
+        _avol = _sub["vol_now"].mean(skipna=True)
+        _add  = _sub["max_dd"].mean(skipna=True)
+        _ash  = _sub["sharpe"].mean(skipna=True)
+        _vol_txt = f'{_avol*100:.1f}%' if pd.notna(_avol) else '—'
+        _dd_txt  = f'{_add*100:.1f}%'  if pd.notna(_add)  else '—'
+        _sh_txt  = f'{_ash:.2f}'       if pd.notna(_ash)  else '—'
+        _risk_sum[_sec] = (
+            f'Avg vol: {_vol_txt} &nbsp;|&nbsp; Avg DD: {_dd_txt} &nbsp;|&nbsp; Avg Sharpe: {_sh_txt}',
+            int(len(_sub))
+        )
+
     rr=""; rv=None
     for _,row in df.iterrows():
-        if row["section"]!=rv: rv=row["section"]; rr+=_srow(row["section"],cs=8)
+        if row["section"]!=rv:
+            rv=row["section"]
+            _sum, _cnt = _risk_sum.get(rv, ("", 0))
+            rr += _srow_acc(rv, "risk", _sum, _cnt, cs=8)
         cl,arrow,pct=_varrow(row.get("vol_now",float("nan")),row.get("vol_1m_ago",float("nan")))
-        vn=f'{row["vol_now"]*100:.1f}%' if not pd.isna(row.get("vol_now",float("nan"))) else "-"
-        va=f'{row["vol_1m_ago"]*100:.1f}%' if not pd.isna(row.get("vol_1m_ago",float("nan"))) else "-"
+        # Vol indices: vol-of-vol is not a sensible metric — show N/A
+        if row["ticker"] in VOL_VALUE_EXCLUSIONS:
+            vn = va = "N/A"; cl = "gr"; arrow = ""; pct = "N/A"
+        else:
+            vn=f'{row["vol_now"]*100:.1f}%' if not pd.isna(row.get("vol_now",float("nan"))) else "-"
+            va=f'{row["vol_1m_ago"]*100:.1f}%' if not pd.isna(row.get("vol_1m_ago",float("nan"))) else "-"
+        # Yield indices: Sharpe is meaningless for rate levels — show N/A
+        _sharpe_cell = ('<td class="num gr" style="font-style:italic;">N/A</td>'
+                        if row["ticker"] in SHARPE_EXCLUSIONS
+                        else _rc(row["sharpe"],"sh"))
         rr+=(f'<tr><td class="an">{row["name"]}</td><td class="tk">{row["ticker"]}</td>'
              f'<td class="num gr">{vn}</td><td class="num gr">{va}</td>'
              f'<td class="num {cl}" style="font-family:monospace;">{arrow}&nbsp;{pct}</td>'
-             f'{_rc(row["max_dd"],"dd")}{_rc(row["sharpe"],"sh")}'
+             f'{_rc(row["max_dd"],"dd")}{_sharpe_cell}'
              f'{_sig(row["rag_label"],row["rag_color"])}</tr>')
 
     risk=(vsumm+
+          _acc_controls("risk") +
           f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
           f'<th>Vol 20D</th><th>Vol 1M Ago</th><th>30D Change</th>'
           f'<th>Max DD</th><th>Sharpe</th><th>Signal</th></tr></thead><tbody>{rr}</tbody></table></div>'
           f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
           f'&#11014;&#11014; Vol rising &ge;+20% &nbsp;&#183;&nbsp; &#11014; +5% to +20% &nbsp;&#183;&nbsp; '
           f'&#8594; stable &#8722;5% to +5% &nbsp;&#183;&nbsp; &#11015; easing &lt;&#8722;5% &nbsp;&#183;&nbsp; '
-          f'Sharpe = 1Y excess return / vol (rf=4.5%)</div>')
+          f'Sharpe = 1Y excess return / vol (rf=4.5%)<br>'
+          f'Vol 20D = 20-day daily returns std dev &times; &radic;252 (annualised) &nbsp;&#183;&nbsp; '
+          f'Vol 1M Ago = same calculation 21 trading days prior &nbsp;&#183;&nbsp; '
+          f'20Y Treasury vol &gt; HY Credit vol is expected: duration risk dominates rate-sensitive environments</div>')
 
 
     # ── Build Fragility Trend SVG chart ──────────────────────────────────────
@@ -1358,7 +2155,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         ft_peak    = frag_trend.get("peak_2y", 50)
         ft_trough  = frag_trend.get("trough_2y", 50)
         ft_avg     = frag_trend.get("avg_2y", 50)
-        ft_color   = "#f85149" if ft_current>=70 else "#e3b341" if ft_current>=50 else "#3fb950"
+        ft_color   = "#f85149" if ft_current>=70 else "#e3b341" if ft_current>=55 else "#3fb950"
 
         # Build SVG
         svg_w = 900; svg_h = 180; pad_l = 40; pad_r = 10; pad_t = 10; pad_b = 30
@@ -1371,11 +2168,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
         # Background regime bands
         bands = []
-        band_start = 0; band_reg = trend_pts[0]["regime"] if trend_pts else "Calm"
+        band_start = 0; band_reg = trend_pts[0]["regime"] if trend_pts else "Moderate"
         for i, pt in enumerate(trend_pts):
             if pt["regime"] != band_reg or i == n_pts-1:
                 x1 = _x(band_start); x2 = _x(i)
-                bc = {"Crisis":"rgba(248,81,73,0.12)","Stressed":"rgba(227,179,65,0.10)","Calm":"rgba(63,185,80,0.06)"}.get(band_reg,"rgba(0,0,0,0)")
+                bc = {"Crisis":"rgba(248,81,73,0.12)","Stressed":"rgba(227,179,65,0.10)","Moderate":"rgba(63,185,80,0.06)"}.get(band_reg,"rgba(0,0,0,0)")
                 bands.append(f'<rect x="{x1:.1f}" y="{pad_t}" width="{x2-x1:.1f}" height="{chart_h}" fill="{bc}"/>')
                 band_start = i; band_reg = pt["regime"]
 
@@ -1439,8 +2236,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'{svg_parts}'
             f'<div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:#8b949e;">'
             f'<span><span style="color:#f85149;">&#9632;</span> CRISIS &#8805;70</span>'
-            f'<span><span style="color:#e3b341;">&#9632;</span> STRESSED 50&#8211;70</span>'
-            f'<span><span style="color:#3fb950;">&#9632;</span> CALM &lt;50</span>'
+            f'<span><span style="color:#e3b341;">&#9632;</span> STRESSED 55&#8211;69</span>'
+            f'<span><span style="color:#3fb950;">&#9632;</span> MODERATE &lt;55</span>'
             f'<span style="margin-left:8px;">Dashed lines = regime thresholds</span>'
             f'</div></div>'
         )
@@ -1451,12 +2248,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ══ TAB 3: FRAGILITY ══════════════════════════════════════════════════════
     if frag_df is not None and not frag_df.empty:
         ss=frag_df.attrs.get("system_score",float(frag_df["fragility"].median()))
-        reg=frag_df.attrs.get("regime","CALM")
-        rc_={"CRISIS":"#f85149","STRESSED":"#e3b341","CALM":"#3fb950"}.get(reg,"#8b949e")
-        rb_={"CRISIS":"#2d0f0e","STRESSED":"#2d2106","CALM":"#0d2318"}.get(reg,"#161b22")
+        reg=frag_df.attrs.get("regime","MODERATE")
+        rc_={"CRISIS":"#f85149","STRESSED":"#e3b341","MODERATE":"#3fb950"}.get(reg,"#8b949e")
+        rb_={"CRISIS":"#2d0f0e","STRESSED":"#2d2106","MODERATE":"#0d2318"}.get(reg,"#161b22")
         ncr=int((frag_df["rag"]=="CRISIS").sum())
         nst=int((frag_df["rag"]=="STRESSED").sum())
-        nca=int((frag_df["rag"]=="CALM").sum())
+        nca=int((frag_df["rag"]=="MODERATE").sum())
 
         def _arc(deg,r=78,cx=100,cy=88):
             rad=math.radians(180-deg)
@@ -1485,8 +2282,39 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
         PL={"pillar_dd":"Drawdown","pillar_vol":"Volatility","pillar_cvar":"Tail Risk",
             "pillar_trend":"Trend","pillar_corr":"Contagion","pillar_volz":"Vol Stress"}
-        fr=""
-        for _,r in frag_df.iterrows():
+
+        # Group frag_df by section (preserve fragility ordering within section)
+        _frag_sorted = frag_df.copy()
+        _frag_sorted["_sec_order"] = _frag_sorted["section"].map(
+            {s: i for i, s in enumerate(SECTION_ORDER)}).fillna(99)
+        _frag_sorted = _frag_sorted.sort_values(
+            ["_sec_order", "fragility"], ascending=[True, False])
+
+        # Per-section summaries for Fragility accordion headers
+        _frag_sum = {}
+        for _sec in _frag_sorted["section"].unique():
+            _sub = _frag_sorted[_frag_sorted["section"] == _sec]
+            _avg = float(_sub["fragility"].mean())
+            _top = _sub.iloc[0]
+            _frag_sum[_sec] = (
+                f'Avg score: <span style="color:#e3b341;">{_avg:.0f}</span> '
+                f'&nbsp;|&nbsp; Highest: <span style="color:#f85149;">{_top["name"]} ({_top["fragility"]:.0f})</span>',
+                int(len(_sub))
+            )
+
+        fr=""; _frag_pv = None
+        for _,r in _frag_sorted.iterrows():
+            _sec = r["section"]
+            if _sec != _frag_pv:
+                _frag_pv = _sec
+                _sum, _cnt = _frag_sum.get(_sec, ("", 0))
+                fr += _srow_acc(_sec, "frag", _sum, _cnt, cs=12)
+            if r.get("rag") == "N/A" or pd.isna(r.get("fragility")):
+                # Excluded computed proxies / fear indices — show N/A row
+                fr += (f'<tr><td class="an">{r["name"]}</td><td class="tk">{r["ticker"]}</td>'
+                       f'<td class="num gr" colspan="10" style="font-style:italic;">'
+                       f'N/A &mdash; computed proxy / fear index (not scored)</td></tr>')
+                continue
             fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
             bw=min(100,r["fragility"])
             pv={k:r.get(k,0) for k in PL}; top=PL[max(pv,key=pv.get)]
@@ -1507,27 +2335,112 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &#8805; 70</div></div>'
               f'<div class="fc" style="text-align:center;"><div class="lbl">STRESSED</div>'
               f'<div style="font-size:28px;font-weight:700;color:#e3b341;font-family:monospace;">{nst}</div>'
-              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score 50&#8211;70</div></div>'
-              f'<div class="fc" style="text-align:center;"><div class="lbl">CALM</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score 55&#8211;69</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">MODERATE</div>'
               f'<div style="font-size:28px;font-weight:700;color:#3fb950;font-family:monospace;">{nca}</div>'
-              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 50</div></div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 55</div></div>'
               f'<div class="fc" style="text-align:center;"><div class="lbl">TOTAL</div>'
               f'<div style="font-size:28px;font-weight:700;color:#e6edf3;font-family:monospace;">{len(frag_df)}</div>'
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Instruments</div></div></div>'
               f'<div class="fc" style="margin-bottom:14px;">'
               f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:12px;text-transform:uppercase;">&#9888; Top 5 Most Fragile</div>'
               f'{t5h}</div>'
+              + _acc_controls("frag") +
               f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
               f'<th>Score</th><th>Bar</th><th>Status</th><th>Top Driver</th>'
               f'<th>Drawdown</th><th>Volatility</th><th>Tail Risk</th><th>Trend</th><th>Contagion</th><th>Vol Stress</th>'
               f'</tr></thead><tbody>{fr}</tbody></table></div>'
+              f'<div style="margin-top:14px;padding:12px 14px;background:#0d1117;border-left:3px solid #58a6ff;font-size:10px;color:#9aa3b8;line-height:1.7;">'
+              f'<strong style="color:#c8cfe0;">What fragility measures:</strong> Fragility tracks '
+              f'<em>price stress characteristics</em> &mdash; not the safety or quality of an instrument. '
+              f'A safe-haven asset can show elevated fragility when its price is declining.<br>'
+              f'<strong style="color:#c8cfe0;">T-Bills (BIL):</strong> Fragility reflects rate '
+              f'sensitivity and reinvestment risk, not credit or liquidity risk.<br>'
+              f'<strong style="color:#c8cfe0;">FX pairs:</strong> Fragility uses price return vol '
+              f'only &mdash; some pillars (e.g. contagion) may show 0.0 for currency pairs.'
+              f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
               f'BK Fragility Framework &#183; Drawdown 22% + CVaR 20% + Contagion 18% + Volatility 15% + Trend 15% + Vol Stress 10% &#183; '
-              f'CRISIS &#8805;70 &#183; STRESSED 50&#8211;70 &#183; CALM &lt;50</div>')
+              f'CRISIS &#8805;70 &#183; STRESSED 55&#8211;69 &#183; MODERATE &lt;55<br>'
+              f'Pillar scores are standardised z-scores relative to history (positive = above average stress) &#183; '
+              f'Top Driver = highest contributing pillar &#183; '
+              f'Negative scores = below historical stress average (healthy signal)</div>')
     else:
         frag='<div style="padding:40px;text-align:center;color:#8b949e;">Fragility data unavailable.</div>'
 
 
+
+    def _build_edge_backtest(bt):
+        """Build full backtest section for Edge tab."""
+        if not bt: return ''
+        bk_s=bt.get('bk',{}); spy_s=bt.get('spy',{}); p_s=bt.get('p6040',{})
+        yrs=bt.get('years',5); tl=bt.get('timeline',[])
+        # Build chart SVG
+        svg_w=900; svg_h=200; pad_l=50; pad_r=10; pad_t=10; pad_b=30
+        cw=svg_w-pad_l-pad_r; ch=svg_h-pad_t-pad_b
+        if not tl: return ''
+        all_v=[pt['bk'] for pt in tl]+[pt['spy'] for pt in tl]+[pt['p6040'] for pt in tl]
+        mn=min(all_v); mx=max(all_v); rng=max(mx-mn,0.01)
+        def _x(i): return pad_l+i/max(len(tl)-1,1)*cw
+        def _y(v): return pad_t+(1-(v-mn)/rng)*ch
+        bk_pts=' '.join(f'{_x(i):.1f},{_y(pt["bk"]):.1f}' for i,pt in enumerate(tl))
+        spy_pts=' '.join(f'{_x(i):.1f},{_y(pt["spy"]):.1f}' for i,pt in enumerate(tl))
+        p_pts=' '.join(f'{_x(i):.1f},{_y(pt["p6040"]):.1f}' for i,pt in enumerate(tl))
+        # X labels
+        xlabels=''
+        prev_y=''
+        for i,pt in enumerate(tl):
+            yr=pt['date'][:4]
+            if yr!=prev_y:
+                prev_y=yr
+                xlabels+=f'<text x="{_x(i):.1f}" y="{svg_h-4}" text-anchor="middle" font-size="9" fill="#8b949e">{yr}</text>'
+        svg=(f'<svg viewBox="0 0 {svg_w} {svg_h}" width="100%" style="max-width:{svg_w}px;display:block;">'
+             f'<polyline points="{bk_pts}" fill="none" stroke="#58a6ff" stroke-width="2"/>'
+             f'<polyline points="{spy_pts}" fill="none" stroke="#8b949e" stroke-width="1.5" stroke-dasharray="4,3"/>'
+             f'<polyline points="{p_pts}" fill="none" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="2,3"/>'
+             f'{xlabels}</svg>')
+        # Stats table
+        rows=''
+        for lbl,bv,sv,pv in [('Total Return',f'{bk_s.get("total",0):+.1f}%',f'{spy_s.get("total",0):+.1f}%',f'{p_s.get("total",0):+.1f}%'),
+                              ('CAGR',f'{bk_s.get("cagr",0):+.1f}%',f'{spy_s.get("cagr",0):+.1f}%',f'{p_s.get("cagr",0):+.1f}%'),
+                              ('Sharpe',f'{bk_s.get("sharpe",0):.2f}',f'{spy_s.get("sharpe",0):.2f}',f'{p_s.get("sharpe",0):.2f}'),
+                              ('Max DD',f'{bk_s.get("max_dd",0):.1f}%',f'{spy_s.get("max_dd",0):.1f}%',f'{p_s.get("max_dd",0):.1f}%')]:
+            rows+=(f'<tr><td style="padding:7px 12px;color:#8b949e;font-size:11px;">{lbl}</td>'
+                   f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#58a6ff;">{bv}</td>'
+                   f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{sv}</td>'
+                   f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{pv}</td></tr>')
+        return (
+            f'<div class="fc" style="margin-top:14px;">'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME ALLOCATION BACKTEST — {yrs:.0f} YEAR (SIMPLIFIED 6-INSTRUMENT MODEL)</div>'
+            f'<div style="display:flex;gap:16px;margin-bottom:8px;font-size:10px;">'
+            f'<span><span style="color:#58a6ff;">&#9472;&#9472;</span> BK Regime Allocation</span>'
+            f'<span><span style="color:#8b949e;">- - -</span> SPY Buy & Hold</span>'
+            f'<span><span style="color:#3fb950;">&#183;&#183;&#183;</span> 60/40 Portfolio</span>'
+            f'</div>'
+            f'{svg}'
+            f'<table style="width:100%;border-collapse:collapse;margin-top:12px;">'
+            f'<thead><tr>'
+            f'<th style="text-align:left;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;"></th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#58a6ff;border-bottom:1px solid #30363d;">BK ALLOCATION</th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">SPY B&H</th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">60/40</th>'
+            f'</tr></thead><tbody>{rows}</tbody></table>'
+            f'<div style="margin-top:10px;padding:10px 12px;background:#0d1117;border-left:3px solid #e3b341;font-size:10px;color:#8b949e;line-height:1.6;">'
+            f'<strong style="color:#e3b341;">&#9888; Backtest model note:</strong> This {yrs:.0f}-year simulation uses '
+            f'a simplified <strong style="color:#c8cfe0;">3-regime, 6-instrument</strong> allocation '
+            f'(SPY &middot; TLT &middot; GLD &middot; BIL &middot; HYG &middot; EEM) with hardcoded '
+            f'regime weights &mdash; <strong style="color:#c8cfe0;">separate from the live BK Dynamic '
+            f'Allocation model shown above</strong>, which uses the full 97-instrument universe and '
+            f'the RAS formula. Assumptions: monthly rebalancing &middot; zero transaction costs &middot; '
+            f'rf = 4.5% &middot; gross of fees &middot; one-day execution lag applied (regime signal '
+            f'from day i executes on day i+1).<br>'
+            f'<span style="color:#6a7485;">Chart shows cumulative total return; Sharpe measures '
+            f'risk-adjusted return &mdash; a strategy with lower absolute return but significantly '
+            f'lower volatility can achieve a higher Sharpe. The chart and Sharpe column can therefore '
+            f'appear to disagree while both being correct.</span>'
+            f'</div>'
+            f'</div>'
+        )
 
     def _build_rsr(df_in):
         """Build Relative Strength Rankings — sorted within each asset class."""
@@ -1535,7 +2448,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         html = (
             '<div style="margin-top:14px;">'
             '<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;'
-            'text-transform:uppercase;margin-bottom:12px;">RELATIVE STRENGTH RANKINGS — BY ASSET CLASS</div>'
+            'text-transform:uppercase;margin-bottom:4px;">RELATIVE STRENGTH RANKINGS — BY ASSET CLASS</div>'
+            '<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:12px;">Ranked by 1-month price return within each asset class</div>'
             '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">'
         )
         for sec in sections_order:
@@ -1553,14 +2467,23 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 color = "#3fb950" if v>=0 else "#f85149"
                 bar_w = min(100, abs(v)/rng*100)
                 bar_dir = "right" if v>=0 else "left"
-                medal = {1:"🥇",2:"🥈",3:"🥉"}.get(rank,"")
+                medal = str(rank)
                 rows_html += (
                     f'<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #21262d;">'
-                    f'<div style="width:16px;font-size:10px;text-align:center;">{medal if rank<=3 else str(rank)}</div>'
+                    f'<div style="width:16px;font-size:10px;text-align:center;">{medal}</div>'
                     f'<div style="flex:1;font-size:10px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</div>'
                     f'<div style="width:50px;text-align:right;font-family:monospace;font-size:10px;font-weight:700;color:{color};">{s}{v*100:.1f}%</div>'
                     f'</div>'
                 )
+            # Positive return must never be red — relabel "Worst" as "Weakest"
+            # and colour amber when the whole bucket is positive.
+            if worst_ret >= 0:
+                worst_html = (f'<span>Weakest: <span style="color:#e3b341;">'
+                              f'{worst_ret*100:+.1f}%</span> '
+                              f'<span style="color:#6a7485;font-style:italic;">(all positive)</span></span>')
+            else:
+                worst_html = (f'<span>Worst: <span style="color:#f85149;">'
+                              f'{worst_ret*100:+.1f}%</span></span>')
             html += (
                 f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 14px;">'
                 f'<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:#58a6ff;'
@@ -1568,7 +2491,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 f'{rows_html}'
                 f'<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:9px;color:#8b949e;">'
                 f'<span>Best: <span style="color:#3fb950;">{best_ret*100:+.1f}%</span></span>'
-                f'<span>Worst: <span style="color:#f85149;">{worst_ret*100:+.1f}%</span></span>'
+                f'{worst_html}'
                 f'</div></div>'
             )
         html += '</div></div>'
@@ -1576,140 +2499,172 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
 
     # ══ TAB 4: ANALYSIS — Correlation Heatmap ════════════════════════════════
-
-    # Key 20 representative instruments
-    HEATMAP_TICKERS = {
-        "S&P 500":      "SPY",
-        "Nasdaq 100":   "QQQ",
-        "Europe Dev":   "EFA",
-        "Euro STOXX 50":"FEZ",
-        "EM Broad":     "EEM",
-        "China":        "FXI",
-        "India":        "INDA",
-        "Japan":        "DBJP",
-        "Energy":       "XLE",
-        "Financials":   "XLF",
-        "Defence":      "ITA",
-        "Treasuries 10Y":"IEF",
-        "Treasuries 20Y":"TLT",
-        "HY Credit":    "HYG",
-        "Gold":         "GLD",
-        "WTI Oil":      "USO",
-        "Bitcoin":      "BTC-USD",
-        "USD Index":    "UUP",
-        "EUR/USD":      "EURUSD=X",
-        "VIX Futures":  "VIXY",
+    # Key-20 matrix grouped by asset class for institutional readability.
+    HEATMAP_ORDER = [
+        # EQ bloc (8)
+        "SPY", "QQQ", "IWM", "ACWI", "EEM", "XLK", "XLV", "XLU",
+        # FI bloc (4)
+        "TLT", "HYG", "LQD", "BIL",
+        # CMD bloc (3)
+        "GLD", "BNO", "DBC",
+        # ALT bloc (5)
+        "BTC-USD", "EURUSD=X", "JPY=X", "VXX", "ITA",
+    ]
+    HEATMAP_GROUPS_ORDERED = [
+        ("EQ",  8),   # first 8 cells
+        ("FI",  4),
+        ("CMD", 3),
+        ("ALT", 5),
+    ]
+    HEATMAP_DISPLAY_NAMES = {
+        "SPY": "SPY", "QQQ": "QQQ", "IWM": "IWM", "ACWI": "ACWI", "EEM": "EEM",
+        "XLK": "Tech", "XLV": "Health", "XLU": "Util",
+        "TLT": "TLT", "HYG": "HYG", "LQD": "LQD", "BIL": "BIL",
+        "GLD": "Gold", "BNO": "Oil", "DBC": "CMD",
+        "BTC-USD": "BTC", "EURUSD=X": "EUR", "JPY=X": "JPY",
+        "VXX": "VIX", "ITA": "DEF",
     }
 
-    # Build correlation matrix from prices
     def _build_heatmap(prices_df):
-        # Filter to available heatmap tickers
-        available = {name: tk for name, tk in HEATMAP_TICKERS.items() if tk in prices_df.columns}
-        if len(available) < 4:
+        tickers = [t for t in HEATMAP_ORDER if t in prices_df.columns]
+        if len(tickers) < 4:
             return None, None
-        tickers  = list(available.values())
-        names    = list(available.keys())
-        rets     = prices_df[tickers].pct_change().dropna()
-        # 60-day rolling correlation — use last 60 days
-        corr_df  = rets.tail(60).corr()
-        corr_df.columns = names
-        corr_df.index   = names
-        return corr_df, names
+        rets    = prices_df[tickers].pct_change().dropna()
+        corr_df = rets.tail(60).corr()
+        return corr_df, tickers
 
-    def _corr_color(v):
-        """Map correlation -1..+1 to a red-white-blue color."""
-        if v >= 0:
-            # white to deep red
-            intensity = int(v * 200)
-            r = min(255, 200 + intensity // 4)
-            g = max(0,   200 - intensity)
-            b = max(0,   200 - intensity)
+    def _corr_cell_style(v):
+        """Red/white/blue diverging scale for a correlation value."""
+        if abs(v) < 0.10:
+            return "#161b22", "#4a5568", ""  # near-zero cells: suppressed
+        if v > 0:
+            # white -> deep red
+            intensity = min(int(abs(v) * 180), 180)
+            bg = f"rgb({180+intensity//3},{80 - intensity//3 if intensity < 120 else 30},{80 - intensity//3 if intensity < 120 else 30})"
+            text = "#ffffff" if intensity > 90 else "#1a1a1a"
         else:
-            # white to deep blue
-            intensity = int(-v * 200)
-            r = max(0,   200 - intensity)
-            g = max(0,   200 - intensity)
-            b = min(255, 200 + intensity // 4)
-        return f"rgb({r},{g},{b})"
-
-    def _text_color(v):
-        return "#111" if abs(v) < 0.5 else "#fff"
+            intensity = min(int(abs(v) * 180), 180)
+            bg = f"rgb({80 - intensity//3 if intensity < 120 else 30},{110 - intensity//4 if intensity < 120 else 80},{180+intensity//3})"
+            text = "#ffffff" if intensity > 90 else "#1a1a1a"
+        return bg, text, f"{v:+.2f}"
 
     corr_df, hm_names = _build_heatmap(prices)
 
     if corr_df is not None:
         n = len(hm_names)
-        cell_size = 40  # px per cell
-        label_w   = 120
-        total_w   = label_w + n * cell_size
-        total_h   = label_w + n * cell_size
-        assert total_w == label_w + n * cell_size  # guard
+        cell_size = 28   # per briefing spec
+        label_w   = 90
+        pad_top   = 70   # space for rotated column labels
+        total_w   = label_w + n * cell_size + 20
+        total_h   = pad_top + n * cell_size + 20
 
-        # Build SVG heatmap
+        # Group boundary indices (where one asset class ends and next begins)
+        group_bounds = []
+        _cum = 0
+        for _g, _sz in HEATMAP_GROUPS_ORDERED:
+            _cum += _sz
+            group_bounds.append((_cum, _g))
+        div_indices = [b[0] for b in group_bounds[:-1]]  # exclude final boundary
+
         svg_parts = [
             f'<svg viewBox="0 0 {total_w} {total_h}" width="100%" '
-            f'style="max-width:{total_w}px;font-family:monospace;">'
+            f'style="max-width:{total_w}px;font-family:system-ui,sans-serif;">'
         ]
 
-        # Column labels (rotated)
-        for j, name in enumerate(hm_names):
-            x = label_w + j * cell_size + cell_size // 2
+        # Column labels — rotated 45°
+        for j, tk in enumerate(hm_names):
+            x = label_w + j * cell_size + cell_size / 2
+            label = HEATMAP_DISPLAY_NAMES.get(tk, tk)
             svg_parts.append(
-                f'<text x="{x}" y="{label_w - 4}" text-anchor="end" '
-                f'transform="rotate(-45,{x},{label_w-4})" '
-                f'font-size="9" fill="#8b949e">{name[:12]}</text>'
+                f'<text x="{x}" y="{pad_top - 6}" text-anchor="end" '
+                f'transform="rotate(-45,{x},{pad_top-6})" '
+                f'font-size="10" font-weight="600" fill="#c8cfe0">{label}</text>'
             )
 
         # Row labels + cells
-        for i, row_name in enumerate(hm_names):
-            y_center = label_w + i * cell_size + cell_size // 2
-
-            # Row label
+        for i, row_tk in enumerate(hm_names):
+            y_top = pad_top + i * cell_size
+            row_label = HEATMAP_DISPLAY_NAMES.get(row_tk, row_tk)
             svg_parts.append(
-                f'<text x="{label_w - 6}" y="{y_center + 3}" '
-                f'text-anchor="end" font-size="9" fill="#8b949e">{row_name[:14]}</text>'
+                f'<text x="{label_w - 8}" y="{y_top + cell_size/2 + 3}" '
+                f'text-anchor="end" font-size="10" font-weight="600" fill="#c8cfe0">'
+                f'{row_label}</text>'
             )
-
-            for j, col_name in enumerate(hm_names):
-                v    = corr_df.loc[row_name, col_name]
-                x    = label_w + j * cell_size
-                y    = label_w + i * cell_size
-                bg   = _corr_color(v)
-                tc   = _text_color(v)
-                diag = ' opacity="0.6"' if i == j else ''
+            for j, col_tk in enumerate(hm_names):
+                v = corr_df.loc[row_tk, col_tk]
+                x = label_w + j * cell_size
+                y = y_top
+                if i == j:
+                    # Diagonal: dark grey, no value shown
+                    svg_parts.append(
+                        f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" '
+                        f'fill="#21262d" rx="1"/>'
+                    )
+                    continue
+                bg, tc, disp = _corr_cell_style(float(v))
                 svg_parts.append(
                     f'<rect x="{x}" y="{y}" width="{cell_size}" height="{cell_size}" '
-                    f'fill="{bg}"{diag} rx="1"/>'
+                    f'fill="{bg}" rx="1">'
+                    f'<title>{HEATMAP_DISPLAY_NAMES.get(row_tk, row_tk)} vs '
+                    f'{HEATMAP_DISPLAY_NAMES.get(col_tk, col_tk)}: {v:+.2f}</title></rect>'
                 )
-                svg_parts.append(
-                    f'<text x="{x + cell_size//2}" y="{y + cell_size//2 + 3}" '
-                    f'text-anchor="middle" font-size="8" fill="{tc}">{v:.2f}</text>'
-                )
+                if disp:
+                    svg_parts.append(
+                        f'<text x="{x + cell_size/2}" y="{y + cell_size/2 + 3}" '
+                        f'text-anchor="middle" font-size="9" fill="{tc}" '
+                        f'style="pointer-events:none;">{disp}</text>'
+                    )
+
+        # Asset-class group dividers (2px white lines between groups)
+        for idx in div_indices:
+            xd = label_w + idx * cell_size
+            yd = pad_top + idx * cell_size
+            # vertical divider
+            svg_parts.append(
+                f'<line x1="{xd}" y1="{pad_top}" x2="{xd}" '
+                f'y2="{pad_top + n*cell_size}" stroke="#e6edf3" stroke-width="2"/>'
+            )
+            # horizontal divider
+            svg_parts.append(
+                f'<line x1="{label_w}" y1="{yd}" x2="{label_w + n*cell_size}" '
+                f'y2="{yd}" stroke="#e6edf3" stroke-width="2"/>'
+            )
+
+        # Group labels along top
+        _acc = 0
+        for g_name, g_size in HEATMAP_GROUPS_ORDERED:
+            x_mid = label_w + (_acc + g_size/2) * cell_size
+            svg_parts.append(
+                f'<text x="{x_mid}" y="14" text-anchor="middle" font-size="10" '
+                f'font-weight="700" fill="#58a6ff" letter-spacing="1">{g_name}</text>'
+            )
+            _acc += g_size
 
         svg_parts.append('</svg>')
         heatmap_svg = "".join(svg_parts)
 
-        # Colour legend
+        as_of_date = now.strftime("%d %b %Y")
         legend_svg = (
-            '<svg width="260" height="20" style="margin-top:8px;">'
-            '<defs><linearGradient id="lg" x1="0" x2="1" y1="0" y2="0">'
-            '<stop offset="0%" stop-color="rgb(0,0,255)"/>'
-            '<stop offset="50%" stop-color="rgb(200,200,200)"/>'
-            '<stop offset="100%" stop-color="rgb(255,0,0)"/>'
-            '</linearGradient></defs>'
-            '<rect x="30" y="2" width="200" height="12" fill="url(#lg)" rx="2"/>'
-            '<text x="28" y="18" text-anchor="end" font-size="9" fill="#8b949e">-1.0</text>'
-            '<text x="130" y="18" text-anchor="middle" font-size="9" fill="#8b949e">0</text>'
-            '<text x="232" y="18" text-anchor="start" font-size="9" fill="#8b949e">+1.0</text>'
-            '</svg>'
+            f'<div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap;">'
+            f'<span style="font-size:10px;color:#8b949e;font-family:monospace;">-1.0</span>'
+            f'<div style="width:220px;height:12px;border-radius:4px;'
+            f'background:linear-gradient(to right,rgb(30,80,210),#161b22 45%,#161b22 55%,rgb(210,80,30));">'
+            f'</div>'
+            f'<span style="font-size:10px;color:#8b949e;font-family:monospace;">+1.0</span>'
+            f'<span style="font-size:10px;color:#8b949e;margin-left:16px;">'
+            f'60-day rolling correlation &#183; as of {as_of_date}'
+            f'</span>'
+            f'</div>'
         )
 
         # Top correlations (most correlated pairs, excluding diagonal)
         pairs = []
         for i in range(n):
             for j in range(i+1, n):
-                v = corr_df.iloc[i, j]
-                pairs.append((v, hm_names[i], hm_names[j]))
+                v = float(corr_df.iloc[i, j])
+                pairs.append((v,
+                              HEATMAP_DISPLAY_NAMES.get(hm_names[i], hm_names[i]),
+                              HEATMAP_DISPLAY_NAMES.get(hm_names[j], hm_names[j])))
         pairs.sort(key=lambda x: abs(x[0]), reverse=True)
 
         top_pairs_html = ""
@@ -1775,6 +2730,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         drivers  = regime_data.get("drivers", {})
         timeline = regime_data.get("timeline", [])
         episodes = regime_data.get("episodes", [])
+        # Display-only rename: internal key "Calm" shown as "Moderate"
+        reg_display = {"Calm": "Moderate"}.get(reg, reg)
 
         rc_ = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg,"#8b949e")
         rb_ = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg,"#161b22")
@@ -1792,23 +2749,27 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             for i, pt in enumerate(timeline):
                 x = i * bar_w
                 tl_parts.append(f'<rect x="{x}" y="0" width="{bar_w+1}" height="{tl_h}" fill="{pt["color"]}" opacity="0.85"/>')
-            # Month labels every ~21 bars
-            prev_month = ""
+            # Month labels — only show every 2nd month to prevent overlap
+            prev_month = ""; label_count = 0
             for i, pt in enumerate(timeline):
                 month = pt["date"][:7]
-                if month != prev_month and i % 21 == 0:
+                if month != prev_month:
                     prev_month = month
-                    x = i * bar_w
-                    tl_parts.append(f'<text x="{x+2}" y="{tl_h-4}" font-size="8" fill="#e6edf3" opacity="0.7">{month}</text>')
+                    label_count += 1
+                    # Only label every other month to avoid overlap
+                    if label_count % 2 == 1:
+                        x = i * bar_w
+                        tl_parts.append(f'<text x="{x+2}" y="{tl_h-4}" font-size="8" fill="#e6edf3" opacity="0.7">{month}</text>')
             tl_parts.append('</svg>')
             timeline_svg = "".join(tl_parts)
         else:
             timeline_svg = "<div style='color:#8b949e;'>Insufficient history for timeline.</div>"
 
         # ── Stats table ───────────────────────────────────────────────────────
+        # Display "Moderate" instead of "Calm"; internal regime key is still "Calm".
         stats_rows = ""
-        for rname, rcolor in [("Calm","#3fb950"),("Stressed","#e3b341"),("Crisis","#f85149")]:
-            rs = stats.get(rname, {})
+        for rkey, rname, rcolor in [("Calm","Moderate","#3fb950"),("Stressed","Stressed","#e3b341"),("Crisis","Crisis","#f85149")]:
+            rs = stats.get(rkey, {})
             stats_rows += (
                 f'<tr><td style="padding:8px 12px;color:{rcolor};font-weight:700;font-family:monospace;">{rname}</td>'
                 f'<td class="num gr">{rs.get("days",0):,}</td>'
@@ -1819,21 +2780,27 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # ── Episodes table ────────────────────────────────────────────────────
         ep_rows = ""
         for ep in reversed(episodes):
+            # Prefer full range if available (handles same-month episodes).
+            _range_txt = ep.get("range") or f"{ep['start']} → {ep['end']}"
             ep_rows += (
-                f'<tr><td style="padding:7px 12px;color:#e6edf3;font-size:11px;">{ep["start"]}</td>'
-                f'<td style="padding:7px 12px;color:#8b949e;font-size:11px;">{ep["end"]}</td>'
+                f'<tr><td style="padding:7px 12px;color:#e6edf3;font-size:11px;" colspan="2">{_range_txt}</td>'
                 f'<td class="num nr" style="font-size:11px;">{ep["depth"]:.1f}%</td></tr>'
             )
 
+        # Actual regime history length — compute from stats (don't hardcode 10yr)
+        _total_days = sum(int(rs.get("days", 0)) for rs in stats.values())
+        _actual_years = _total_days / 252 if _total_days else 0
+        _years_label = f"{_actual_years:.1f}-YEAR HISTORY" if _actual_years else "HISTORY"
+
         vol_pct_color = "#f85149" if drivers.get("vol_pct",0)>90 else "#e3b341" if drivers.get("vol_pct",0)>70 else "#3fb950"
-        dd_pct_color  = "#f85149" if drivers.get("dd_pct",0)<20  else "#e3b341" if drivers.get("dd_pct",0)<40  else "#3fb950"
+        dd_pct_color  = "#f85149" if drivers.get("dd_pct",0)<20  else "#e3b341"
 
         regime_tab = (
             # Current regime hero
             f'<div style="background:{rb_};border:2px solid {rc_};border-radius:12px;padding:24px 28px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">'
             f'<div>'
             f'<div style="font-size:9px;color:{rc_};letter-spacing:3px;font-family:monospace;margin-bottom:8px;">CURRENT MARKET REGIME</div>'
-            f'<div style="font-size:42px;font-weight:700;color:{rc_};font-family:monospace;letter-spacing:2px;">{reg.upper()}</div>'
+            f'<div style="font-size:42px;font-weight:700;color:{rc_};font-family:monospace;letter-spacing:2px;">{reg_display.upper()}</div>'
             f'<div style="font-size:11px;color:#e6edf3;margin-top:8px;max-width:500px;line-height:1.6;">{reg_desc}</div>'
             f'</div>'
             f'<div style="text-align:center;">'
@@ -1867,7 +2834,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div class="fc" style="margin-bottom:14px;">'
             f'<div class="lbl" style="margin-bottom:10px;">REGIME TIMELINE — LAST 2 YEARS</div>'
             f'<div style="display:flex;gap:16px;margin-bottom:8px;">'
-            f'<span style="font-size:10px;color:#3fb950;">&#9632; CALM</span>'
+            f'<span style="font-size:10px;color:#3fb950;">&#9632; MODERATE</span>'
             f'<span style="font-size:10px;color:#e3b341;">&#9632; STRESSED</span>'
             f'<span style="font-size:10px;color:#f85149;">&#9632; CRISIS</span>'
             f'</div>'
@@ -1876,7 +2843,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             # Stats + Episodes
             f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
             f'<div class="fc">'
-            f'<div class="lbl" style="margin-bottom:10px;">REGIME STATISTICS — 10 YEAR HISTORY</div>'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME STATISTICS — {_years_label}</div>'
             f'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
             f'<thead><tr><th style="text-align:left;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Regime</th>'
             f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Days</th>'
@@ -1895,7 +2862,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'Regime = deterministic state machine on ACWI (World ETF) &#183; '
             f'Crisis: vol &ge; 90th pct OR dd &le; 10th pct &#183; '
             f'Stressed: vol &ge; 70th pct OR dd &le; 30th pct &#183; '
-            f'Ex-ante expanding quantile thresholds (no look-ahead bias)</div>'
+            f'Ex-ante expanding quantile thresholds (no look-ahead bias) &#183; '
+            f'Vol = 20-day annualised realised volatility &#183; DD = drawdown from 1-year rolling peak</div>'
         )
     else:
         regime_tab = '<div style="padding:40px;text-align:center;color:#8b949e;">Regime data unavailable.</div>'
@@ -1903,7 +2871,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
     # ── Build Fear & Greed HTML ───────────────────────────────────────────────
     if fg_data:
-        fg_score  = fg_data.get("score", 50)
+        fg_score  = round(fg_data.get("score", 50))
         fg_label  = fg_data.get("label", "Neutral")
         fg_emoji  = fg_data.get("emoji", "😐")
         fg_color  = fg_data.get("color", "#e3b341")
@@ -1964,65 +2932,58 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         fg_html = ""
 
 
-    # ══ TAB 6: SUMMARY — GRAND ACTIONABLE INSIGHT ═════════════════════════════
-    # Define rc_ for summary tab (fragility color) — may not be in scope
-    _frag_score = frag_df.attrs.get('system_score', 50) if frag_df is not None and not frag_df.empty else 50
-    rc_ = '#f85149' if _frag_score >= 70 else '#e3b341' if _frag_score >= 50 else '#3fb950'
-    # ══ TAB 6: SUMMARY — GRAND ACTIONABLE INSIGHT ═════════════════════════════
-    # Derive key signals
+    # ══ TAB 1: INTEL — AI-powered daily intelligence ════════════════════════════
+    # Extract AI commentary
+    ai = ai_commentary or {}
+    ai_narrative      = ai.get("narrative", "")
+    ai_actions        = ai.get("actions", [])
+    ai_watchlist      = ai.get("watchlist", [])
+    ai_fg_summary     = ai.get("fg_summary", "")
+    ai_regime_interp  = ai.get("regime_interpretation", "")
+
+    # Signal variables
     reg_now   = regime_data.get("regime","Calm") if regime_data else "Calm"
     reg_color = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now,"#8b949e")
     reg_bg    = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now,"#161b22")
-    frag_sys  = _frag_score
-    frag_reg  = frag_df.attrs.get("regime","CALM") if frag_df is not None and not frag_df.empty else "CALM"
+    frag_sys  = frag_df.attrs.get("system_score", float(frag_df["fragility"].median())) if frag_df is not None and not frag_df.empty else 50.0
+    frag_reg  = frag_df.attrs.get("regime","MODERATE") if frag_df is not None and not frag_df.empty else "MODERATE"
 
-    # Grand verdict
-    if reg_now == "Crisis" or frag_sys >= 70:
-        verdict = "DEFENSIVE — Reduce Risk Exposure"
-        verdict_detail = "Both regime and fragility signal extreme stress. Capital preservation is the priority. Avoid adding risk."
-        verdict_color  = "#f85149"; verdict_bg = "#2d0f0e"
-        actions = [
-            "Reduce equity exposure — rotate to cash, short-duration bonds or gold",
-            "Monitor HY credit spreads — widening signals further deterioration",
-            "Avoid leveraged positions — volatility regime is elevated",
-            "Watch VIX trajectory — sustained >25 confirms crisis regime",
-        ]
-    elif reg_now == "Stressed" or frag_sys >= 50:
-        verdict = "CAUTIOUS — Selective Risk Taking"
-        verdict_detail = "Markets are stressed but not in crisis. Opportunities exist but selectivity is essential."
-        verdict_color  = "#e3b341"; verdict_bg = "#2d2106"
-        actions = [
-            "Favour quality over momentum — reduce high-beta positions",
-            "Increase diversification — correlation is rising, reducing hedge value",
-            "Monitor fragility leaders — highest-scoring instruments signal contagion risk",
-            "Consider defensive sectors — utilities, healthcare, short-duration bonds",
-        ]
-    else:
-        verdict = "CONSTRUCTIVE — Risk-On Environment"
-        verdict_detail = "Markets are calm with contained volatility and drawdowns. Risk appetite can be maintained or increased."
-        verdict_color  = "#3fb950"; verdict_bg = "#0d2318"
-        actions = [
-            "Maintain or increase risk exposure — regime supports it",
-            "Look for laggards with improving momentum within asset classes",
-            "Monitor fragility creep — early warning before regime shifts",
-            "Diversification less critical in calm regimes but maintain core hedges",
-        ]
+    # RAG counts
+    nr = int((df["rag_label"].str.strip()=="RED").sum())
+    na = int((df["rag_label"].str.strip()=="AMBER").sum())
+    ng = int((df["rag_label"].str.strip()=="GREEN").sum())
 
-    # Top 3 opportunities (best MTD green instruments)
-    opps = df[df["rag_label"].str.strip()=="GREEN"].nlargest(3,"ret_1m")[["name","ticker","ret_1m","ret_ytd"]]
+    # Tone — three-way gate over regime, fragility, and rising-risk share
+    _rising_intel = _count_rising_risk(df)
+    tone, tc, tb = calculate_market_tone(reg_now, frag_sys, _rising_intel, len(df))
 
-    # Top 3 risks (most fragile + red signal)
-    risks_df = frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"])].head(3) if frag_df is not None and not frag_df.empty else pd.DataFrame()
+    # Opportunities: BK Top Picks ranked by BK Opportunity Score (not 1M return).
+    # Filter non-investable tickers (yield indices, vol, DX-Y.NYB, GVZ/OVX proxies).
+    _ranked = sorted(
+        [(tk, sc) for tk, sc in bk_opp_scores.items()
+         if sc is not None and is_rankable(tk)],
+        key=lambda x: x[1], reverse=True
+    )[:3]
+    _df_lookup = df.set_index("ticker")
+    risks_df = (frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"])].head(3)
+                if frag_df is not None and not frag_df.empty else pd.DataFrame())
 
     opp_cards = ""
-    for _, r in opps.iterrows():
-        m = r["ret_1m"]; y = r["ret_ytd"] if not pd.isna(r["ret_ytd"]) else 0
+    for _tk, _sc in _ranked:
+        if _tk not in _df_lookup.index:
+            continue
+        _row = _df_lookup.loc[_tk]
+        _nm  = _row["name"]
+        _m   = _row.get("ret_1m", float("nan"))
+        _y   = _row.get("ret_ytd", float("nan"))
+        _mtd = f"{_m*100:+.1f}%" if pd.notna(_m) else "—"
+        _ytd = f"{_y*100:+.1f}%" if pd.notna(_y) else "—"
         opp_cards += (
-            f'<div style="background:#0d2318;border:1px solid #3fb950;border-radius:8px;padding:14px 16px;">'
-            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{r["name"]}</div>'
-            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;margin-top:2px;">{r["ticker"]}</div>'
-            f'<div style="font-size:20px;font-weight:700;color:#3fb950;font-family:monospace;margin-top:6px;">+{m*100:.1f}%</div>'
-            f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">MTD &nbsp;&#183;&nbsp; YTD: {"+"+str(round(y*100,1))+"%"  if y>=0 else str(round(y*100,1))+"%"}</div>'
+            f'<div style="background:#0d2318;border:1px solid #3fb950;border-radius:8px;padding:12px 14px;">'
+            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{_nm}</div>'
+            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;">{_tk}</div>'
+            f'<div style="font-size:20px;font-weight:700;color:#3fb950;font-family:monospace;margin-top:4px;">{_sc:.0f}<span style="font-size:10px;">/100</span></div>'
+            f'<div style="font-size:9px;color:#8b949e;">BK Opp Score &#183; 1M {_mtd} &#183; YTD {_ytd}</div>'
             f'</div>'
         )
 
@@ -2031,48 +2992,123 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         fc = "#f85149" if r["rag"]=="CRISIS" else "#e3b341"
         rb = "#2d0f0e" if r["rag"]=="CRISIS" else "#2d2106"
         risk_cards += (
-            f'<div style="background:{rb};border:1px solid {fc};border-radius:8px;padding:14px 16px;">'
+            f'<div style="background:{rb};border:1px solid {fc};border-radius:8px;padding:12px 14px;">'
             f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{r["name"]}</div>'
-            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;margin-top:2px;">{r["ticker"]}</div>'
-            f'<div style="font-size:20px;font-weight:700;color:{fc};font-family:monospace;margin-top:6px;">{r["fragility"]:.0f}<span style="font-size:12px;">/100</span></div>'
-            f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">Fragility score &nbsp;&#183;&nbsp; {r["rag"]}</div>'
+            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;">{r["ticker"]}</div>'
+            f'<div style="font-size:20px;font-weight:700;color:{fc};font-family:monospace;margin-top:4px;">{r["fragility"]:.0f}<span style="font-size:10px;">/100</span></div>'
+            f'<div style="font-size:9px;color:#8b949e;">{r["rag"]}</div>'
             f'</div>'
         )
 
-    action_items = "".join(
-        f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #21262d;">'
-        f'<div style="color:{verdict_color};font-size:14px;margin-top:1px;">&#10148;</div>'
-        f'<div style="font-size:12px;color:#e6edf3;line-height:1.5;">{a}</div></div>'
-        for a in actions
-    )
+    # AI Actions HTML
+    action_items = ""
+    if ai_actions:
+        for a in ai_actions:
+            action_items += (
+                f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #21262d;">'
+                f'<div style="color:{reg_color};font-size:14px;margin-top:1px;">&#10148;</div>'
+                f'<div style="font-size:12px;color:#e6edf3;line-height:1.6;">{a}</div></div>'
+            )
+    else:
+        action_items = '<div style="font-size:12px;color:#8b949e;padding:10px 0;">AI commentary unavailable — check API key.</div>'
+
+    # AI Watchlist HTML
+    watchlist_html = ""
+    if ai_watchlist:
+        for w in ai_watchlist:
+            watchlist_html += (
+                f'<div style="padding:10px 0;border-bottom:1px solid #21262d;">'
+                f'<div style="font-size:12px;font-weight:700;color:#58a6ff;">{w.get("instrument","")}</div>'
+                f'<div style="font-size:11px;color:#8b949e;margin-top:3px;line-height:1.5;">{w.get("reason","")}</div>'
+                f'</div>'
+            )
+
+    # Backtest mini snapshot for Intel tab
+    bt_html = ""
+    if backtest_data:
+        bk_s  = backtest_data.get("bk",{})
+        spy_s = backtest_data.get("spy",{})
+        p_s   = backtest_data.get("p6040",{})
+        yrs   = backtest_data.get("years", 5)
+
+        def _bt_color(v):
+            return "#3fb950" if v >= 0 else "#f85149"
+
+        bt_html = (
+            f'<div class="fc" style="margin-bottom:14px;">'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME ALLOCATION BACKTEST — {yrs:.0f} YEAR (SIMPLIFIED 6-INSTRUMENT MODEL)</div>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+            f'<thead><tr>'
+            f'<th style="text-align:left;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;"></th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#58a6ff;border-bottom:1px solid #30363d;">BK ALLOCATION</th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">SPY B&H</th>'
+            f'<th style="text-align:right;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">60/40</th>'
+            f'</tr></thead><tbody>'
+        )
+        for label, bk_v, spy_v, p_v in [
+            ("Total Return", f'{bk_s.get("total",0):+.1f}%', f'{spy_s.get("total",0):+.1f}%', f'{p_s.get("total",0):+.1f}%'),
+            ("CAGR",         f'{bk_s.get("cagr",0):+.1f}%',  f'{spy_s.get("cagr",0):+.1f}%',  f'{p_s.get("cagr",0):+.1f}%'),
+            ("Sharpe",       f'{bk_s.get("sharpe",0):.2f}',   f'{spy_s.get("sharpe",0):.2f}',   f'{p_s.get("sharpe",0):.2f}'),
+            ("Max Drawdown", f'{bk_s.get("max_dd",0):.1f}%',  f'{spy_s.get("max_dd",0):.1f}%',  f'{p_s.get("max_dd",0):.1f}%'),
+        ]:
+            bt_html += (
+                f'<tr><td style="padding:7px 12px;color:#8b949e;font-size:11px;">{label}</td>'
+                f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#58a6ff;">{bk_v}</td>'
+                f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{spy_v}</td>'
+                f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{p_v}</td>'
+                f'</tr>'
+            )
+        bt_html += (
+            f'</tbody></table>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:6px;font-family:monospace;">'
+            f'Backtest uses regime-aware monthly rebalancing &#183; rf=4.5% &#183; Full detail in Edge tab &#183; Past performance not indicative of future results</div>'
+            f'</div>'
+        )
+
+    # Fear & Greed card
+    if fg_data:
+        fg_score = round(fg_data.get("score",50))
+        fg_label = fg_data.get("label","Neutral")
+        fg_color = fg_data.get("color","#e3b341")
+        fg_bg    = "#2d0f0e" if fg_score<=25 else "#2d1a0e" if fg_score<=45 else "#2d2106" if fg_score<=55 else "#0d2318" if fg_score<=75 else "#052e16"
+        fg_card  = (
+            f'<div style="background:{fg_bg};border:1px solid {fg_color};border-radius:8px;padding:14px 16px;">'
+            f'<div class="lbl" style="margin-bottom:6px;">FEAR & GREED</div>'
+            f'<div style="font-size:28px;font-weight:700;color:{fg_color};font-family:monospace;">{fg_score:.0f}</div>'
+            f'<div style="font-size:11px;font-weight:700;color:{fg_color};">{fg_label}</div>'
+            f'{"<div style=font-size:10px;color:#8b949e;margin-top:6px;line-height:1.5;>"+ai_fg_summary+"</div>" if ai_fg_summary else ""}'
+            f'</div>'
+        )
+    else:
+        fg_card = ""
+
+    # Date header
+    now_sgt  = pd.Timestamp.now(tz=SGT)
+    date_hdr = now_sgt.strftime("%A, %d %b %Y · %H:%M SGT")
 
     summary_tab = (
-        # Grand verdict
-        f'<div style="background:{verdict_bg};border:2px solid {verdict_color};border-radius:12px;'
-        f'padding:24px 28px;margin-bottom:14px;">'
-        f'<div style="font-size:9px;color:{verdict_color};letter-spacing:3px;font-family:monospace;margin-bottom:8px;">MARKET VERDICT</div>'
-        f'<div style="font-size:28px;font-weight:700;color:{verdict_color};font-family:monospace;">{verdict}</div>'
-        f'<div style="font-size:12px;color:#e6edf3;margin-top:10px;line-height:1.6;max-width:700px;">{verdict_detail}</div>'
-        f'</div>'
+        # Date header
+        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;letter-spacing:2px;margin-bottom:16px;">'
+        f'BKIQ DAILY INTELLIGENCE &#183; {date_hdr}</div>'
 
-        # Signal summary row
-        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px;">'
+        # Signal cards row
+        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;">'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">MARKET TONE</div>'
-        f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;">{tone}</div>'
+        f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;font-size:13px;">{tone}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">REGIME</div>'
-        f'<div class="pill" style="background:{reg_bg};color:{reg_color};border:1px solid {reg_color};margin-top:6px;">{reg_now.upper()}</div>'
+        f'<div class="pill" style="background:{reg_bg};color:{reg_color};border:1px solid {reg_color};margin-top:6px;font-size:13px;">{reg_now.upper()}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">FRAGILITY</div>'
-        f'<div style="font-size:26px;font-weight:700;color:{rc_};font-family:monospace;margin-top:4px;">{frag_sys:.0f}</div>'
-        f'<div style="font-size:9px;color:#8b949e;">{frag_reg}</div>'
+        f'<div style="font-size:28px;font-weight:700;color:{rc_};font-family:monospace;margin-top:4px;">{frag_sys:.0f}</div>'
+        f'<div style="font-size:9px;color:#8b949e;">{"CRISIS" if frag_sys>=70 else "STRESSED" if frag_sys>=55 else "MODERATE"}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">RAG SIGNALS</div>'
-        f'<div style="display:flex;justify-content:center;gap:10px;margin-top:6px;">'
+        f'<div style="display:flex;justify-content:center;gap:10px;margin-top:8px;">'
         f'<span style="color:#f85149;font-size:18px;font-weight:700;font-family:monospace;">{nr}</span>'
         f'<span style="color:#8b949e;font-size:18px;">·</span>'
         f'<span style="color:#e3b341;font-size:18px;font-weight:700;font-family:monospace;">{na}</span>'
@@ -2082,132 +3118,170 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">RED · AMBER · GREEN</div>'
         f'</div></div>'
 
-        # Fear & Greed
-        + fg_html
-        # Recommended actions
-        + f'<div class="fc" style="margin-bottom:14px;">'
-        f'<div class="lbl" style="margin-bottom:4px;">RECOMMENDED ACTIONS</div>'
-        f'{action_items}</div>'
-
-        # Opportunities + Risks
-        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
-        f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;'
-        f'text-transform:uppercase;margin-bottom:10px;">&#128200; Top Opportunities (MTD)</div>'
-        f'<div style="display:flex;flex-direction:column;gap:8px;">{opp_cards if opp_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
-        f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;'
-        f'text-transform:uppercase;margin-bottom:10px;">&#9888; Top Risks (Fragility)</div>'
-        f'<div style="display:flex;flex-direction:column;gap:8px;">{risk_cards if risk_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
-        f'</div>'
-
-        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-        f'Verdict = BK proprietary synthesis of Market Tone + Regime State Machine + Fragility Score &#183; '
-        f'For informational purposes only &#183; Not investment advice</div>'
-    )
-
-
-    # ══ TAB 7: EDGE — Portfolio Optimisation ══════════════════════════════════
-    # Auto-generated regime-aware allocation + commentary
-    reg_now_e = regime_data.get("regime","Calm") if regime_data else "Calm"
-
-    # Regime-based suggested allocations
-    ALLOCATIONS = {
-        "Crisis": [
-            ("Cash & T-Bills",      35, "#58a6ff"),
-            ("Gold",                25, "#e3b341"),
-            ("Govt Bonds (Long)",   20, "#3fb950"),
-            ("Equities (Defensive)",10, "#7ee787"),
-            ("HY Credit",           5, "#8b949e"),
-            ("Alternatives",        5, "#8b949e"),
-        ],
-        "Stressed": [
-            ("Cash & T-Bills",      20, "#58a6ff"),
-            ("Gold",                15, "#e3b341"),
-            ("Govt Bonds (Long)",   20, "#3fb950"),
-            ("Equities (Quality)",  25, "#7ee787"),
-            ("IG Credit",           15, "#a5d6a7"),
-            ("Alternatives",         5, "#8b949e"),
-        ],
-        "Calm": [
-            ("Global Equities",     45, "#3fb950"),
-            ("EM Equities",         10, "#7ee787"),
-            ("IG Credit",           15, "#58a6ff"),
-            ("Govt Bonds",          10, "#a5d6a7"),
-            ("Gold",                10, "#e3b341"),
-            ("Alternatives",        10, "#8b949e"),
-        ],
-    }
-
-    alloc = ALLOCATIONS.get(reg_now_e, ALLOCATIONS["Calm"])
-    rc_e  = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now_e,"#8b949e")
-    rb_e  = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now_e,"#161b22")
-
-    # Portfolio allocation bars
-    alloc_bars = ""
-    for asset, pct, color in alloc:
-        alloc_bars += (
-            f'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid #21262d;">'
-            f'<div style="width:160px;font-size:11px;color:#e6edf3;">{asset}</div>'
-            f'<div style="flex:1;background:#21262d;border-radius:3px;height:10px;">'
-            f'<div style="width:{pct}%;background:{color};height:10px;border-radius:3px;"></div></div>'
-            f'<div style="width:40px;text-align:right;font-family:monospace;font-size:12px;font-weight:700;color:{color};">{pct}%</div>'
+        # AI Narrative
+        + (
+            f'<div class="fc" style="margin-bottom:14px;">'
+            f'<div class="lbl" style="margin-bottom:8px;">MARKET INTELLIGENCE</div>'
+            f'<div style="font-size:13px;color:#e6edf3;line-height:1.8;">{ai_narrative}</div>'
             f'</div>'
+            if ai_narrative else ""
         )
 
-    # Auto-generated commentary from data
-    top_gain  = df.nlargest(1,"ret_1m")["name"].iloc[0] if not df.empty else "N/A"
+        # Recommended Actions (AI)
+        + f'<div class="fc" style="margin-bottom:14px;">'
+        + f'<div class="lbl" style="margin-bottom:4px;">RECOMMENDED ACTIONS</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">&#9888; AI-Generated Commentary · For informational purposes only · Not investment advice</div>'
+        + action_items
+        + f'</div>'
+
+        # Watchlist + Fear & Greed
+        + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
+        + f'<div class="fc"><div class="lbl" style="margin-bottom:8px;">INSTRUMENTS TO WATCH</div>'
+        + (watchlist_html if watchlist_html else '<div style="font-size:11px;color:#8b949e;">AI watchlist unavailable</div>')
+        + f'</div>'
+        + f'<div>{fg_card}</div>'
+        + f'</div>'
+
+        # Backtest snapshot
+        + bt_html
+
+        # Opportunities + Risks
+        + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
+        + f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;margin-bottom:10px;">&#128200; BK Top Picks (Opportunity Score)</div>'
+        + f'<div style="display:flex;flex-direction:column;gap:8px;">{opp_cards if opp_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
+        + f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">&#9888; Top Risks (Fragility)</div>'\
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Source: BK Fragility Framework</div>'
+        + f'<div style="display:flex;flex-direction:column;gap:8px;">{risk_cards if risk_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
+        + f'</div>'
+
+        + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
+        + f'Intelligence generated by Claude AI &#183; Data via Yahoo Finance &#183; '
+        + f'For informational purposes only &#183; Not investment advice</div>'
+    )
+    # ══ TAB 7: EDGE — Portfolio Optimisation ══════════════════════════════════
+    # The BK Dynamic Allocation card (RAS-driven, 6-bucket) built above is the
+    # single allocation source. The old hardcoded regime-bucket grid was
+    # removed — keeping two contradictory allocations on one tab was a defect.
+    reg_now_e = regime_data.get("regime","Calm") if regime_data else "Calm"
+    rc_e = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now_e,"#8b949e")
+    rb_e = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now_e,"#161b22")
+
+    # AI-generated commentary for Edge tab
+    ai_edge   = (ai_commentary or {}).get("edge_rationale", "")
+    _df_rankable = df[df["ticker"].apply(is_rankable)]
+    top_gain  = _df_rankable.nlargest(1,"ret_1m")["name"].iloc[0] if not _df_rankable.empty else "N/A"
     top_risk  = frag_df.head(1)["name"].iloc[0] if frag_df is not None and not frag_df.empty else "N/A"
     vol_count = int((df["vol_now"] > df["vol_1m_ago"]).sum()) if "vol_now" in df.columns else 0
-    commentary = (
+    commentary = ai_edge if ai_edge else (
         f"Markets are in a <strong style='color:{rc_e};'>{reg_now_e}</strong> regime. "
-        f"Volatility is rising across {vol_count} instruments, led by {top_gain} on the upside. "
-        f"The highest fragility risk is concentrated in {top_risk}. "
-        f"The suggested allocation below reflects a {reg_now_e.lower()} regime posture — "
-        f"{'emphasising capital preservation and safe havens.' if reg_now_e=='Crisis' else 'balancing defence with selective risk-taking.' if reg_now_e=='Stressed' else 'favouring growth assets with diversification.'}"
+        f"Volatility is rising across {vol_count} instruments. "
+        f"The suggested allocation reflects current regime conditions."
     )
 
-    # Key metrics for context
-    best_asset  = df.nlargest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
-    worst_asset = df.nsmallest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
+    # Key metrics for context (rankable subset only — excludes indices/proxies)
+    best_asset  = _df_rankable.nlargest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
+    # Highest risk: use BK Fragility Score (top fragility instrument)
+    if frag_df is not None and not frag_df.empty:
+        top_frag = frag_df.iloc[0]
+        highest_risk_name  = top_frag["name"]
+        # Use round(), not int(), so this matches the :.0f format used in the
+        # Fragility tab. Previously int() truncated while :.0f rounded, giving
+        # 79 here vs 80 on the Fragility tab for the same underlying value.
+        highest_risk_score = round(float(top_frag["fragility"]))
+        highest_risk_label = top_frag.get("rag","CRISIS")
+        use_fragility_risk = True
+    else:
+        worst_asset = _df_rankable.nsmallest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
+        use_fragility_risk = False
+
+    # ── BK Dynamic Allocation card (RAS-driven) ──────────────────────────────
+    _ras_color = ("#3fb950" if ras_score >= 55 else
+                  "#e3b341" if ras_score >= 40 else
+                  "#f85149")
+    _bucket_order = ["EQ Growth", "EQ Defensive", "Fixed Income",
+                     "Real Assets", "Cash", "Alts"]
+    _alloc_rows_html = ""
+    for _bk in _bucket_order:
+        _w = bucket_weights.get(_bk, 0)
+        _tops = get_top_instruments_per_bucket(bk_opp_scores, _bk, n=1)
+        if _tops:
+            _tk, _sc = _tops[0]
+            _pick_html = (f'<span style="color:#58a6ff;font-weight:700;font-family:monospace;">{_tk}</span>'
+                          f' <span style="color:#8b949e;font-family:monospace;">(Score {_sc:.0f})</span>')
+        else:
+            _pick_html = '<span style="color:#8b949e;">—</span>'
+        _alloc_rows_html += (
+            f'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;'
+            f'border-bottom:1px solid #21262d;">'
+            f'<div style="width:130px;font-size:11px;color:#e6edf3;">{_bk}</div>'
+            f'<div style="width:44px;text-align:right;font-family:monospace;font-size:12px;'
+            f'font-weight:700;color:{_ras_color};">{_w}%</div>'
+            f'<div style="flex:1;background:#21262d;border-radius:3px;height:8px;">'
+            f'<div style="width:{_w*2}%;max-width:100%;background:{_ras_color};'
+            f'height:8px;border-radius:3px;"></div></div>'
+            f'<div style="flex:1.2;text-align:right;font-size:11px;">{_pick_html}</div>'
+            f'</div>')
+
+    dynamic_alloc_card = (
+        f'<div class="fc" style="margin-bottom:14px;border:1px solid {_ras_color};">'
+        f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">'
+        f'<div class="lbl">BK DYNAMIC ALLOCATION</div>'
+        f'<div style="font-size:11px;color:#8b949e;font-family:monospace;">RAS model &#183; regime-aware</div>'
+        f'</div>'
+        f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:14px;">'
+        f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;">RISK APPETITE SCORE</div>'
+        f'<div style="font-size:30px;font-weight:700;color:{_ras_color};font-family:monospace;">{ras_score:.0f}</div>'
+        f'<div style="font-size:13px;color:{_ras_color};font-weight:700;letter-spacing:1px;">&rarr; {ras_label.upper()}</div>'
+        f'</div>'
+        f'{_alloc_rows_html}'
+        f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.6;">'
+        f'RAS = Regime(35%) + Fragility Inv(30%) + Fear &amp; Greed(20%) + Vol Inv(15%) &#183; '
+        f'Top pick per bucket = highest BK Opportunity Score'
+        f'</div>'
+        f'</div>'
+    )
 
     edge_tab = (
-        f'<div style="background:{rb_e};border:2px solid {rc_e};border-radius:10px;padding:18px 24px;margin-bottom:14px;">'
-        f'<div style="font-size:9px;color:{rc_e};letter-spacing:3px;font-family:monospace;margin-bottom:6px;">REGIME-AWARE ALLOCATION</div>'
+        dynamic_alloc_card
+        + f'<div style="background:{rb_e};border:2px solid {rc_e};border-radius:10px;padding:18px 24px;margin-bottom:14px;">'
+        f'<div style="font-size:9px;color:{rc_e};letter-spacing:3px;font-family:monospace;margin-bottom:6px;">CURRENT REGIME CONTEXT</div>'
         f'<div style="font-size:22px;font-weight:700;color:{rc_e};font-family:monospace;">{reg_now_e.upper()} REGIME</div>'
         f'<div style="font-size:11px;color:#e6edf3;margin-top:8px;line-height:1.7;">{commentary}</div>'
         f'</div>'
-        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
-        # Allocation
+        # Key signals (3 cards side-by-side) — duplicate "Suggested Portfolio
+        # Allocation" card removed; the BK Dynamic Allocation card above is the
+        # single source of truth for allocation.
+        f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">'
         f'<div class="fc">'
-        f'<div class="lbl" style="margin-bottom:12px;">SUGGESTED PORTFOLIO ALLOCATION</div>'
-        f'{alloc_bars}'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:8px;font-family:monospace;">'
-        f'Allocation based on current regime: {reg_now_e} &#183; Rebalance as regime shifts &#183; Not investment advice</div>'
-        f'</div>'
-        # Key signals for Edge
-        f'<div style="display:flex;flex-direction:column;gap:14px;">'
-        f'<div class="fc">'
-        f'<div class="lbl" style="margin-bottom:8px;">BEST OPPORTUNITY THIS MONTH</div>'
+        f'<div class="lbl" style="margin-bottom:8px;">TOP PERFORMER &mdash; ROLLING 1M</div>'
         f'<div style="font-size:18px;font-weight:700;color:#3fb950;font-family:monospace;">{best_asset["name"]}</div>'
         f'<div style="font-size:24px;font-weight:700;color:#3fb950;font-family:monospace;">{best_asset["ret_1m"]*100:+.1f}%</div>'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">MTD Return (1-Month)</div>'
+        f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Rolling 1M Return (21 trading days)</div>'
         f'</div>'
         f'<div class="fc">'
         f'<div class="lbl" style="margin-bottom:8px;">HIGHEST RISK TO MONITOR</div>'
-        f'<div style="font-size:18px;font-weight:700;color:#f85149;font-family:monospace;">{worst_asset["name"]}</div>'
-        f'<div style="font-size:24px;font-weight:700;color:#f85149;font-family:monospace;">{worst_asset["ret_1m"]*100:+.1f}%</div>'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">MTD Return (1-Month)</div>'
-        f'</div>'
+        + (f'<div style="font-size:18px;font-weight:700;color:#f85149;font-family:monospace;">{highest_risk_name}</div>'
+           f'<div style="font-size:24px;font-weight:700;color:#f85149;font-family:monospace;">{highest_risk_score}/100</div>'
+           f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">BK Fragility Score · {highest_risk_label}</div>'
+           if use_fragility_risk else
+           f'<div style="font-size:18px;font-weight:700;color:#f85149;font-family:monospace;">{worst_asset["name"]}</div>'
+           f'<div style="font-size:24px;font-weight:700;color:#f85149;font-family:monospace;">{worst_asset["ret_1m"]*100:+.1f}%</div>'
+           f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Rolling 1M Return (21 trading days)</div>')
+        + f'</div>'
         f'<div class="fc">'
         f'<div class="lbl" style="margin-bottom:8px;">INSTRUMENTS WITH RISING VOL</div>'
         f'<div style="font-size:32px;font-weight:700;color:#e3b341;font-family:monospace;">{vol_count}</div>'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">of {len(df)} instruments showing elevated volatility vs 1M ago</div>'
+        f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">of {len(df)} showing elevated vol vs 1M ago</div>'
+        f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-top:2px;">Elevated = current 20D vol &gt; vol 1M ago</div>'
         f'</div>'
-        f'</div></div>'
-        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-        f'Edge = regime-aware portfolio intelligence &#183; '
-        f'Allocation shifts automatically as market regime changes &#183; '
-        f'For informational purposes only &#183; Not investment advice &#183; Past performance is not indicative of future results'
         f'</div>'
+        # Full backtest in Edge tab
+        + (_build_edge_backtest(backtest_data) if backtest_data else '')
+        + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
+        + f'Edge = regime-aware portfolio intelligence &#183; '
+        + f'Allocation shifts automatically as market regime changes &#183; '
+        + f'For informational purposes only &#183; Not investment advice &#183; Past performance not indicative of future results'
+        + f'</div>'
     )
 
     # ══ TAB 8: ABOUT ══════════════════════════════════════════════════════════
@@ -2220,22 +3294,28 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">'
         f'<div style="font-size:28px;font-weight:700;color:#fff;font-family:monospace;">BK</div></div>'
         f'<div style="font-size:22px;font-weight:700;color:#e6edf3;font-family:monospace;letter-spacing:1px;">Bhavesh Kamdar</div>'
-        f'<div style="font-size:12px;color:#58a6ff;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">Founder · BKIQ Markets</div>'
-        f'<div style="font-size:11px;color:#8b949e;margin-top:4px;">Singapore</div>'
+        f'<div style="font-size:12px;color:#58a6ff;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">FRM · CQF · Risk Manager · Founder, BKIQ Markets</div>'
+        f'<div style="font-size:11px;color:#8b949e;margin-top:4px;">AIA Investment Management · Singapore</div>'
         f'</div>'
         # Philosophy
         f'<div class="fc" style="margin-bottom:14px;">'
         f'<div class="lbl" style="margin-bottom:12px;">INVESTMENT PHILOSOPHY</div>'
         f'<div style="font-size:13px;color:#e6edf3;line-height:1.9;">'
-        f'<em style="color:#58a6ff;">"Markets are not random — they move in regimes. '
-        f'Understanding the current regime is the single most important edge an investor can have."</em>'
+        f'<em style="color:#58a6ff;">"Risk is not something to be avoided — it is something to be understood, '
+        f'measured and navigated. After 25 years managing risk across global asset management firms, '
+        f'I have seen every market cycle, every crisis and every recovery. The pattern is always the same: '
+        f'fragility builds slowly, then breaks suddenly."</em>'
         f'</div>'
         f'<div style="font-size:12px;color:#8b949e;margin-top:16px;line-height:1.8;">'
-        f'I believe that most market participants focus too heavily on returns and not enough on risk regimes. '
-        f'A portfolio that performs well in a Calm regime can be catastrophically exposed in a Crisis regime. '
-        f'The BK Fragility Framework was built to solve this problem — to give investors early warning '
-        f'before fragility becomes crisis, and to provide a disciplined, data-driven framework for '
-        f'navigating regime transitions.</div>'
+        f'Bhavesh Kamdar is a senior risk professional with 25 years of experience across global asset management. '
+        f'Currently serving as Risk Manager at AIA Investment Management (AIAIM) in Singapore, Bhavesh has spent '
+        f'his career building risk frameworks for some of the world&#39;s largest institutional investors.<br><br>'
+        f'Holding both the Financial Risk Manager (FRM) designation and the Certificate in Quantitative Finance (CQF), '
+        f'Bhavesh combines deep quantitative expertise with practical investment risk management experience '
+        f'across equities, fixed income, commodities and alternatives.<br><br>'
+        f'The BK Fragility Framework was born from a simple observation: traditional risk models measure volatility '
+        f'after it has arrived. Bhavesh built the framework to detect structural vulnerability before it crystallises '
+        f'into loss — giving institutional investors an early warning system that conventional dashboards do not provide.</div>'
         f'</div>'
         # Framework
         f'<div class="fc" style="margin-bottom:14px;">'
@@ -2253,7 +3333,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             for name, pct, color, desc in [
                 ("Drawdown",           22, "#f85149", "Distance from rolling peak"),
                 ("CVaR / Tail Risk",   20, "#ff7b72", "Expected loss in worst 5% of days"),
-                ("Contagion",          18, "#e3b341", "Correlation to world market (ACWI)"),
+                ("Contagion",          18, "#e3b341", "Measures correlation-based contagion risk — the degree to which stress transmits to or from global markets (ACWI proxy)"),
                 ("Volatility",         15, "#58a6ff", "20-day realised annualised vol"),
                 ("Trend",              15, "#7ee787", "Distance below 200-day moving average"),
                 ("Volume Stress",      10, "#8b949e", "Liquidity dry-up or panic spike"),
@@ -2262,14 +3342,15 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'</div>'
         f'<div style="font-size:11px;color:#8b949e;margin-top:12px;line-height:1.7;">'
         f'Scores are computed using robust time-series z-scores mapped to 0–100 via logistic function '
-        f'with EWMA smoothing. CRISIS ≥ 70 · STRESSED 50–70 · CALM < 50</div>'
+        f'with EWMA smoothing. CRISIS ≥ 70 · STRESSED 55–69 · MODERATE < 55<br>'
+        f'<span style="color:#6a7485;font-style:italic;">BK Fragility Framework v1.0 · Methodology as of 2026</span></div>'
         f'</div>'
         # What is BKIQ
         f'<div class="fc" style="margin-bottom:14px;">'
         f'<div class="lbl" style="margin-bottom:12px;">ABOUT BKIQ MARKETS</div>'
         f'<div style="font-size:12px;color:#8b949e;line-height:1.8;">'
         f'BKIQ Markets is a Singapore-based market intelligence platform delivering daily '
-        f'institutional-grade analysis across 60 instruments and 12 asset classes. '
+        f'institutional-grade analysis across {N_INSTRUMENTS} instruments and 14 asset classes. '
         f'The platform monitors global equities, fixed income, commodities, FX, crypto and volatility '
         f'through 6 analytical lenses — Performance, Risk, Fragility, Analysis, Regime and Edge.<br><br>'
         f'Built for family office analysts, private bankers, wealth managers and institutional traders '
@@ -2280,7 +3361,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div style="text-align:center;padding:20px;border-top:1px solid #30363d;margin-top:6px;">'
         f'<div style="font-size:11px;color:#8b949e;margin-bottom:12px;">Get in touch</div>'
         f'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;">'
-        f'<a href="https://linkedin.com/in/bhavesh-kamdar" target="_blank" '
+        f'<a href="https://www.linkedin.com/in/bhavesh-kamdar-frm-cqf-8ba4178" target="_blank" '
         f'style="display:inline-block;background:#0a66c2;color:#fff;font-size:11px;font-weight:700;'
         f'padding:8px 18px;border-radius:6px;text-decoration:none;font-family:monospace;">LinkedIn</a>'
         f'<a href="mailto:bhavesh113@gmail.com" '
@@ -2291,7 +3372,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'padding:8px 18px;border-radius:6px;text-decoration:none;font-family:monospace;">+65 8947 4681</a>'
         f'</div>'
         f'<div style="font-size:9px;color:#8b949e;margin-top:12px;font-family:monospace;">'
-        f'&#169; 2026 BKIQ Markets &#183; Singapore &#183; For informational purposes only &#183; Not investment advice</div>'
+        f'&#169; 2026 BKIQ Markets &#183; Singapore &#183; Framework v1.0 &#183; Methodology as of 2026 &#183; For informational purposes only &#183; Not investment advice</div>'
         f'</div>'
         f'</div>'
     )
@@ -2352,6 +3433,19 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
          ".sg{color:#3fb950;}.sa{color:#e3b341;}.sr{color:#f85149;}"
          "tr.sh td{background:#1c2128;font-size:9px;font-weight:700;letter-spacing:2px;"
          "text-transform:uppercase;color:var(--ac);padding:8px 14px;border-top:2px solid var(--br);}"
+         "tr.bk-acc-header{cursor:pointer;user-select:none;}"
+         "tr.bk-acc-header:hover td{background:#222840;}"
+         ".bk-acc-icon{display:inline-block;width:12px;margin-right:8px;color:#7a8499;font-size:10px;}"
+         ".bk-acc-summary{margin-left:14px;font-size:9px;color:#9aa3b8;font-weight:400;"
+         "letter-spacing:0;text-transform:none;}"
+         ".bk-acc-count{margin-left:6px;font-size:9px;color:#7a8499;font-weight:400;"
+         "letter-spacing:0;text-transform:none;}"
+         ".bk-acc-hint{float:right;font-size:9px;color:#4a5568;font-style:italic;font-weight:400;"
+         "letter-spacing:0;text-transform:none;}"
+         ".bk-acc-controls{margin:0 0 8px 0;display:flex;gap:6px;}"
+         ".bk-acc-btn{font-size:10px;padding:4px 12px;background:#1a1f2e;color:#9aa3b8;"
+         "border:1px solid #2a3040;border-radius:3px;cursor:pointer;font-family:monospace;}"
+         ".bk-acc-btn:hover{background:#222840;color:#c8cfe0;}"
          ".vc{background:var(--ca);border:1px solid;border-radius:8px;padding:14px 20px;text-align:center;min-width:140px;}"
          ".vn{font-size:26px;font-weight:700;font-family:monospace;}"
          ".vl{font-size:9px;font-weight:700;letter-spacing:1px;margin-top:4px;}"
@@ -2373,18 +3467,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
         "<!-- auto-refresh disabled for institutional use -->"
         "<title>BK Market Dashboard</title>"
-        f"<script async src='https://www.googletagmanager.com/gtag/js?id={GA}'></script>"
-        f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
-        f"gtag('js',new Date());gtag('config','{GA}');</script>"
-        f"<style>{css}</style>"
-        "</head><body><div class='wrap'>"
-        "<div class='hdr'><div>"
-        "<div class='logo'>BKIQ <span>MARKETS</span></div>"
-        f"<div class='sub'>{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;&#183;&nbsp; Intelligence Before the Market Opens</div>"
-        f"<div class='badge'><span class='dot'></span> Last updated: {date_str}</div>"
-        "</div><div style='text-align:right;'>"
+        + (f"<script async src='https://www.googletagmanager.com/gtag/js?id={GA}'></script>"
+           f"<script>window.dataLayer=window.dataLayer||[];function gtag(){{dataLayer.push(arguments);}}"
+           f"gtag('js',new Date());gtag('config','{GA}');</script>" if GA else "<!-- GA not configured -->")
+        + f"<style>{css}</style>"
+        + "</head><body><div class='wrap'>"
+        + "<div class='hdr'><div>"
+        + "<div class='logo'>BKIQ <span>MARKETS</span></div>"
+        + f"<div class='sub'>{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;&#183;&nbsp; Intelligence Before the Market Opens</div>"
+        + f"<div class='badge'><span class='dot'></span> Last updated: {date_str}</div>"
+        + "</div><div style='text-align:right;'>"
         f"<div style='font-family:monospace;font-size:13px;color:#e6edf3;font-weight:600;'>{date_str}</div>"
-        f"<div style='font-size:9px;color:#8b949e;margin-top:4px;'>Auto-refreshes every hour{mn}</div>"
+        f"<div style='font-size:9px;color:#8b949e;margin-top:4px;'>Updated daily before market open{mn}</div>"
         "<div style='font-size:9px;color:#444d56;margin-top:3px;font-family:monospace;'>07:00 SGT &#183; MON&#8211;FRI</div>"
         "</div></div>"
         "<div class='tabs'>"
@@ -2406,9 +3500,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f"<div id='t-edge' class='tab'>{edge_tab}</div>"
         f"<div id='t-about' class='tab'>{about_tab}</div>"
         "<div class='footer'><div class='fn'>"
-        "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>""Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
-        "Fragility: CRISIS &#8805;70 &#183; STRESSED 50&#8211;70 &#183; CALM &lt;50 &#183; BK Fragility Framework<br>"
-        f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Auto-refreshes every hour"
+        "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>"
+        "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
+        "Fragility: CRISIS &#8805;70 &#183; STRESSED 55&#8211;69 &#183; MODERATE &lt;55 &#183; BK Fragility Framework<br>"
+        ""
+        f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Updated daily before market open"
         "</div><div style='text-align:right;'>"
         "<div class='fb'>BK</div>"
         "<div class='fs'>Market Intelligence &#183; Singapore</div>"
@@ -2418,6 +3514,34 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));"
         "document.querySelectorAll('.tb').forEach(x=>x.classList.remove('on'));"
         "document.getElementById('t-'+n).classList.add('on');b.classList.add('on');}"
+        "function bkBodyRows(h){"
+        "  var rows=[];var s=h.nextElementSibling;"
+        "  while(s && !s.classList.contains('bk-acc-header')){rows.push(s);s=s.nextElementSibling;}"
+        "  return rows;"
+        "}"
+        "function bkSetState(h,state){"
+        "  var rows=bkBodyRows(h);var icon=h.querySelector('.bk-acc-icon');"
+        "  var open=(state==='open');"
+        "  rows.forEach(function(r){r.style.display=open?'':'none';});"
+        "  if(icon){icon.innerHTML=open?'\\u25BC':'\\u25B6';}"
+        "  try{sessionStorage.setItem('bk_acc_'+h.dataset.key,state);}catch(e){}"
+        "}"
+        "function bkInitAccordions(){"
+        "  document.querySelectorAll('tr.bk-acc-header').forEach(function(h){"
+        "    var saved='closed';try{saved=sessionStorage.getItem('bk_acc_'+h.dataset.key)||'closed';}catch(e){}"
+        "    bkSetState(h,saved);"
+        "    h.addEventListener('click',function(){"
+        "      var cur='closed';try{cur=sessionStorage.getItem('bk_acc_'+h.dataset.key)||'closed';}catch(e){}"
+        "      bkSetState(h,cur==='open'?'closed':'open');"
+        "    });"
+        "  });"
+        "}"
+        "function bkSetAllAccordions(state,prefix){"
+        "  document.querySelectorAll('tr.bk-acc-header').forEach(function(h){"
+        "    if(h.dataset.key && h.dataset.key.indexOf(prefix+'_')===0){bkSetState(h,state);}"
+        "  });"
+        "}"
+        "document.addEventListener('DOMContentLoaded',bkInitAccordions);"
         "</script>"
         "</body></html>"
     )
@@ -3031,12 +4155,64 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
         fg_data     = compute_fear_greed(prices)
         print("[HTML]   Computing fragility trend...")
         frag_trend  = compute_fragility_trend(prices)
-        web_html    = build_web_html(df, frag_df, prices, regime_data, fg_data, frag_trend)
+        print("[HTML]   Generating AI commentary...")
+        # Build market data dict for AI
+        _reg        = regime_data.get("regime","Calm") if regime_data else "Calm"
+        _streak     = regime_data.get("days_in_regime",0) if regime_data else 0
+        _drivers    = regime_data.get("drivers",{}) if regime_data else {}
+        _frag_s     = frag_df.attrs.get("system_score",50) if frag_df is not None and not frag_df.empty else 50
+        _frag_l     = frag_df.attrs.get("regime","MODERATE") if frag_df is not None and not frag_df.empty else "MODERATE"
+        _fg_s       = round(fg_data.get("score",50)) if fg_data else 50
+        _fg_l       = fg_data.get("label","Neutral") if fg_data else "Neutral"
+        _df_ai_rank = df[df["ticker"].apply(is_rankable)]
+        _gainers    = [f'{r["name"]} {r["ret_1m"]*100:+.1f}%' for _,r in _df_ai_rank.nlargest(3,"ret_1m").iterrows()]
+        _losers     = [f'{r["name"]} {r["ret_1m"]*100:+.1f}%' for _,r in _df_ai_rank.nsmallest(3,"ret_1m").iterrows()]
+        _n_red      = int((df["rag_label"].str.strip()=="RED").sum())
+        _vol_rise   = int((df["vol_now"]>df["vol_1m_ago"]).sum()) if "vol_now" in df.columns else 0
+        _avg_corr   = 0.3
+        market_data_for_ai = {
+            "date":          pd.Timestamp.now(tz=SGT).strftime("%A %d %b %Y"),
+            "regime":        _reg,
+            "regime_days":   _streak,
+            "fragility_score": round(_frag_s,1),
+            "fragility_label": _frag_l,
+            "fg_score":      _fg_s,
+            "fg_label":      _fg_l,
+            "vol_pct":       round(_drivers.get("vol_pct",50),0),
+            "dd_pct":        round(_drivers.get("dd_now",0),1),
+            "n_red":         _n_red,
+            "n_total":       len(df),
+            "vol_rising":    _vol_rise,
+            "top_gainers":   _gainers,
+            "top_losers":    _losers,
+            "avg_corr":      _avg_corr,
+            "bt_bk":         "N/A",
+            "bt_spy":        "N/A",
+            "bt_6040":       "N/A",
+        }
+        ai_commentary = generate_ai_commentary(market_data_for_ai)
+        print("[HTML]   Computing backtest...")
+        _regime_series = pd.Series(
+            {pt["date"]: pt["regime"] for pt in (regime_data.get("timeline",[]) if regime_data else [])}
+        )
+        _regime_series.index = pd.to_datetime(_regime_series.index)
+        backtest_data = compute_backtest(prices, _regime_series)
+        # Update AI market data with backtest results
+        if backtest_data:
+            market_data_for_ai["bt_bk"]   = f'{backtest_data["bk"]["total"]:+.1f}%'
+            market_data_for_ai["bt_spy"]  = f'{backtest_data["spy"]["total"]:+.1f}%'
+            market_data_for_ai["bt_6040"] = f'{backtest_data["p6040"]["total"]:+.1f}%'
+        web_html    = build_web_html(df, frag_df, prices, regime_data, fg_data, frag_trend, ai_commentary, backtest_data)
         docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
         os.makedirs(docs_dir, exist_ok=True)
         html_path = os.path.join(docs_dir, "index.html")
         with open(html_path, "w", encoding="utf-8") as fh:
             fh.write(web_html)
+        # Always write CNAME to preserve custom domain
+        cname_path = os.path.join(docs_dir, "CNAME")
+        with open(cname_path, "w") as fh:
+            fh.write("dashboard.bkiqmarkets.com")
+        print("[HTML]   CNAME written: dashboard.bkiqmarkets.com")
         print(f"[HTML]   {html_path}")
 
     if send_email_flag:
