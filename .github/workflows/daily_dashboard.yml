@@ -24,6 +24,8 @@ jobs:
         run: pip install yfinance pandas numpy matplotlib pytz schedule python-pptx anthropic
 
       - name: Run dashboard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python bk_market_dashboard.py --html --lookback 2520
 
       - name: Commit and push
