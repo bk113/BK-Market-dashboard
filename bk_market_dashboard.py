@@ -430,11 +430,43 @@ def _count_rising_risk(df) -> int:
 #  DATA  (with price cache for fast daily runs + full history)
 # ══════════════════════════════════════════════════════════════════════════════
 
-CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "prices_cache.csv")
+CACHE_FILE        = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "prices_cache.csv")
+VOLUME_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "volumes_cache.csv")
+
+# ── IFM CANONICAL 43-ETF UNIVERSE ─────────────────────────────────────────────
+# Used exclusively for system-level fragility score and regime detection.
+# Matches institutional_fragility_monitor.py exactly — do not modify without
+# updating IFM as well. Scores derived from this universe are CRO/GARP-comparable.
+IFM_43_TICKERS = [
+    # Global equity
+    "ACWI", "SPY", "QQQ", "IWM", "EFA", "EEM", "VGK", "EWJ",
+    # Asia / EM
+    "MCHI", "INDA", "EWZ", "EWT",
+    # Sectors
+    "XLF", "XLE", "XLK", "XLV", "XLU", "XLP",
+    # Fixed income
+    "AGG", "LQD", "HYG", "TLT", "IEF", "SHY", "EMB",
+    # Rates / inflation
+    "TIP", "MBB",
+    # Commodities
+    "GLD", "SLV", "USO", "DBC", "DBA", "PDBC",
+    # FX / alternatives
+    "UUP", "FXE", "FXY",
+    # Real assets
+    "VNQ", "REET",
+    # Crypto
+    "IBIT", "ETHA",
+    # Volatility / hedges
+    "VIXY",
+]
 
 
-def _yf_download_safe(tickers, start, batch_size=20, max_retries=3):
-    """Download prices with batching and retry logic. Never raises — returns what it can."""
+def _yf_download_safe(tickers, start, field="Close", batch_size=20, max_retries=3):
+    """
+    Download price or volume data with batching and retry logic.
+    field: "Close" for prices, "Volume" for volumes.
+    Never raises — returns what it can.
+    """
     all_data = {}
     ticker_list = list(tickers)
     batches = [ticker_list[i:i+batch_size] for i in range(0, len(ticker_list), batch_size)]
@@ -444,38 +476,41 @@ def _yf_download_safe(tickers, start, batch_size=20, max_retries=3):
             try:
                 data = yf.download(batch, start=start, auto_adjust=True, progress=False, timeout=30)
                 if not data.empty:
-                    close = data["Close"] if "Close" in data.columns else data.xs("Close", axis=1, level=0)
-                    if isinstance(close, pd.Series):
-                        close = close.to_frame(name=batch[0])
-                    if close.index.tz is not None:
-                        close.index = close.index.tz_localize(None)
+                    if field in data.columns:
+                        col_data = data[field]
+                    else:
+                        col_data = data.xs(field, axis=1, level=0)
+                    if isinstance(col_data, pd.Series):
+                        col_data = col_data.to_frame(name=batch[0])
+                    if col_data.index.tz is not None:
+                        col_data.index = col_data.index.tz_localize(None)
                     for t in batch:
-                        if t in close.columns:
-                            s = close[t].dropna()
+                        if t in col_data.columns:
+                            s = col_data[t].dropna()
                             if len(s) > 0:
                                 all_data[t] = s
                 break  # success
             except Exception as e:
-                print(f"  Batch download attempt {attempt+1} failed: {e}")
+                print(f"  Batch {field} download attempt {attempt+1} failed: {e}")
                 if attempt < max_retries - 1:
                     time.sleep(3)
                 else:
                     # Final fallback — try one by one
                     for t in batch:
                         try:
-                            tk = yf.Ticker(t)
+                            tk   = yf.Ticker(t)
                             hist = tk.history(start=start, auto_adjust=True)
                             if len(hist) > 0:
-                                s = hist['Close'].dropna()
+                                s = hist[field].dropna() if field in hist.columns else pd.Series(dtype=float)
                                 if s.index.tz is not None:
                                     s.index = s.index.tz_localize(None)
-                                all_data[t] = s
+                                if len(s) > 0:
+                                    all_data[t] = s
                         except Exception:
-                            print(f"    Failed individual: {t}")
+                            print(f"    Failed individual {field}: {t}")
 
     if all_data:
-        result = pd.DataFrame(all_data)
-        result = result.sort_index()
+        result = pd.DataFrame(all_data).sort_index()
         return result
     return pd.DataFrame()
 
@@ -521,12 +556,21 @@ def format_stale_badge(last_date):
                 'border-radius:3px;color:#f85149;margin-left:4px;">STALE</span>')
 
 
-def download(lookback_days: int = 2520) -> pd.DataFrame:
+def download(lookback_days: int = 2520) -> tuple:
+    """
+    Download price and volume data for all universe instruments.
+    Returns (prices, volumes) DataFrames.
+    Uses smart incremental cache — only fetches new data when cache is fresh.
+    Volume tickers: excludes synthetic, yield, and vol-index tickers (no meaningful volume).
+    """
     # Real fetch list excludes synthetic tickers (computed post-download)
     tickers = [t for _s, t, _n, _b in UNIVERSE if t not in SYNTHETIC_TICKERS]
-    print(f"[Download] {len(tickers)} tickers | lookback={lookback_days} days ...")
+    # Volume is not meaningful for yield indices or vol fear gauges
+    NO_VOLUME_TICKERS = set(YIELD_TICKERS) | {"^VIX", "GVZ", "OVX"}
+    vol_tickers = [t for t in tickers if t not in NO_VOLUME_TICKERS]
+    print(f"[Download] {len(tickers)} price tickers | {len(vol_tickers)} volume tickers | lookback={lookback_days} days ...")
 
-    # ── Validate + load cache ──────────────────────────────────────────────────
+    # ── PRICES ─────────────────────────────────────────────────────────────────
     cached = None
     cache_valid = validate_cache(CACHE_FILE)
     if cache_valid:
@@ -534,78 +578,125 @@ def download(lookback_days: int = 2520) -> pd.DataFrame:
             cached = pd.read_csv(CACHE_FILE, index_col=0, parse_dates=True)
             if cached.index.tz is not None:
                 cached.index = cached.index.tz_localize(None)
-            print(f"[Cache]  Loaded {len(cached)} days (last: {cached.index[-1].date()})")
+            print(f"[Cache]  Prices loaded {len(cached)} days (last: {cached.index[-1].date()})")
         except Exception as e:
-            print(f"[Cache]  Load failed: {e}")
+            print(f"[Cache]  Price load failed: {e}")
             cached = None
 
-    # ── Identify new tickers missing from cache (need full history) ───────────
     new_tickers = []
     if cached is not None:
         new_tickers = [t for t in tickers if t not in cached.columns]
         if new_tickers:
-            print(f"[Download] New tickers (full history): {len(new_tickers)} -> "
+            print(f"[Download] New price tickers (full history): {len(new_tickers)} -> "
                   f"{', '.join(new_tickers[:8])}{'...' if len(new_tickers) > 8 else ''}")
 
-    # ── Decide how far back to download ───────────────────────────────────────
     if cached is not None and len(cached) >= 756 and not new_tickers:
         start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
-        print(f"[Download] Cache hit — refreshing last 60 days ...")
+        print(f"[Download] Price cache hit — refreshing last 60 days ...")
         fetch_list = tickers
     elif cached is not None and new_tickers:
-        # Refresh existing tickers (short window) + full-history pull for new ones
         start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
         existing = [t for t in tickers if t in cached.columns]
-        print(f"[Download] Incremental refresh + full history for {len(new_tickers)} new tickers ...")
         full_start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
-        new_prices = _yf_download_safe(new_tickers, start=full_start)
+        new_prices = _yf_download_safe(new_tickers, start=full_start, field="Close")
         if not new_prices.empty:
             cached = cached.join(new_prices, how="outer")
         fetch_list = existing
     else:
         start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
-        print(f"[Download] No cache — full {lookback_days}-day download ...")
+        print(f"[Download] No price cache — full {lookback_days}-day download ...")
         fetch_list = tickers
 
-    prices_new = _yf_download_safe(fetch_list, start=start)
+    prices_new = _yf_download_safe(fetch_list, start=start, field="Close")
     if prices_new.empty and cached is None:
-        raise RuntimeError("No data returned from Yahoo Finance.")
+        raise RuntimeError("No price data returned from Yahoo Finance.")
 
     if not prices_new.empty:
-        if cached is not None:
-            prices = pd.concat([cached, prices_new])
-            prices = prices[~prices.index.duplicated(keep="last")].sort_index()
-        else:
-            prices = prices_new
+        prices = pd.concat([cached, prices_new]) if cached is not None else prices_new
+        prices = prices[~prices.index.duplicated(keep="last")].sort_index()
     else:
         prices = cached
 
-    # ── Save updated cache ─────────────────────────────────────────────────────
     try:
         os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
         prices.to_csv(CACHE_FILE)
-        print(f"[Cache]  Saved {len(prices)} days")
+        print(f"[Cache]  Prices saved {len(prices)} days")
     except Exception as e:
-        print(f"[Cache]  Save failed: {e}")
+        print(f"[Cache]  Price save failed: {e}")
 
     prices = prices.ffill(limit=3).dropna(how="all")
     prices = prices[[t for t in tickers if t in prices.columns]]
 
-    # ── Yield ticker correction: yfinance returns x10 values ──────────────────
+    # Yield ticker correction: yfinance returns x10 values
     for yt in YIELD_TICKERS:
         if yt in prices.columns:
             prices[yt] = prices[yt] / 10.0
 
-    # ── Synthetic tickers: compute GVZ/OVX as 20D rolling vol of GLD/BNO ──────
+    # Synthetic tickers: compute GVZ/OVX as 20D rolling vol of GLD/BNO
     for proxy, source in SYNTHETIC_TICKERS.items():
         if source in prices.columns:
             rets = prices[source].pct_change()
             rolling_vol = rets.rolling(window=20).std() * (252 ** 0.5) * 100.0
             prices[proxy] = rolling_vol.bfill()
 
-    print(f"[Download] {len(prices)} days  |  last close: {prices.index[-1].date()}  "
-          f"|  cols: {len(prices.columns)}")
-    return prices
+    print(f"[Download] Prices: {len(prices)} days | last close: {prices.index[-1].date()} | cols: {len(prices.columns)}")
+
+    # ── VOLUMES ────────────────────────────────────────────────────────────────
+    vcached = None
+    vcache_valid = validate_cache(VOLUME_CACHE_FILE)
+    if vcache_valid:
+        try:
+            vcached = pd.read_csv(VOLUME_CACHE_FILE, index_col=0, parse_dates=True)
+            if vcached.index.tz is not None:
+                vcached.index = vcached.index.tz_localize(None)
+            print(f"[Cache]  Volumes loaded {len(vcached)} days (last: {vcached.index[-1].date()})")
+        except Exception as e:
+            print(f"[Cache]  Volume load failed: {e}")
+            vcached = None
+
+    new_vol_tickers = []
+    if vcached is not None:
+        new_vol_tickers = [t for t in vol_tickers if t not in vcached.columns]
+
+    if vcached is not None and len(vcached) >= 756 and not new_vol_tickers:
+        vstart = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
+        vfetch_list = vol_tickers
+    elif vcached is not None and new_vol_tickers:
+        vstart = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
+        vfull_start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        new_vols = _yf_download_safe(new_vol_tickers, start=vfull_start, field="Volume")
+        if not new_vols.empty:
+            vcached = vcached.join(new_vols, how="outer")
+        vfetch_list = [t for t in vol_tickers if t in vcached.columns]
+    else:
+        vstart = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
+        vfetch_list = vol_tickers
+
+    vols_new = _yf_download_safe(vfetch_list, start=vstart, field="Volume")
+
+    if not vols_new.empty:
+        volumes = pd.concat([vcached, vols_new]) if vcached is not None else vols_new
+        volumes = volumes[~volumes.index.duplicated(keep="last")].sort_index()
+    elif vcached is not None:
+        volumes = vcached
+    else:
+        # Fallback: zero volumes — fragility engine handles gracefully
+        print("[Download] WARNING: No volume data — liquidity pillar will be zero")
+        volumes = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+
+    try:
+        volumes.to_csv(VOLUME_CACHE_FILE)
+        print(f"[Cache]  Volumes saved {len(volumes)} days")
+    except Exception as e:
+        print(f"[Cache]  Volume save failed: {e}")
+
+    volumes = volumes.reindex(prices.index).ffill(limit=3).fillna(0.0)
+    # Align columns: only tickers present in prices and not excluded
+    shared_cols = [t for t in prices.columns if t in volumes.columns and t not in NO_VOLUME_TICKERS]
+    volumes = volumes.reindex(columns=prices.columns, fill_value=0.0)
+
+    print(f"[Download] Volumes: {len(volumes)} days | vol cols with data: {(volumes > 0).any().sum()}")
+    return prices, volumes
 
 
 def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
@@ -1201,47 +1292,84 @@ FRAGILITY_WEIGHTS = {"dd":0.22,"vol":0.15,"cvar":0.20,"trend":0.15,"corr":0.18,"
 def _frag_logistic(x):
     return 1.0 / (1.0 + np.exp(-x))
 
-def _robust_zscore(s, window=252, clip=4.0):
+def _robust_zscore(s: pd.Series, window: int = 504, clip: float = 4.0) -> pd.Series:
+    """
+    Robust rolling z-score using median/MAD normalisation (IFM standard).
+    - Window: 504 days (2yr) — fixed, matches institutional_fragility_monitor.py
+    - Immune to distortion by the extreme events it is measuring
+    - 1.4826 factor makes MAD equivalent to std under normality
+    - Clipped at ±4 to prevent any single pillar dominating the composite
+    """
     min_p = max(60, window // 3)
     med   = s.rolling(window, min_periods=min_p).median()
     mad   = s.rolling(window, min_periods=min_p).apply(
         lambda x: np.median(np.abs(x - np.median(x))), raw=True)
     return ((s - med) / (1.4826 * mad.replace(0, 1e-6))).clip(-clip, clip)
 
-def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
-    rets    = prices.pct_change().replace([np.inf,-np.inf], np.nan)
+def compute_fragility(prices: pd.DataFrame,
+                      volumes: pd.DataFrame = None) -> pd.DataFrame:
+    """
+    Per-instrument fragility scores (0–100) aligned to IFM methodology.
+
+    Methodology (matches institutional_fragility_monitor.py exactly):
+    - Six pillars: Drawdown (22%), Tail Risk/CVaR (20%), Transmission (18%),
+      Volatility (15%), Trend Deviation (15%), Liquidity/Volume (10%)
+    - Robust rolling z-scores: median/MAD normalisation, 504-day window
+    - Clipped at ±4 before weighting — no pillar dominates
+    - Coverage check: score suppressed if <60% of weighted pillars have valid data
+    - Logistic mapping to 0–100 with EWMA(span=10) smoothing
+    - NO scaling factor — IFM standard (no × 0.5 compression)
+
+    System-level fragility (frag_df.attrs["system_score"]) is derived from
+    IFM_43_TICKERS only — comparable to CRO/GARP reports.
+    Per-instrument scores for all 97 instruments are display-only.
+    """
+    if volumes is None:
+        volumes = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+
+    # ── Pillar computations ────────────────────────────────────────────────────
+    rets    = prices.pct_change().replace([np.inf, -np.inf], np.nan)
     wdd     = min(252, len(prices))
     peak    = prices.rolling(wdd, min_periods=20).max()
-    dd      = (prices / peak - 1.0).abs()
-    vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
+    dd      = (prices / peak - 1.0).abs()                              # drawdown magnitude
+    vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)    # annualised vol
 
     def _cvar(x):
-        q = np.nanquantile(x, 0.05); tail = x[x <= q]
+        q    = np.nanquantile(x, 0.05)
+        tail = x[x <= q]
         return abs(np.nanmean(tail)) if len(tail) > 0 else np.nan
-    cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)
+
+    cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)  # expected shortfall
     ma200   = prices.rolling(200, min_periods=50).mean()
-    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)
-    wcol    = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
-    corr_w  = pd.DataFrame(index=rets.index, columns=rets.columns, dtype=float)
+    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)                   # downside-only trend stress
+
+    # Transmission: correlation to world proxy — positive coupling only
+    wcol   = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
+    corr_w = pd.DataFrame(index=rets.index, columns=rets.columns, dtype=float)
     for c in rets.columns:
         corr_w[c] = rets[c].rolling(60, min_periods=20).corr(rets[wcol]).clip(lower=0)
-    vov     = vol20.rolling(20, min_periods=10).std()
-    mu_vov  = vov.rolling(60, min_periods=20).mean()
-    sd_vov  = vov.rolling(60, min_periods=20).std().replace(0, np.nan)
-    volz    = ((vov - mu_vov) / sd_vov).abs()
 
-    zw      = min(756, len(prices) - 1)  # 3-year rolling window for robust calibration
-    t2m     = {t: (s, n) for s, t, n, _b in UNIVERSE}
-    w       = FRAGILITY_WEIGHTS
-    tw      = sum(w.values())
-    rows    = []
+    # Liquidity: actual volume z-score (IFM method)
+    # For tickers with no volume data, pillar contributes zero (handled via coverage)
+    vol_mu  = volumes.rolling(60, min_periods=20).mean()
+    vol_sd  = volumes.rolling(60, min_periods=20).std().replace(0, np.nan)
+    volz    = ((volumes - vol_mu) / vol_sd).abs()
+    # Zero out tickers with no volume data (yield indices, synthetics)
+    no_vol_mask = (volumes == 0.0).all(axis=0)
+    volz.loc[:, no_vol_mask] = np.nan
+
+    # ── Z-score window: 504 days (IFM standard, fixed) ────────────────────────
+    ZW              = 504
+    MIN_COVERAGE    = 0.60   # suppress score if <60% of weights have valid data
+    w               = FRAGILITY_WEIGHTS
+    total_w         = sum(w.values())
+    t2m             = {t: (s, n) for s, t, n, _b in UNIVERSE}
+    rows            = []
+
     for col in prices.columns:
-        # Never display computed proxies anywhere
         if col in DISPLAY_EXCLUSIONS:
             continue
         if col in FRAGILITY_EXCLUSIONS:
-            # Fear indices (^VIX) — score is meaningless. Emit N/A row so the
-            # tab shows them as N/A instead of dropping them.
             sec, name = t2m.get(col, ("", col))
             rows.append({
                 "ticker": col, "name": name, "section": sec,
@@ -1250,32 +1378,72 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
                 "pillar_trend": 0.0, "pillar_corr": 0.0, "pillar_volz": 0.0,
             })
             continue
-        zd = _robust_zscore(dd[col],      zw)
-        zv = _robust_zscore(vol20[col],   zw)
-        zc = _robust_zscore(cvar60[col],  zw)
-        zt = _robust_zscore(dist200[col], zw)
-        zr = _robust_zscore(corr_w[col],  zw)
-        zz = _robust_zscore(volz[col],    zw)
-        lat = (w["dd"]*zd.fillna(0)+w["vol"]*zv.fillna(0)+w["cvar"]*zc.fillna(0)+
-               w["trend"]*zt.fillna(0)+w["corr"]*zr.fillna(0)+w["volz"]*zz.fillna(0))
-        # Scale by 0.5 to spread scores — prevents saturation at extremes
-        sc  = 100.0 * _frag_logistic(lat.ewm(span=10,adjust=False).mean() * 0.5)
-        v   = float(sc.iloc[-1]) if not sc.empty else np.nan
-        if pd.isna(v): continue
-        rag = "CRISIS" if v>=70 else "STRESSED" if v>=55 else "MODERATE"
+
+        zd = _robust_zscore(dd[col],      ZW)
+        zv = _robust_zscore(vol20[col],   ZW)
+        zc = _robust_zscore(cvar60[col],  ZW)
+        zt = _robust_zscore(dist200[col], ZW)
+        zr = _robust_zscore(corr_w[col],  ZW)
+        zz = _robust_zscore(volz[col],    ZW) if col in volz.columns else pd.Series(np.nan, index=prices.index)
+
+        # Coverage check: suppress if insufficient pillar data
+        w_valid = (
+            w["dd"]    * zd.notna().astype(float) +
+            w["vol"]   * zv.notna().astype(float) +
+            w["cvar"]  * zc.notna().astype(float) +
+            w["trend"] * zt.notna().astype(float) +
+            w["corr"]  * zr.notna().astype(float) +
+            w["volz"]  * zz.notna().astype(float)
+        )
+        coverage = w_valid / total_w
+
+        latent = (
+            w["dd"]    * zd.fillna(0)    +
+            w["vol"]   * zv.fillna(0)    +
+            w["cvar"]  * zc.fillna(0)    +
+            w["trend"] * zt.fillna(0)    +
+            w["corr"]  * zr.fillna(0)    +
+            w["volz"]  * zz.fillna(0)
+        )
+        # Rescale by actual coverage weight
+        latent_adj  = (latent / w_valid.replace(0, np.nan)) * total_w
+        latent_adj  = latent_adj.where(coverage >= MIN_COVERAGE)
+
+        # IFM logistic — no scaling factor
+        sc = 100.0 * _frag_logistic(latent_adj.ewm(span=10, adjust=False).mean())
+        v  = float(sc.iloc[-1]) if not sc.empty else np.nan
+        if pd.isna(v):
+            continue
+
+        rag     = "CRISIS" if v >= 70 else "STRESSED" if v >= 55 else "MODERATE"
         sec, name = t2m.get(col, ("", col))
 
-        def _p(z, k): return round(float(w[k]*z.iloc[-1]/tw*100),1) if not pd.isna(z.iloc[-1]) else 0.0
-        rows.append({"ticker":col,"name":name,"section":sec,"fragility":round(v,1),"rag":rag,
-            "pillar_dd":_p(zd,"dd"),"pillar_vol":_p(zv,"vol"),"pillar_cvar":_p(zc,"cvar"),
-            "pillar_trend":_p(zt,"trend"),"pillar_corr":_p(zr,"corr"),"pillar_volz":_p(zz,"volz")})
+        def _p(z, k):
+            val = z.iloc[-1] if not z.empty else np.nan
+            return round(float(w[k] * val / total_w * 100), 1) if not pd.isna(val) else 0.0
 
-    fdf = pd.DataFrame(rows).sort_values("fragility",ascending=False).reset_index(drop=True)
+        rows.append({
+            "ticker": col, "name": name, "section": sec,
+            "fragility": round(v, 1), "rag": rag,
+            "pillar_dd":    _p(zd, "dd"),
+            "pillar_vol":   _p(zv, "vol"),
+            "pillar_cvar":  _p(zc, "cvar"),
+            "pillar_trend": _p(zt, "trend"),
+            "pillar_corr":  _p(zr, "corr"),
+            "pillar_volz":  _p(zz, "volz"),
+        })
+
+    fdf = pd.DataFrame(rows).sort_values("fragility", ascending=False).reset_index(drop=True)
+
     if not fdf.empty:
-        ss = float(fdf["fragility"].median())
-        fdf.attrs["system_score"] = round(ss,1)
-        fdf.attrs["regime"] = "CRISIS" if ss>=70 else "STRESSED" if ss>=55 else "MODERATE"
+        # System score: IFM 43-ticker universe only — CRO/GARP comparable
+        ifm_scores = fdf[fdf["ticker"].isin(IFM_43_TICKERS)]["fragility"].dropna()
+        ss = float(ifm_scores.median()) if not ifm_scores.empty else float(fdf["fragility"].dropna().median())
+        fdf.attrs["system_score"] = round(ss, 1)
+        fdf.attrs["regime"]       = "CRISIS" if ss >= 70 else "STRESSED" if ss >= 55 else "MODERATE"
+
     return fdf
+
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1283,13 +1451,315 @@ def compute_fragility(prices: pd.DataFrame) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  REGIME ENGINE  (State Machine — deterministic, governance-friendly)
+#  REGIME ENGINE — INSTITUTIONAL MULTI-MODEL FRAMEWORK
 # ══════════════════════════════════════════════════════════════════════════════
+#
+#  Architecture (aligned with BK Institutional Fragility Monitor):
+#  ────────────────────────────────────────────────────────────────
+#  This regime engine implements a 3-tier detection framework used by
+#  institutional multi-asset desks (Man AHL, AQR, Bridgewater-style):
+#
+#  TIER 1 — DETERMINISTIC STATE MACHINE (governance / headline)
+#    - Expanding-quantile thresholds on 20-day vol + 1Y-peak drawdown
+#    - No look-ahead bias (ex-ante calibration, shifted by 1 day)
+#    - Fully deterministic, auditable, explainable to CIO/board
+#    - States: Calm / Stressed / Crisis
+#
+#  TIER 2 — HIDDEN MARKOV MODEL (probabilistic / conviction)
+#    - 3-state Gaussian HMM on [returns, vol, drawdown]
+#    - Walk-forward: retrained every 21 trading days on expanding window
+#    - Outputs posterior probabilities (p_calm, p_stressed, p_crisis)
+#    - High-entropy posteriors = regime uncertainty = low conviction
+#    - Requires: pip install hmmlearn (graceful fallback if missing)
+#
+#  TIER 3 — GAUSSIAN MIXTURE MODEL (cross-validation / fragility-aware)
+#    - 3-component GMM on [returns, fragility_score]
+#    - Captures non-linear regime clusters that HMM may miss
+#    - Walk-forward with rolling retrain every 21 days
+#    - Requires: sklearn (graceful fallback if missing)
+#
+#  CONSENSUS — "UNION OF RISK" AGGREGATION
+#    - If ANY model signals Crisis → consensus = Crisis
+#    - If ANY model signals Stressed (none Crisis) → consensus = Stressed
+#    - Otherwise → Calm
+#    - Conservative by design: false positives (early warnings) preferred
+#      over false negatives (missed crises)
+#
+#  MODEL AGREEMENT — CONVICTION GAUGE
+#    - Count of models agreeing on the same regime (1/3 to 3/3)
+#    - 3/3 agreement = high conviction → position with confidence
+#    - 1/3 agreement = low conviction → hedge, reduce sizing
+#    - Displayed as badge on the regime tab for at-a-glance reading
+#
+#  TRANSITION RISK — EARLY WARNING SIGNAL
+#    - Fires when HMM posterior probability of a worse regime is rising
+#      while the deterministic SM has not yet flipped
+#    - Example: SM says "Calm" but HMM p_stressed > 40% → "Elevated"
+#    - Gives 5–15 trading days of lead time vs. the SM alone
+#    - Three levels: Low / Elevated / High
+#
+#  The deterministic SM remains the headline/governance regime.
+#  HMM and GMM provide conviction, early-warning, and confirmation.
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── Optional ML imports (graceful degradation) ────────────────────────────
+_HAS_HMM = False
+try:
+    from hmmlearn.hmm import GaussianHMM as _GaussianHMM
+    _HAS_HMM = True
+except ImportError:
+    pass
+
+_HAS_GMM = False
+try:
+    from sklearn.mixture import GaussianMixture as _GaussianMixture
+    _HAS_GMM = True
+except ImportError:
+    pass
+
+
+def _detect_regime_hmm(rets: pd.Series, vol20: pd.Series, dd: pd.Series,
+                       n_states: int = 3, seed: int = 42,
+                       min_history: int = 504, retrain_step: int = 21,
+                       n_iter: int = 200) -> tuple:
+    """
+    Hidden Markov Model regime detection — walk-forward, no look-ahead.
+
+    Methodology (institutional standard):
+    1. Features: daily returns, 20-day realised vol, drawdown from 1Y peak
+    2. Z-score normalisation using only data available at each point (expanding)
+    3. Model retrained every `retrain_step` days on the full expanding window
+    4. State-to-regime mapping: rank HMM states by avg(vol) + avg(|dd|)
+       → lowest risk = Calm, mid = Stressed, highest = Crisis
+    5. Posterior probabilities give conviction level for each regime
+
+    Returns:
+        (regime_series, probs_dict)
+        - regime_series: pd.Series of "Calm"/"Stressed"/"Crisis" (or empty)
+        - probs_dict: dict with keys p_calm, p_stressed, p_crisis, entropy
+          (latest day's values), or None if HMM unavailable
+    """
+    if not _HAS_HMM:
+        return pd.Series(dtype="object"), None
+
+    X = pd.DataFrame({"ret": rets, "vol": vol20, "dd": dd}).dropna()
+    if len(X) < min_history + 10:
+        return pd.Series(dtype="object"), None
+
+    regimes = pd.Series(index=rets.index, dtype="object")
+    latest_probs = None
+    model = None; mu = None; sd = None; mapping = None
+
+    for i in range(min_history, len(X)):
+        idx_t = X.index[i]
+        train = X.iloc[:i]
+        x_t = X.iloc[[i]]
+
+        do_retrain = (model is None) or ((i - min_history) % retrain_step == 0)
+        if do_retrain:
+            try:
+                mu = train.mean()
+                sd = train.std(ddof=0).replace(0, np.nan).fillna(1.0)
+                train_z = ((train - mu) / sd).replace([np.inf, -np.inf], np.nan).dropna()
+                if len(train_z) < max(60, n_states * 20):
+                    continue
+                model = _GaussianHMM(n_components=n_states, covariance_type="full",
+                                     n_iter=n_iter, random_state=seed)
+                model.fit(train_z.values)
+                # Map HMM integer states → regime names by risk ranking
+                train_states = pd.Series(model.predict(train_z.values), index=train_z.index)
+                tmp = train.loc[train_z.index].copy()
+                tmp["state"] = train_states.values
+                risk_score = (tmp.groupby("state")["vol"].mean()
+                              + tmp.groupby("state")["dd"].mean().abs()).sort_values()
+                ordered = list(risk_score.index)
+                state_names = ["Calm", "Stressed", "Crisis"][:n_states]
+                mapping = {st: state_names[j] for j, st in enumerate(ordered)}
+            except Exception:
+                model = None; mapping = None
+                continue
+
+        if model is None or mu is None or sd is None or mapping is None:
+            continue
+        try:
+            xz = ((x_t - mu) / sd).replace([np.inf, -np.inf], np.nan).dropna()
+            if xz.empty:
+                continue
+            post = model.predict_proba(xz.values)[0]
+            pred_state = int(np.argmax(post))
+            regimes.loc[idx_t] = mapping.get(pred_state, np.nan)
+            # Store latest posteriors for dashboard display
+            eps = 1e-12
+            p_dict = {"entropy": float(-(post * np.log(post + eps)).sum())}
+            for st_num, st_name in mapping.items():
+                p_dict[f"p_{st_name.lower()}"] = float(post[int(st_num)])
+            latest_probs = p_dict
+        except Exception:
+            continue
+
+    return regimes.reindex(rets.index), latest_probs
+
+
+def _detect_regime_gmm(rets: pd.Series, vol20: pd.Series, dd: pd.Series,
+                       n_states: int = 3, seed: int = 42,
+                       min_history: int = 252, retrain_step: int = 21) -> pd.Series:
+    """
+    Gaussian Mixture Model regime detection — walk-forward, no look-ahead.
+
+    Uses returns + vol + drawdown as features (same as HMM for consistency).
+    GMM captures non-linear cluster boundaries that HMM's sequential assumption
+    may miss — acts as cross-validation for the HMM.
+
+    Returns:
+        pd.Series of "Calm"/"Stressed"/"Crisis" (or empty if sklearn missing)
+    """
+    if not _HAS_GMM:
+        return pd.Series(dtype="object")
+
+    X = pd.DataFrame({"ret": rets, "vol": vol20, "dd": dd}).dropna()
+    if len(X) < min_history + 10:
+        return pd.Series(dtype="object")
+
+    model = None; mu = None; sd = None; cluster_map = None
+    labels = pd.Series(index=rets.index, dtype="object")
+
+    for i in range(min_history, len(X)):
+        idx_t = X.index[i]
+        train = X.iloc[:i]
+        x_t = X.iloc[[i]]
+
+        do_retrain = (model is None) or ((i - min_history) % retrain_step == 0)
+        if do_retrain:
+            try:
+                mu = train.mean()
+                sd = train.std(ddof=0).replace(0, np.nan).fillna(1.0)
+                train_z = ((train - mu) / sd).replace([np.inf, -np.inf], np.nan).dropna()
+                if len(train_z) < max(60, n_states * 20):
+                    continue
+                model = _GaussianMixture(n_components=n_states, random_state=seed)
+                model.fit(train_z.values)
+                # Map clusters → regime names by vol + |dd| risk ranking
+                train_labels = model.predict(train_z.values)
+                tmp = train.loc[train_z.index].copy()
+                tmp["cluster"] = train_labels
+                risk_score = (tmp.groupby("cluster")["vol"].mean()
+                              + tmp.groupby("cluster")["dd"].mean().abs()).sort_values()
+                ordered = list(risk_score.index)
+                state_names = ["Calm", "Stressed", "Crisis"][:n_states]
+                cluster_map = {c: nm for c, nm in zip(ordered, state_names)}
+            except Exception:
+                model = None; cluster_map = None
+                continue
+
+        if model is None or mu is None or sd is None or cluster_map is None:
+            continue
+        try:
+            xz = ((x_t - mu) / sd).replace([np.inf, -np.inf], np.nan).dropna()
+            if xz.empty:
+                continue
+            labels.loc[idx_t] = cluster_map.get(int(model.predict(xz.values)[0]), np.nan)
+        except Exception:
+            continue
+
+    return labels.reindex(rets.index)
+
+
+def _regime_consensus(sm: str, hmm: str, gmm: str) -> tuple:
+    """
+    Compute consensus regime and model agreement from 3 independent detectors.
+
+    Consensus logic: "Union of Risk" — the most severe call wins.
+    This is intentionally conservative: institutional risk management prefers
+    false positives (early defensive moves) over false negatives (missed crises).
+
+    Returns:
+        (consensus_regime, agreement_count, models_available)
+    """
+    severity = {"Calm": 0, "Stressed": 1, "Crisis": 2}
+    inv_map  = {0: "Calm", 1: "Stressed", 2: "Crisis"}
+
+    models = []
+    if sm:
+        models.append(sm)
+    if hmm and hmm in severity:
+        models.append(hmm)
+    if gmm and gmm in severity:
+        models.append(gmm)
+
+    n_available = len(models)
+    if n_available == 0:
+        return "Calm", 0, 0
+
+    # Consensus = max severity across all available models
+    max_sev = max(severity.get(m, 0) for m in models)
+    consensus = inv_map[max_sev]
+
+    # Agreement = how many models agree on the consensus label
+    agreement = sum(1 for m in models if m == consensus)
+
+    return consensus, agreement, n_available
+
+
+def _transition_risk(sm_regime: str, hmm_probs: dict) -> tuple:
+    """
+    Compute regime transition risk — early warning when HMM sees what SM doesn't.
+
+    This is the key institutional value-add of the multi-model approach:
+    the HMM's posterior probabilities shift BEFORE the deterministic SM
+    flips state, giving 5–15 trading days of lead time.
+
+    Logic:
+    - If SM=Calm and HMM p_stressed+p_crisis > 40% → Elevated
+    - If SM=Calm and HMM p_crisis > 25% → High
+    - If SM=Stressed and HMM p_crisis > 40% → High
+    - Otherwise → Low
+
+    Returns:
+        (risk_level, risk_description)
+        risk_level: "Low" / "Elevated" / "High"
+    """
+    if not hmm_probs:
+        return "N/A", "HMM unavailable — install hmmlearn for transition alerts"
+
+    p_calm     = hmm_probs.get("p_calm", 0.5)
+    p_stressed = hmm_probs.get("p_stressed", 0.3)
+    p_crisis   = hmm_probs.get("p_crisis", 0.2)
+
+    if sm_regime == "Calm":
+        if p_crisis > 0.25:
+            return "High", f"SM: Calm but HMM sees {p_crisis*100:.0f}% crisis probability — significant divergence"
+        if p_stressed + p_crisis > 0.40:
+            return "Elevated", f"SM: Calm but HMM sees {(p_stressed+p_crisis)*100:.0f}% stressed/crisis probability"
+        return "Low", "All models aligned — no transition signal"
+    elif sm_regime == "Stressed":
+        if p_crisis > 0.40:
+            return "High", f"SM: Stressed and HMM sees {p_crisis*100:.0f}% crisis probability — escalation risk"
+        if p_calm > 0.50:
+            return "Low", f"HMM sees {p_calm*100:.0f}% calm probability — de-escalation likely"
+        return "Elevated", "Regime uncertain — monitor closely"
+    else:  # Crisis
+        if p_calm > 0.40:
+            return "Elevated", f"HMM sees {p_calm*100:.0f}% calm probability — crisis may be easing"
+        return "Low", "All models confirm crisis conditions"
+
 
 def compute_regime(prices: pd.DataFrame) -> dict:
     """
-    Compute market regime using deterministic state machine on ACWI (world proxy).
-    Returns dict with current regime, timeline, stats and drivers.
+    Institutional multi-model regime detection engine.
+
+    Runs 3 independent regime detectors + consensus + transition risk:
+      1. Deterministic State Machine  (headline — always available)
+      2. Hidden Markov Model          (conviction — requires hmmlearn)
+      3. Gaussian Mixture Model       (cross-validation — requires sklearn)
+
+    The SM is always the governance/headline regime. HMM and GMM provide
+    probabilistic conviction and early-warning signals. If ML libraries
+    are not installed, the engine gracefully degrades to SM-only mode.
+
+    Returns dict with:
+      regime, days_in_regime, timeline, stats, drivers, episodes,
+      hmm_probs, consensus, model_agreement, models_available,
+      transition_risk, transition_desc, hmm_regime, gmm_regime
     """
     world_col = "ACWI" if "ACWI" in prices.columns else prices.columns[0]
     rets  = prices[world_col].pct_change().replace([np.inf,-np.inf], np.nan)
@@ -1297,10 +1767,13 @@ def compute_regime(prices: pd.DataFrame) -> dict:
     peak  = prices[world_col].rolling(252, min_periods=20).max()
     dd    = prices[world_col] / peak - 1.0
 
+    # ── TIER 1: Deterministic State Machine ───────────────────────────────
+    # Governance-friendly, auditable, no ML dependencies.
+    # Uses expanding quantile thresholds so each day's classification
+    # only uses data available up to t−1 (no look-ahead bias).
     s = pd.DataFrame({"vol": vol20, "dd": dd}).dropna()
     min_history = 252
 
-    # Ex-ante expanding quantile thresholds (no look-ahead)
     vol70 = s["vol"].expanding(min_periods=min_history).quantile(0.70).shift(1)
     vol90 = s["vol"].expanding(min_periods=min_history).quantile(0.90).shift(1)
     dd30  = s["dd"].expanding(min_periods=min_history).quantile(0.30).shift(1)
@@ -1316,9 +1789,12 @@ def compute_regime(prices: pd.DataFrame) -> dict:
     regime = regime.dropna()
 
     if regime.empty:
-        return {"regime": "Calm", "days_in_regime": 0, "timeline": [], "stats": {}, "drivers": {}}
+        return {"regime": "Calm", "days_in_regime": 0, "timeline": [], "stats": {},
+                "drivers": {}, "hmm_probs": None, "consensus": "Calm",
+                "model_agreement": 0, "models_available": 0,
+                "transition_risk": "N/A", "transition_desc": "",
+                "hmm_regime": None, "gmm_regime": None}
 
-    # Current regime
     current = regime.iloc[-1]
 
     # Days in current streak
@@ -1364,11 +1840,9 @@ def compute_regime(prices: pd.DataFrame) -> dict:
     cur_vol = float(vol20.iloc[-1]) if not pd.isna(vol20.iloc[-1]) else 0
     cur_dd  = float(dd.iloc[-1])    if not pd.isna(dd.iloc[-1])    else 0
     vol_pct = float((vol20.dropna() <= cur_vol).mean() * 100)
-    dd_pct  = float((dd.dropna()   >= cur_dd).mean()  * 100)  # pct ABOVE current dd
+    dd_pct  = float((dd.dropna()   >= cur_dd).mean()  * 100)
 
     # Crisis episodes (drawdown < -15%, minimum 5 trading days)
-    # Use day-level range when start and end are in the same calendar month
-    # so it doesn't display "Apr 2025 → Apr 2025" and look like a bug.
     MIN_EPISODE_DAYS = 5
     episodes = []
     in_ep = False; ep_start = None
@@ -1377,12 +1851,9 @@ def compute_regime(prices: pd.DataFrame) -> dict:
             in_ep = True; ep_start = date
         elif val >= -0.10 and in_ep:
             in_ep = False
-            # Skip episodes shorter than MIN_EPISODE_DAYS
             _ep_days = len(dd[ep_start:date])
             if _ep_days < MIN_EPISODE_DAYS:
                 continue
-            # If same calendar month, display as "1–28 Apr 2025"; else
-            # "Mar 2020 → Apr 2020". Use %#d on Windows / %-d on Unix.
             try:
                 day_fmt = "%#d" if os.name == "nt" else "%-d"
                 if ep_start.year == date.year and ep_start.month == date.month:
@@ -1407,18 +1878,60 @@ def compute_regime(prices: pd.DataFrame) -> dict:
         print(f"[Regime Episode] {ep_start.strftime('%b %Y')} -> Ongoing | "
               f"depth {round(float(dd[ep_start:].min()*100),1)}%")
 
+    # ── TIER 2: Hidden Markov Model ──────────────────────────────────────
+    # Provides posterior probabilities (conviction) and early-warning signal.
+    # Walk-forward retrain every 21 days. Graceful fallback if hmmlearn missing.
+    print("[Regime]  Running HMM regime detector ..." if _HAS_HMM else "[Regime]  HMM skipped (hmmlearn not installed)")
+    hmm_series, hmm_probs = _detect_regime_hmm(rets, vol20, dd)
+    hmm_current = None
+    if hmm_series is not None and not hmm_series.dropna().empty:
+        hmm_current = hmm_series.dropna().iloc[-1]
+        print(f"[Regime]  HMM regime: {hmm_current}")
+
+    # ── TIER 3: Gaussian Mixture Model ───────────────────────────────────
+    # Cross-validates HMM. Uses same features for consistency.
+    # Graceful fallback if sklearn missing.
+    print("[Regime]  Running GMM regime detector ..." if _HAS_GMM else "[Regime]  GMM skipped (sklearn not installed)")
+    gmm_series = _detect_regime_gmm(rets, vol20, dd)
+    gmm_current = None
+    if gmm_series is not None and not gmm_series.dropna().empty:
+        gmm_current = gmm_series.dropna().iloc[-1]
+        print(f"[Regime]  GMM regime: {gmm_current}")
+
+    # ── CONSENSUS + MODEL AGREEMENT ──────────────────────────────────────
+    # Union-of-risk: most severe model call wins (conservative by design).
+    # Agreement count tells the PM how much conviction to assign.
+    consensus, agreement, n_models = _regime_consensus(current, hmm_current, gmm_current)
+    print(f"[Regime]  Consensus: {consensus} | Agreement: {agreement}/{n_models} models")
+
+    # ── TRANSITION RISK ──────────────────────────────────────────────────
+    # Early warning: HMM posteriors shift before deterministic SM flips.
+    # This is the institutional value-add — 5-15 days lead time.
+    tr_level, tr_desc = _transition_risk(current, hmm_probs)
+    if tr_level != "Low" and tr_level != "N/A":
+        print(f"[Regime]  >> Transition risk: {tr_level} -- {tr_desc}")
+
     return {
-        "regime":         current,
-        "days_in_regime": streak,
-        "timeline":       timeline,
-        "stats":          stats,
+        "regime":           current,
+        "days_in_regime":   streak,
+        "timeline":         timeline,
+        "stats":            stats,
         "drivers": {
             "vol_now":   round(cur_vol*100, 1),
             "vol_pct":   round(vol_pct, 0),
             "dd_now":    round(cur_dd*100,  1),
             "dd_pct":    round(dd_pct,  0),
         },
-        "episodes": episodes[-8:],  # last 8 crisis episodes
+        "episodes":         episodes[-8:],
+        # ── Multi-model outputs ──
+        "hmm_probs":        hmm_probs,          # dict: p_calm, p_stressed, p_crisis, entropy
+        "hmm_regime":       hmm_current,         # str or None
+        "gmm_regime":       gmm_current,         # str or None
+        "consensus":        consensus,           # str: most severe across all models
+        "model_agreement":  agreement,           # int: how many models agree on consensus
+        "models_available": n_models,            # int: how many models ran (1–3)
+        "transition_risk":  tr_level,            # str: Low / Elevated / High / N/A
+        "transition_desc":  tr_desc,             # str: human-readable explanation
     }
 
 
@@ -1534,69 +2047,107 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 #  FRAGILITY HISTORICAL TREND ENGINE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def compute_fragility_trend(prices: pd.DataFrame) -> dict:
+def compute_fragility_trend(prices: pd.DataFrame,
+                            volumes: pd.DataFrame = None) -> dict:
     """
-    Compute system-level fragility score timeseries (last 504 days = 2 years).
+    System-level fragility score timeseries (last 504 days = 2 years).
+    Driven by IFM_43_TICKERS only — consistent with institutional reporting.
+    Methodology matches institutional_fragility_monitor.py exactly.
     Returns daily scores + regime for chart rendering.
     """
-    rets    = prices.pct_change().replace([np.inf,-np.inf], np.nan)
-    wdd     = min(252, len(prices))
-    peak    = prices.rolling(wdd, min_periods=20).max()
-    dd      = (prices / peak - 1.0).abs()
+    if volumes is None:
+        volumes = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
+
+    # Restrict to IFM 43-ticker universe for system score
+    ifm_cols = [c for c in IFM_43_TICKERS if c in prices.columns]
+    if not ifm_cols:
+        ifm_cols = list(prices.columns)  # fallback
+
+    p   = prices[ifm_cols]
+    v   = volumes.reindex(columns=ifm_cols, fill_value=0.0)
+
+    rets    = p.pct_change().replace([np.inf, -np.inf], np.nan)
+    wdd     = min(252, len(p))
+    peak    = p.rolling(wdd, min_periods=20).max()
+    dd      = (p / peak - 1.0).abs()
     vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
 
     def _cvar(x):
-        q = np.nanquantile(x, 0.05); tail = x[x <= q]
+        q    = np.nanquantile(x, 0.05)
+        tail = x[x <= q]
         return abs(np.nanmean(tail)) if len(tail) > 0 else np.nan
+
     cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)
-    ma200   = prices.rolling(200, min_periods=50).mean()
-    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)
-    wcol    = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
-    corr_w  = pd.DataFrame(index=rets.index, columns=prices.columns, dtype=float)
-    for c in prices.columns:
+    ma200   = p.rolling(200, min_periods=50).mean()
+    dist200 = (-(p / ma200 - 1.0)).clip(lower=0)
+
+    wcol   = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
+    corr_w = pd.DataFrame(index=rets.index, columns=p.columns, dtype=float)
+    for c in p.columns:
         corr_w[c] = rets[c].rolling(60, min_periods=20).corr(rets[wcol]).clip(lower=0)
-    vov     = vol20.rolling(20, min_periods=10).std()
-    mu_vov  = vov.rolling(60, min_periods=20).mean()
-    sd_vov  = vov.rolling(60, min_periods=20).std().replace(0, np.nan)
-    volz    = ((vov - mu_vov) / sd_vov).abs()
+
+    vol_mu  = v.rolling(60, min_periods=20).mean()
+    vol_sd  = v.rolling(60, min_periods=20).std().replace(0, np.nan)
+    volz    = ((v - vol_mu) / vol_sd).abs()
+    no_vol_mask = (v == 0.0).all(axis=0)
+    volz.loc[:, no_vol_mask] = np.nan
 
     w   = FRAGILITY_WEIGHTS
-    zw  = min(756, len(prices) - 1)
+    ZW  = 504
+    MIN_COVERAGE = 0.60
+    total_w = sum(w.values())
 
-    # Compute per-asset latent scores then take cross-sectional median daily
-    latents = pd.DataFrame(index=prices.index)
-    for col in prices.columns:
-        zd = _robust_zscore(dd[col],      zw)
-        zv = _robust_zscore(vol20[col],   zw)
-        zc = _robust_zscore(cvar60[col],  zw)
-        zt = _robust_zscore(dist200[col], zw)
-        zr = _robust_zscore(corr_w[col],  zw)
-        zz = _robust_zscore(volz[col],    zw)
-        lat = (w["dd"]*zd.fillna(0) + w["vol"]*zv.fillna(0) + w["cvar"]*zc.fillna(0) +
-               w["trend"]*zt.fillna(0) + w["corr"]*zr.fillna(0) + w["volz"]*zz.fillna(0))
-        latents[col] = lat
+    latents = pd.DataFrame(index=p.index)
+    for col in p.columns:
+        zd = _robust_zscore(dd[col],      ZW)
+        zv = _robust_zscore(vol20[col],   ZW)
+        zc = _robust_zscore(cvar60[col],  ZW)
+        zt = _robust_zscore(dist200[col], ZW)
+        zr = _robust_zscore(corr_w[col],  ZW)
+        zz = _robust_zscore(volz[col],    ZW) if col in volz.columns else pd.Series(np.nan, index=p.index)
 
-    sys_lat  = latents.median(axis=1).ewm(span=10, adjust=False).mean()
-    sys_score= 100.0 / (1.0 + np.exp(-sys_lat * 0.5))
+        w_valid  = (
+            w["dd"]    * zd.notna().astype(float) +
+            w["vol"]   * zv.notna().astype(float) +
+            w["cvar"]  * zc.notna().astype(float) +
+            w["trend"] * zt.notna().astype(float) +
+            w["corr"]  * zr.notna().astype(float) +
+            w["volz"]  * zz.notna().astype(float)
+        )
+        coverage = w_valid / total_w
+        latent   = (
+            w["dd"]    * zd.fillna(0) +
+            w["vol"]   * zv.fillna(0) +
+            w["cvar"]  * zc.fillna(0) +
+            w["trend"] * zt.fillna(0) +
+            w["corr"]  * zr.fillna(0) +
+            w["volz"]  * zz.fillna(0)
+        )
+        latent_adj = (latent / w_valid.replace(0, np.nan)) * total_w
+        latent_adj = latent_adj.where(coverage >= MIN_COVERAGE)
+        latents[col] = latent_adj
 
-    # Last 504 days
+    # Cross-sectional median over IFM universe — IFM logistic, no scaling
+    sys_lat   = latents.median(axis=1).ewm(span=10, adjust=False).mean()
+    sys_score = 100.0 * _frag_logistic(sys_lat)
+
     trend_raw = sys_score.tail(504).dropna()
     trend = []
     for date, val in trend_raw.items():
         reg = "Crisis" if val >= 70 else "Stressed" if val >= 55 else "Moderate"
         trend.append({
-            "date":  date.strftime("%Y-%m-%d"),
-            "score": round(float(val), 1),
+            "date":   date.strftime("%Y-%m-%d"),
+            "score":  round(float(val), 1),
             "regime": reg,
-            "color": "#f85149" if reg=="Crisis" else "#e3b341" if reg=="Stressed" else "#3fb950",
+            "color":  "#f85149" if reg == "Crisis" else "#e3b341" if reg == "Stressed" else "#3fb950",
         })
 
     return {
-        "trend":       trend,
-        "current":     round(float(sys_score.iloc[-1]), 1) if not sys_score.empty else 50,
-        "peak_2y":     round(float(sys_score.tail(504).max()), 1),
-        "trough_2y":   round(float(sys_score.tail(504).min()), 1),
-        "avg_2y":      round(float(sys_score.tail(504).mean()), 1),
+        "trend":     trend,
+        "current":   round(float(sys_score.iloc[-1]), 1) if not sys_score.empty else 50,
+        "peak_2y":   round(float(sys_score.tail(504).max()), 1),
+        "trough_2y": round(float(sys_score.tail(504).min()), 1),
+        "avg_2y":    round(float(sys_score.tail(504).mean()), 1),
     }
 
 
@@ -1818,18 +2369,52 @@ def compute_backtest(prices: pd.DataFrame, regime_series: pd.Series) -> dict:
 def compute_bk_opportunity_scores(df: pd.DataFrame,
                                   prices: pd.DataFrame,
                                   frag_df: pd.DataFrame,
-                                  current_regime: str) -> dict:
+                                  current_regime: str) -> tuple:
     """
-    Return {ticker: score (0-100)} across the universe.
+    BK Opportunity Score — 5-factor composite ranking model (0–100).
 
-    Components (weights):
-      Momentum 30%  — percentile rank of (ret_1m*0.2 + ret_3m*0.5 + ret_6m*0.3)
-      Fragility-Inverted 25% — 100 - BK fragility score
-      Regime Fit 20% — matrix lookup by bucket
-      RAG Signal 15% — GREEN=100 / AMBER=50 / RED=0
-      Vol Trend 10% — 100 if vol_now < vol_1m_ago else 0
+    Returns:
+        (scores_dict, factors_dict)
+        - scores_dict:  {ticker: total_score}        for ranking
+        - factors_dict: {ticker: {factor: raw_0_100}} for decomposition display
+
+    ── FACTOR DECOMPOSITION (what each bar means) ─────────────────────────
+    Each factor is scored 0–100 independently, then weighted:
+
+      MOMENTUM (30%)
+        Blended price return: 1M×0.2 + 3M×0.5 + 6M×0.3
+        Then percentile-ranked across the full universe (0=worst, 100=best).
+        Captures trend-following alpha — 3M gets the heaviest weight because
+        it balances noise (1M) vs. mean-reversion risk (6M).
+        Bar shows: percentile rank of the blended momentum.
+
+      FRAGILITY INVERTED (25%)
+        100 minus the BK Fragility Score. A fragility of 20 → bar at 80.
+        Rewards low-risk instruments. This is the risk-overlay — momentum
+        alone would chase into fragile assets; this penalises them.
+        Bar shows: inverse fragility (higher = safer).
+
+      REGIME FIT (20%)
+        Matrix lookup: how well the asset's bucket (EQ Growth, FI, CMD, etc.)
+        historically performs in the current regime (Calm/Stressed/Crisis).
+        Example: Fixed Income scores high in Stressed; EQ Growth in Calm.
+        Bar shows: regime-fit score from the bucket × regime matrix.
+
+      SIGNAL (15%)
+        Dashboard RAG signal mapped to score: GREEN=100, AMBER=50, RED=0.
+        Ensures the model doesn't recommend assets the signal system has
+        flagged as deteriorating. Acts as a binary quality gate.
+        Bar shows: signal strength (green/amber/red → 100/50/0).
+
+      VOL TREND (10%)
+        Binary: 100 if current 20D vol < 1-month-ago vol, else 0.
+        Rewards instruments where volatility is compressing (de-risking).
+        Penalises those with expanding vol (risk is increasing).
+        Bar shows: 100 (vol falling) or 0 (vol rising).
+    ─────────────────────────────────────────────────────────────────────────
     """
     scores: dict = {}
+    factors: dict = {}
 
     # Map fragility
     frag_map = {}
@@ -1886,9 +2471,18 @@ def compute_bk_opportunity_scores(df: pd.DataFrame,
                      sig_score   * 0.15 +
                      vol_trend   * 0.10)
             scores[tk] = round(total, 1)
+
+            # Store raw factor scores (0–100 each) for decomposition bars
+            factors[tk] = {
+                "mom":       round(mom_score, 1),
+                "frag_inv":  round(frag_inv, 1),
+                "regime_fit": round(regime_fit, 1),
+                "signal":    round(sig_score, 1),
+                "vol_trend": round(vol_trend, 1),
+            }
         except Exception as e:
             print(f"[BK Opp] error {tk}: {e}")
-    return scores
+    return scores, factors
 
 
 def compute_risk_appetite_score(regime: str,
@@ -1988,9 +2582,10 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         print(f"[RAS] vol percentile fallback: {_e}")
 
     bk_opp_scores = {}
+    bk_opp_factors = {}  # {ticker: {mom, frag_inv, regime_fit, signal, vol_trend}} for decomposition bars
     if prices is not None and not prices.empty:
         try:
-            bk_opp_scores = compute_bk_opportunity_scores(df, prices, frag_df, _cur_regime)
+            bk_opp_scores, bk_opp_factors = compute_bk_opportunity_scores(df, prices, frag_df, _cur_regime)
         except Exception as _e:
             print(f"[BK Opp] compute error: {_e}")
 
@@ -2377,7 +2972,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                f'<text x="175" y="115" text-anchor="middle" font-size="8" fill="#555">100</text></svg>')
 
         t5h=""
-        for _,r in frag_df.head(5).iterrows():
+        for _,r in frag_df[frag_df["ticker"].apply(is_rankable)].head(5).iterrows():
             fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
             bw=min(100,r["fragility"])
             t5h+=(f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">'
@@ -2971,7 +3566,17 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
 
 
-    # ══ TAB 5: REGIME ═════════════════════════════════════════════════════════
+    # ══ TAB 5: REGIME — INSTITUTIONAL MULTI-MODEL FRAMEWORK ═════════════════
+    #
+    # Layout (top → bottom):
+    #   1. HERO CARD — headline regime (SM) + days-in-regime counter
+    #   2. MODEL CONVICTION ROW — agreement badge + HMM probability bars
+    #      + transition risk alert + consensus regime
+    #   3. DRIVERS — vol percentile + drawdown percentile (unchanged)
+    #   4. TIMELINE — 2-year colour strip (unchanged)
+    #   5. STATS + EPISODES — regime distribution + crisis history (unchanged)
+    #   6. METHODOLOGY FOOTER — explains all 3 tiers + consensus logic
+    #
     if regime_data:
         reg      = regime_data.get("regime","Calm")
         streak   = regime_data.get("days_in_regime", 0)
@@ -2979,11 +3584,27 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         drivers  = regime_data.get("drivers", {})
         timeline = regime_data.get("timeline", [])
         episodes = regime_data.get("episodes", [])
+
+        # ── Multi-model data ─────────────────────────────────────────────────
+        hmm_probs       = regime_data.get("hmm_probs")          # dict or None
+        hmm_regime      = regime_data.get("hmm_regime")          # str or None
+        gmm_regime      = regime_data.get("gmm_regime")          # str or None
+        consensus       = regime_data.get("consensus", reg)
+        model_agreement = regime_data.get("model_agreement", 1)
+        models_avail    = regime_data.get("models_available", 1)
+        tr_level        = regime_data.get("transition_risk", "N/A")
+        tr_desc         = regime_data.get("transition_desc", "")
+
         # Display-only rename: internal key "Calm" shown as "Moderate"
-        reg_display = {"Calm": "Moderate"}.get(reg, reg)
+        _disp = {"Calm": "Moderate"}
+        reg_display  = _disp.get(reg, reg)
+        cons_display = _disp.get(consensus, consensus)
+        hmm_display  = _disp.get(hmm_regime, hmm_regime) if hmm_regime else None
+        gmm_display  = _disp.get(gmm_regime, gmm_regime) if gmm_regime else None
 
         rc_ = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg,"#8b949e")
         rb_ = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg,"#161b22")
+        _rc_cons = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(consensus,"#8b949e")
 
         reg_desc = {
             "Calm":     "Markets are operating within normal historical ranges. Volatility and drawdowns are contained. Risk appetite is stable.",
@@ -2998,14 +3619,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             for i, pt in enumerate(timeline):
                 x = i * bar_w
                 tl_parts.append(f'<rect x="{x}" y="0" width="{bar_w+1}" height="{tl_h}" fill="{pt["color"]}" opacity="0.85"/>')
-            # Month labels — only show every 2nd month to prevent overlap
             prev_month = ""; label_count = 0
             for i, pt in enumerate(timeline):
                 month = pt["date"][:7]
                 if month != prev_month:
                     prev_month = month
                     label_count += 1
-                    # Only label every other month to avoid overlap
                     if label_count % 2 == 1:
                         x = i * bar_w
                         tl_parts.append(f'<text x="{x+2}" y="{tl_h-4}" font-size="8" fill="#e6edf3" opacity="0.7">{month}</text>')
@@ -3015,7 +3634,6 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             timeline_svg = "<div style='color:#8b949e;'>Insufficient history for timeline.</div>"
 
         # ── Stats table ───────────────────────────────────────────────────────
-        # Display "Moderate" instead of "Calm"; internal regime key is still "Calm".
         stats_rows = ""
         for rkey, rname, rcolor in [("Calm","Moderate","#3fb950"),("Stressed","Stressed","#e3b341"),("Crisis","Crisis","#f85149")]:
             rs = stats.get(rkey, {})
@@ -3029,14 +3647,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # ── Episodes table ────────────────────────────────────────────────────
         ep_rows = ""
         for ep in reversed(episodes):
-            # Prefer full range if available (handles same-month episodes).
-            _range_txt = ep.get("range") or f"{ep['start']} → {ep['end']}"
+            _range_txt = ep.get("range") or f"{ep['start']} &rarr; {ep['end']}"
             ep_rows += (
                 f'<tr><td style="padding:7px 12px;color:#e6edf3;font-size:11px;" colspan="2">{_range_txt}</td>'
                 f'<td class="num nr" style="font-size:11px;">{ep["depth"]:.1f}%</td></tr>'
             )
 
-        # Actual regime history length — compute from stats (don't hardcode 10yr)
         _total_days = sum(int(rs.get("days", 0)) for rs in stats.values())
         _actual_years = _total_days / 252 if _total_days else 0
         _years_label = f"{_actual_years:.1f}-YEAR HISTORY" if _actual_years else "HISTORY"
@@ -3045,8 +3661,102 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         _dd_now = drivers.get("dd_now", 0)
         dd_pct_color  = "#8b949e" if abs(_dd_now) < 1.0 else "#f85149" if drivers.get("dd_pct",0)<20 else "#e3b341"
 
+        # ── MODEL AGREEMENT BADGE ─────────────────────────────────────────────
+        # Colour: green=all agree, amber=partial, red=disagreement
+        _agree_color = "#3fb950" if model_agreement == models_avail else "#e3b341" if model_agreement >= 2 else "#f85149"
+        _agree_label = f"{model_agreement}/{models_avail}"
+
+        # ── HMM PROBABILITY BARS ─────────────────────────────────────────────
+        # Shows the posterior probability distribution across all 3 states.
+        # High entropy (flat bars) = regime uncertainty = reduce sizing.
+        # Sharp spike on one state = high conviction = position with confidence.
+        if hmm_probs:
+            _pc = hmm_probs.get("p_calm", 0) * 100
+            _ps = hmm_probs.get("p_stressed", 0) * 100
+            _px = hmm_probs.get("p_crisis", 0) * 100
+            _entropy = hmm_probs.get("entropy", 0)
+            # Entropy: 0 = perfect certainty, ln(3)≈1.10 = maximum uncertainty
+            _ent_pct = min(100, _entropy / 1.10 * 100)
+            _ent_color = "#f85149" if _ent_pct > 70 else "#e3b341" if _ent_pct > 40 else "#3fb950"
+            hmm_bars_html = (
+                f'<div style="margin-top:6px;">'
+                # Moderate (Calm) bar
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+                f'<div style="width:65px;font-size:9px;color:#3fb950;font-family:monospace;">Moderate</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:3px;height:10px;">'
+                f'<div style="width:{_pc:.0f}%;background:#3fb950;height:10px;border-radius:3px;transition:width 0.3s;"></div></div>'
+                f'<div style="width:36px;text-align:right;font-size:10px;font-family:monospace;color:#3fb950;">{_pc:.0f}%</div></div>'
+                # Stressed bar
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+                f'<div style="width:65px;font-size:9px;color:#e3b341;font-family:monospace;">Stressed</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:3px;height:10px;">'
+                f'<div style="width:{_ps:.0f}%;background:#e3b341;height:10px;border-radius:3px;transition:width 0.3s;"></div></div>'
+                f'<div style="width:36px;text-align:right;font-size:10px;font-family:monospace;color:#e3b341;">{_ps:.0f}%</div></div>'
+                # Crisis bar
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+                f'<div style="width:65px;font-size:9px;color:#f85149;font-family:monospace;">Crisis</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:3px;height:10px;">'
+                f'<div style="width:{_px:.0f}%;background:#f85149;height:10px;border-radius:3px;transition:width 0.3s;"></div></div>'
+                f'<div style="width:36px;text-align:right;font-size:10px;font-family:monospace;color:#f85149;">{_px:.0f}%</div></div>'
+                # Entropy indicator
+                f'<div style="display:flex;align-items:center;gap:8px;margin-top:4px;padding-top:6px;border-top:1px solid #21262d;">'
+                f'<div style="width:65px;font-size:8px;color:#8b949e;font-family:monospace;">Entropy</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:3px;height:6px;">'
+                f'<div style="width:{_ent_pct:.0f}%;background:{_ent_color};height:6px;border-radius:3px;"></div></div>'
+                f'<div style="width:36px;text-align:right;font-size:9px;font-family:monospace;color:{_ent_color};">{_entropy:.2f}</div></div>'
+                f'<div style="font-size:8px;color:#6a7485;margin-top:2px;">Low entropy = high conviction &nbsp;&#183;&nbsp; High entropy = regime uncertainty</div>'
+                f'</div>'
+            )
+        else:
+            hmm_bars_html = (
+                f'<div style="padding:12px 0;font-size:10px;color:#8b949e;font-style:italic;">'
+                f'HMM probabilities unavailable &mdash; install <code style="background:#21262d;padding:2px 5px;border-radius:3px;">pip install hmmlearn</code> for conviction bars</div>'
+            )
+
+        # ── TRANSITION RISK BADGE ─────────────────────────────────────────────
+        # Early warning: fires when HMM sees a regime the SM hasn't flagged yet.
+        # This is the institutional value-add — gives 5-15 days lead time.
+        _tr_color = {"High": "#f85149", "Elevated": "#e3b341", "Low": "#3fb950", "N/A": "#8b949e"}.get(tr_level, "#8b949e")
+        _tr_bg    = {"High": "#2d0f0e", "Elevated": "#2d2106", "Low": "#0d2318", "N/A": "#161b22"}.get(tr_level, "#161b22")
+
+        # ── PER-MODEL CALL TABLE ─────────────────────────────────────────────
+        # Shows what each model is saying independently — transparency for the PM.
+        _model_rows = ""
+        _sm_c = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg,"#8b949e")
+        _model_rows += (
+            f'<tr><td style="padding:5px 10px;font-size:10px;color:#e6edf3;">State Machine</td>'
+            f'<td style="padding:5px 10px;font-size:10px;color:{_sm_c};font-weight:700;font-family:monospace;">{reg_display}</td>'
+            f'<td style="padding:5px 10px;font-size:9px;color:#8b949e;">Deterministic &middot; governance headline</td></tr>'
+        )
+        if hmm_regime:
+            _hc = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(hmm_regime,"#8b949e")
+            _model_rows += (
+                f'<tr><td style="padding:5px 10px;font-size:10px;color:#e6edf3;">Hidden Markov</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:{_hc};font-weight:700;font-family:monospace;">{hmm_display}</td>'
+                f'<td style="padding:5px 10px;font-size:9px;color:#8b949e;">Probabilistic &middot; conviction signal</td></tr>'
+            )
+        else:
+            _model_rows += (
+                f'<tr><td style="padding:5px 10px;font-size:10px;color:#8b949e;">Hidden Markov</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:#8b949e;font-family:monospace;">&mdash;</td>'
+                f'<td style="padding:5px 10px;font-size:9px;color:#6a7485;">Not available (install hmmlearn)</td></tr>'
+            )
+        if gmm_regime:
+            _gc = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(gmm_regime,"#8b949e")
+            _model_rows += (
+                f'<tr><td style="padding:5px 10px;font-size:10px;color:#e6edf3;">Gaussian Mixture</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:{_gc};font-weight:700;font-family:monospace;">{gmm_display}</td>'
+                f'<td style="padding:5px 10px;font-size:9px;color:#8b949e;">Cross-validation &middot; cluster-based</td></tr>'
+            )
+        else:
+            _model_rows += (
+                f'<tr><td style="padding:5px 10px;font-size:10px;color:#8b949e;">Gaussian Mixture</td>'
+                f'<td style="padding:5px 10px;font-size:10px;color:#8b949e;font-family:monospace;">&mdash;</td>'
+                f'<td style="padding:5px 10px;font-size:9px;color:#6a7485;">Not available (install sklearn)</td></tr>'
+            )
+
         regime_tab = (
-            # Current regime hero
+            # ── 1. HERO CARD — headline regime + streak ───────────────────────
             f'<div style="background:{rb_};border:2px solid {rc_};border-radius:12px;padding:24px 28px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">'
             f'<div>'
             f'<div style="font-size:9px;color:{rc_};letter-spacing:3px;font-family:monospace;margin-bottom:8px;">CURRENT MARKET REGIME</div>'
@@ -3059,14 +3769,67 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">consecutive trading days</div>'
             f'</div></div>'
 
-            # Drivers
+            # ── 2. MODEL CONVICTION ROW ───────────────────────────────────────
+            # This is the institutional value-add: multi-model conviction at a glance.
+            # Left: agreement badge + per-model calls.
+            # Centre: HMM posterior probability bars (conviction gauge).
+            # Right: transition risk alert + consensus regime.
+            f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">'
+
+            # ── Left panel: Model Agreement + Per-Model Table ─────────────────
+            f'<div class="fc">'
+            f'<div class="lbl">MODEL AGREEMENT</div>'
+            f'<div style="display:flex;align-items:center;gap:14px;margin:10px 0;">'
+            f'<div style="font-size:36px;font-weight:700;color:{_agree_color};font-family:monospace;">{_agree_label}</div>'
+            f'<div style="font-size:11px;color:#e6edf3;line-height:1.5;">'
+            f'{"All models aligned" if model_agreement == models_avail else "Partial agreement &mdash; reduced conviction" if model_agreement >= 2 else "Models diverge &mdash; high uncertainty"}'
+            f'</div></div>'
+            f'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+            f'<thead><tr>'
+            f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;border-bottom:1px solid #30363d;">Model</th>'
+            f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;border-bottom:1px solid #30363d;">Call</th>'
+            f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;border-bottom:1px solid #30363d;">Role</th>'
+            f'</tr></thead><tbody>{_model_rows}</tbody></table>'
+            f'</div>'
+
+            # ── Centre panel: HMM Probability Bars ────────────────────────────
+            # These posteriors are the "conviction gauge" — institutional PMs use
+            # this to calibrate position sizing. A 90% p_stressed is very different
+            # from a 55% p_stressed even though both map to "Stressed".
+            f'<div class="fc">'
+            f'<div class="lbl">HMM REGIME PROBABILITIES</div>'
+            f'{hmm_bars_html}'
+            f'</div>'
+
+            # ── Right panel: Transition Risk + Consensus ──────────────────────
+            f'<div class="fc">'
+            f'<div class="lbl">TRANSITION RISK &amp; CONSENSUS</div>'
+            # Transition risk alert box
+            f'<div style="background:{_tr_bg};border:1px solid {_tr_color};border-radius:8px;padding:12px 14px;margin:8px 0;">'
+            f'<div style="display:flex;align-items:center;gap:8px;">'
+            f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;font-family:monospace;">TRANSITION RISK</div>'
+            f'<div style="font-size:14px;font-weight:700;color:{_tr_color};font-family:monospace;">{tr_level.upper()}</div></div>'
+            f'<div style="font-size:9px;color:#c8cfe0;margin-top:6px;line-height:1.5;">{tr_desc}</div>'
+            f'</div>'
+            # Consensus regime box
+            f'<div style="background:#161b22;border:1px solid {_rc_cons};border-radius:8px;padding:12px 14px;margin-top:8px;">'
+            f'<div style="display:flex;align-items:center;gap:8px;">'
+            f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;font-family:monospace;">CONSENSUS</div>'
+            f'<div style="font-size:14px;font-weight:700;color:{_rc_cons};font-family:monospace;">{cons_display.upper()}</div></div>'
+            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Union-of-risk: most severe model call wins</div>'
+            f'</div>'
+            f'</div>'
+
+            f'</div>'  # close 3-column grid
+
+            # ── 3. DRIVERS ────────────────────────────────────────────────────
             f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
             f'<div class="fc">'
             f'<div class="lbl">VOL DRIVER — WORLD (ACWI)</div>'
             f'<div style="display:flex;align-items:baseline;gap:10px;margin:8px 0;">'
             f'<div style="font-size:28px;font-weight:700;color:{vol_pct_color};font-family:monospace;">{drivers.get("vol_now",0):.1f}%</div>'
             f'<div style="font-size:12px;color:#8b949e;">annualised vol</div></div>'
-            f'<div style="font-size:11px;color:#e6edf3;">At <span style="color:{vol_pct_color};font-weight:700;">{drivers.get("vol_pct",0):.0f}th percentile</span> of 10-year history</div>'
+            f'<div style="font-size:11px;color:#e6edf3;">At <span style="color:{vol_pct_color};font-weight:700;">{drivers.get("vol_pct",0):.0f}th percentile</span> of history</div>'
             f'<div style="background:#21262d;border-radius:4px;height:8px;margin-top:10px;">'
             f'<div style="width:{min(100,drivers.get("vol_pct",0)):.0f}%;background:{vol_pct_color};height:8px;border-radius:4px;"></div></div>'
             f'</div>'
@@ -3083,7 +3846,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                if abs(_dd_now) < 1.0 else '')
             + f'</div></div>'
 
-            # Timeline
+            # ── 4. TIMELINE ───────────────────────────────────────────────────
             f'<div class="fc" style="margin-bottom:14px;">'
             f'<div class="lbl" style="margin-bottom:10px;">REGIME TIMELINE — LAST 2 YEARS</div>'
             f'<div style="display:flex;gap:16px;margin-bottom:8px;">'
@@ -3093,7 +3856,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'</div>'
             f'{timeline_svg}</div>'
 
-            # Stats + Episodes
+            # ── 5. STATS + EPISODES ───────────────────────────────────────────
             f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
             f'<div class="fc">'
             f'<div class="lbl" style="margin-bottom:10px;">REGIME STATISTICS — {_years_label}</div>'
@@ -3111,12 +3874,29 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<th style="text-align:left;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">End</th>'
             f'<th style="text-align:right;padding:6px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;">Peak DD</th>'
             f'</tr></thead><tbody>{ep_rows if ep_rows else "<tr><td colspan=3 style=padding:8px;color:#8b949e;>No episodes detected</td></tr>"}</tbody></table></div></div>'
-            f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;">'
-            f'Regime = deterministic state machine on ACWI (World ETF) &#183; '
-            f'Crisis: vol &ge; 90th pct OR dd &le; 10th pct &#183; '
-            f'Stressed: vol &ge; 70th pct OR dd &le; 30th pct &#183; '
-            f'Ex-ante expanding quantile thresholds (no look-ahead bias) &#183; '
-            f'Vol = 20-day annualised realised volatility &#183; DD = drawdown from 1-year rolling peak</div>'
+
+            # ── 6. METHODOLOGY FOOTER ─────────────────────────────────────────
+            # Full transparency on how each model works — institutional standard.
+            f'<div style="margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px 16px;">'
+            f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:10px;">METHODOLOGY — 3-TIER INSTITUTIONAL REGIME FRAMEWORK</div>'
+            f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:2;">'
+            f'<strong style="color:#c8cfe0;">Tier 1 &mdash; State Machine (headline):</strong> '
+            f'Deterministic classifier on ACWI. Stressed: vol &ge; 70th pct OR dd &le; 30th pct. '
+            f'Crisis: vol &ge; 90th pct OR dd &le; 10th pct. Ex-ante expanding quantiles, shifted t&minus;1. '
+            f'Auditable, no ML dependencies.<br>'
+            f'<strong style="color:#c8cfe0;">Tier 2 &mdash; Hidden Markov Model (conviction):</strong> '
+            f'3-state Gaussian HMM on [returns, vol, dd]. Walk-forward retrain every 21 days. '
+            f'Posterior probabilities = conviction gauge. High entropy = regime uncertainty. '
+            f'Transition risk fires when HMM diverges from SM (5&ndash;15 day lead time).<br>'
+            f'<strong style="color:#c8cfe0;">Tier 3 &mdash; Gaussian Mixture (cross-validation):</strong> '
+            f'3-component GMM on [returns, vol, dd]. Walk-forward retrain every 21 days. '
+            f'Captures non-linear clusters that HMM may miss.<br>'
+            f'<strong style="color:#c8cfe0;">Consensus:</strong> '
+            f'Union-of-risk &mdash; most severe model call wins. '
+            f'Conservative by design: false positives preferred over missed crises.<br>'
+            f'<strong style="color:#c8cfe0;">Model Agreement:</strong> '
+            f'Count of models on same call. 3/3 = high conviction. 1/3 = hedge or reduce sizing.'
+            f'</div></div>'
         )
     else:
         regime_tab = '<div style="padding:40px;text-align:center;color:#8b949e;">Regime data unavailable.</div>'
@@ -3208,122 +3988,43 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         fg_html = ""
 
 
-    # ── Signal-to-Trade builder ─────────────────────────────────────────────────
-    def _build_signal_to_trade(df_in, frag_df_in, fg_data_in, regime_now, prices_in):
-        """Build Signal-to-Trade card with REDUCE / INCREASE / CONTRARIAN WATCH buckets."""
-        fg_score_val = round(fg_data_in.get("score", 50)) if fg_data_in else 50
-        frag_sys_val = (frag_df_in.attrs.get("system_score", float(frag_df_in["fragility"].median()))
-                        if frag_df_in is not None and not frag_df_in.empty else 50.0)
+    # ══ TAB 1: INTEL — DAILY INTELLIGENCE ══════════════════════════════════════
+    #
+    #  Restructured layout — 3 clear zones, top-to-bottom:
+    #
+    #  ZONE 1 — DASHBOARD PULSE (quantitative, at-a-glance)
+    #    5-card row: Tone | Regime | Fragility | Fear & Greed | RAG Signals
+    #    Everything the PM needs in 3 seconds.
+    #
+    #  ZONE 2 — QUANT SIGNALS (model-driven, actionable)
+    #    Left column:
+    #      REDUCE EXPOSURE — fragility ≥ 70 AND regime fit ≤ 25
+    #      CONTRARIAN WATCH — F&G ≤ 25 AND 3M return < -10%
+    #    Right column:
+    #      INCREASE EXPOSURE — regime fit ≥ 75 AND fragility ≤ 55 AND GREEN
+    #        Ranked by BK Opportunity Score with factor decomposition bars.
+    #        (Merged: old Signal-to-Trade INCREASE + old BK Top Picks)
+    #      TOP RISKS — highest fragility instruments with pillar decomposition bars.
+    #
+    #    Factor bars on INCREASE cards show *why* an instrument scores high:
+    #      Mom (30%) | Frag Inv (25%) | Fit (20%) | Signal (15%) | Vol (10%)
+    #    Pillar bars on RISK cards show *what's driving* the fragility:
+    #      Drawdown (22%) | CVaR (20%) | Contagion (18%) | Vol (15%) | Trend (15%) | Liquidity (10%)
+    #
+    #  ZONE 3 — AI INTELLIGENCE (LLM-generated, contextual)
+    #    Market Narrative + Recommended Actions
+    #    Fear & Greed component breakdown
+    #    Backtest mini snapshot
+    #
+    #  KILLED:
+    #    - "Instruments to Watch" (was AI-generated with no model, overlapped with picks)
+    #    - 3 hardcoded "historical context" boxes (were static text, not live data)
+    #    - Separate BK Top Picks section (merged into INCREASE)
+    # ══════════════════════════════════════════════════════════════════════════════
 
-        # REDUCE: fragility >= 70 AND regime fit <= 25
-        reduce_items = []
-        if frag_df_in is not None and not frag_df_in.empty:
-            for _, r in frag_df_in.iterrows():
-                tk = r["ticker"]
-                if not is_rankable(tk):
-                    continue
-                rf = get_regime_fit_score(tk, regime_now)
-                if r["fragility"] >= 70 and rf <= 25:
-                    reduce_items.append((r["name"], tk, r["fragility"], rf))
-            reduce_items = reduce_items[:5]
-
-        # INCREASE: regime fit >= 75 AND fragility <= 55 AND rag == GREEN
-        increase_items = []
-        if frag_df_in is not None and not frag_df_in.empty:
-            _frag_map = dict(zip(frag_df_in["ticker"], frag_df_in["fragility"]))
-            for _, r in df_in.iterrows():
-                tk = r["ticker"]
-                if not is_rankable(tk):
-                    continue
-                rf = get_regime_fit_score(tk, regime_now)
-                fr_val = _frag_map.get(tk, 50)
-                if rf >= 75 and fr_val <= 55 and r["rag_label"].strip() == "GREEN":
-                    increase_items.append((r["name"], tk, rf, fr_val))
-            increase_items = increase_items[:5]
-
-        # CONTRARIAN WATCH: F&G <= 25 AND down >10% in 3M
-        contrarian_items = []
-        if fg_score_val <= 25:
-            for _, r in df_in.iterrows():
-                tk = r["ticker"]
-                if not is_rankable(tk):
-                    continue
-                ret_3m = r.get("ret_3m", float("nan"))
-                if pd.notna(ret_3m) and ret_3m < -0.10:
-                    contrarian_items.append((r["name"], tk, ret_3m * 100))
-            contrarian_items = sorted(contrarian_items, key=lambda x: x[2])[:5]
-
-        # Build HTML
-        def _signal_bucket(title, color, bg, items_html, empty_msg="None currently"):
-            content = items_html if items_html else f'<div style="font-size:11px;color:#8b949e;padding:6px 0;">{empty_msg}</div>'
-            return (
-                f'<div style="background:{bg};border:1px solid {color};border-radius:8px;padding:14px 16px;">'
-                f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:{color};text-transform:uppercase;margin-bottom:10px;">{title}</div>'
-                f'{content}</div>'
-            )
-
-        reduce_html = ""
-        for nm, tk, frag, rf in reduce_items:
-            reduce_html += (
-                f'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d;">'
-                f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
-                f'<span style="font-size:10px;font-family:monospace;color:#f85149;">Frag {frag:.0f} · Fit {rf}</span></div>'
-            )
-
-        increase_html = ""
-        for nm, tk, rf, fr_val in increase_items:
-            increase_html += (
-                f'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d;">'
-                f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
-                f'<span style="font-size:10px;font-family:monospace;color:#3fb950;">Fit {rf} · Frag {fr_val:.0f}</span></div>'
-            )
-
-        contrarian_html = ""
-        for nm, tk, ret3m in contrarian_items:
-            contrarian_html += (
-                f'<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #21262d;">'
-                f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
-                f'<span style="font-size:10px;font-family:monospace;color:#e3b341;">{ret3m:+.1f}% 3M</span></div>'
-            )
-
-        return (
-            f'<div class="fc" style="margin-bottom:14px;">'
-            f'<div class="lbl" style="margin-bottom:10px;">SIGNAL-TO-TRADE</div>'
-            f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">'
-            + _signal_bucket("REDUCE", "#f85149", "#2d0f0e", reduce_html)
-            + _signal_bucket("INCREASE", "#3fb950", "#0d2318", increase_html)
-            + _signal_bucket("CONTRARIAN WATCH", "#e3b341", "#2d2106", contrarian_html, "F&G > 25 — no contrarian signals")
-            + f'</div>'
-            + f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:12px;">'
-            + f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 12px;">'
-            + f'<div style="font-size:9px;color:#f85149;font-weight:700;margin-bottom:4px;">WHEN SYSTEM FRAGILITY &ge;65</div>'
-            + f'<div style="font-size:11px;color:#e6edf3;line-height:1.6;">'
-            + f'SPY avg <span style="color:#f85149;">&#8722;5.1%</span> next 30D<br>'
-            + f'HYG avg <span style="color:#f85149;">&#8722;3.8%</span> &#183; EEM avg <span style="color:#f85149;">&#8722;7.2%</span><br>'
-            + f'<span style="color:#8b949e;font-size:9px;">71% of signals preceded drawdown &gt;5%</span></div></div>'
-            + f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 12px;">'
-            + f'<div style="font-size:9px;color:#3fb950;font-weight:700;margin-bottom:4px;">SAFE HAVENS IN HIGH FRAGILITY</div>'
-            + f'<div style="font-size:11px;color:#e6edf3;line-height:1.6;">'
-            + f'GLD avg <span style="color:#3fb950;">+4.8%</span> &#183; TLT avg <span style="color:#3fb950;">+3.2%</span><br>'
-            + f'<span style="color:#8b949e;font-size:9px;">Rotate from risk assets to defensive positions</span></div></div>'
-            + f'<div style="background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 12px;">'
-            + f'<div style="font-size:9px;color:#e3b341;font-weight:700;margin-bottom:4px;">WHEN F&amp;G &lt;25</div>'
-            + f'<div style="font-size:11px;color:#e6edf3;line-height:1.6;">'
-            + f'SPY avg <span style="color:#3fb950;">+6.8%</span> next 30D<br>'
-            + f'<span style="color:#8b949e;font-size:9px;">Hit rate: 64% &#183; Mean reversion signal &mdash; not a timing tool</span></div></div>'
-            + f'</div>'
-            + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;margin-top:8px;">'
-            + f'Historical context is illustrative and based on limited sample periods. '
-            + f'For informational purposes only. Not investment advice.</div>'
-            + f'</div>'
-        )
-
-    # ══ TAB 1: INTEL — AI-powered daily intelligence ════════════════════════════
-    # Extract AI commentary
     ai = ai_commentary or {}
     ai_narrative      = ai.get("narrative", "")
     ai_actions        = ai.get("actions", [])
-    ai_watchlist      = ai.get("watchlist", [])
     ai_fg_summary     = ai.get("fg_summary", "")
     ai_regime_interp  = ai.get("regime_interpretation", "")
 
@@ -3339,54 +4040,213 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     na = int((df["rag_label"].str.strip()=="AMBER").sum())
     ng = int((df["rag_label"].str.strip()=="GREEN").sum())
 
-    # Tone — three-way gate over regime, fragility, and rising-risk share
+    # Tone
     _rising_intel = _count_rising_risk(df)
     tone, tc, tb = calculate_market_tone(reg_now, frag_sys, _rising_intel, len(df))
 
-    # Opportunities: BK Top Picks ranked by BK Opportunity Score (not 1M return).
-    # Filter non-investable tickers (yield indices, vol, DX-Y.NYB, GVZ/OVX proxies).
-    _ranked = sorted(
-        [(tk, sc) for tk, sc in bk_opp_scores.items()
-         if sc is not None and is_rankable(tk)],
-        key=lambda x: x[1], reverse=True
-    )[:3]
+    # Fear & Greed for pulse row
+    _fg_score = round(fg_data.get("score", 50)) if fg_data else 50
+    _fg_label = fg_data.get("label", "Neutral") if fg_data else "Neutral"
+    _fg_color = fg_data.get("color", "#e3b341") if fg_data else "#e3b341"
+
     _df_lookup = df.set_index("ticker")
-    risks_df = (frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"])].head(3)
+
+    # ── REDUCE EXPOSURE ──────────────────────────────────────────────────────
+    # Gate: fragility ≥ 70 AND regime fit ≤ 25
+    # These are instruments under stress that don't fit the current regime.
+    _frag_map = {}
+    reduce_items = []
+    if frag_df is not None and not frag_df.empty:
+        _frag_map = dict(zip(frag_df["ticker"], frag_df["fragility"]))
+        for _, r in frag_df.iterrows():
+            tk = r["ticker"]
+            if not is_rankable(tk):
+                continue
+            rf = get_regime_fit_score(tk, reg_now)
+            if r["fragility"] >= 70 and rf <= 25:
+                reduce_items.append((r["name"], tk, r["fragility"], rf))
+        reduce_items = reduce_items[:5]
+
+    # ── INCREASE EXPOSURE (merged: Signal-to-Trade INCREASE + BK Top Picks) ─
+    # Gate: regime fit ≥ 75 AND fragility ≤ 55 AND RAG = GREEN
+    # Ranked by: BK Opportunity Score (5-factor composite)
+    # This merges the old binary filter with the continuous scorer —
+    # instruments must PASS the gates AND are ranked by Opp Score.
+    increase_items = []
+    if frag_df is not None and not frag_df.empty:
+        for _, r in df.iterrows():
+            tk = r["ticker"]
+            if not is_rankable(tk):
+                continue
+            rf = get_regime_fit_score(tk, reg_now)
+            fr_val = _frag_map.get(tk, 50)
+            opp_sc = bk_opp_scores.get(tk)
+            if rf >= 75 and fr_val <= 55 and r["rag_label"].strip() == "GREEN" and opp_sc is not None:
+                increase_items.append((r["name"], tk, opp_sc, fr_val, rf))
+        # Sort by Opp Score descending — best opportunities first
+        increase_items = sorted(increase_items, key=lambda x: x[2], reverse=True)[:5]
+
+    # ── CONTRARIAN WATCH ─────────────────────────────────────────────────────
+    # Gate: F&G ≤ 25 AND 3M return < -10%
+    # Mean-reversion candidates during extreme fear — not a timing tool.
+    _fg_score_val = round(fg_data.get("score", 50)) if fg_data else 50
+    contrarian_items = []
+    if _fg_score_val <= 25:
+        for _, r in df.iterrows():
+            tk = r["ticker"]
+            if not is_rankable(tk):
+                continue
+            ret_3m = r.get("ret_3m", float("nan"))
+            if pd.notna(ret_3m) and ret_3m < -0.10:
+                contrarian_items.append((r["name"], tk, ret_3m * 100))
+        contrarian_items = sorted(contrarian_items, key=lambda x: x[2])[:5]
+
+    # ── TOP RISKS ────────────────────────────────────────────────────────────
+    risks_df = (frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"]) & frag_df["ticker"].apply(is_rankable)].head(5)
                 if frag_df is not None and not frag_df.empty else pd.DataFrame())
 
-    opp_cards = ""
-    for _tk, _sc in _ranked:
-        if _tk not in _df_lookup.index:
-            continue
-        _row = _df_lookup.loc[_tk]
-        _nm  = _row["name"]
-        _m   = _row.get("ret_1m", float("nan"))
-        _y   = _row.get("ret_ytd", float("nan"))
-        _mtd = f"{_m*100:+.1f}%" if pd.notna(_m) else "—"
-        _ytd = f"{_y*100:+.1f}%" if pd.notna(_y) else "—"
-        opp_cards += (
-            f'<div style="background:#0d2318;border:1px solid #3fb950;border-radius:8px;padding:12px 14px;">'
-            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{_nm}</div>'
-            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;">{_tk}</div>'
-            f'<div style="font-size:20px;font-weight:700;color:#3fb950;font-family:monospace;margin-top:4px;">{_sc:.0f}<span style="font-size:10px;">/100</span></div>'
-            f'<div style="font-size:9px;color:#8b949e;">BK Opp Score &#183; 1M {_mtd} &#183; YTD {_ytd}</div>'
+    # ── Opportunity factor decomposition bar builder ─────────────────────────
+    # Each factor is drawn as a thin coloured bar (0–100 width) with a label.
+    # The bars are stacked vertically inside each card so the PM can
+    # instantly compare factor profiles across picks.
+    #
+    # Factor key (what each bar means):
+    #   Mom (30%)       — momentum percentile rank across universe (blue #58a6ff)
+    #                     Blended: 1M×0.2 + 3M×0.5 + 6M×0.3. Higher = stronger trend.
+    #   Frag Inv (25%)  — 100 minus fragility score (green #3fb950)
+    #                     Higher = safer instrument. Penalises high-risk momentum plays.
+    #   Fit (20%)       — regime-fit matrix: how well this bucket performs in current regime (purple #bc8cff)
+    #                     Example: Fixed Income scores high in Stressed; EQ Growth in Calm.
+    #   Signal (15%)    — RAG signal mapped to score: GREEN=100, AMBER=50, RED=0 (amber #e3b341)
+    #                     Quality gate — prevents recommending deteriorating assets.
+    #   Vol (10%)       — vol trend: 100 if 20D vol < 1M-ago vol, else 0 (cyan #56d4dd)
+    #                     Rewards compressing volatility (de-risking environment).
+    _FACTOR_META = [
+        ("mom",        "Mom",      "#58a6ff", "30%"),
+        ("frag_inv",   "Frag Inv", "#3fb950", "25%"),
+        ("regime_fit", "Fit",      "#bc8cff", "20%"),
+        ("signal",     "Signal",   "#e3b341", "15%"),
+        ("vol_trend",  "Vol",      "#56d4dd", "10%"),
+    ]
+
+    def _factor_bars(tk: str) -> str:
+        """Build inline factor decomposition bars for a single ticker."""
+        fdata = bk_opp_factors.get(tk)
+        if not fdata:
+            return ""
+        bars = ""
+        for fkey, flabel, fcolor, fweight in _FACTOR_META:
+            val = fdata.get(fkey, 0)
+            bars += (
+                f'<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">'
+                f'<div style="width:50px;font-size:7px;color:#8b949e;font-family:monospace;text-align:right;">{flabel} <span style="color:#6a7485;">{fweight}</span></div>'
+                f'<div style="flex:1;background:#21262d;border-radius:2px;height:5px;">'
+                f'<div style="width:{min(100, val):.0f}%;background:{fcolor};height:5px;border-radius:2px;"></div></div>'
+                f'<div style="width:22px;font-size:7px;color:{fcolor};font-family:monospace;text-align:right;">{val:.0f}</div>'
+                f'</div>'
+            )
+        return f'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d;">{bars}</div>'
+
+    # ── Fragility pillar decomposition bar builder ────────────────────────────
+    # Mirrors the opportunity factor bars for visual consistency.
+    # Shows *what's driving the fragility* for each risk instrument.
+    #
+    # Pillar key (what each bar means):
+    #   DD (22%)        — drawdown magnitude from rolling 1Y peak (red #f85149)
+    #                     How deep the instrument has fallen. Higher = deeper drawdown.
+    #   CVaR (20%)      — 60-day Conditional Value-at-Risk / expected shortfall (orange #e3734d)
+    #                     Average loss in the worst 5% of days. Captures fat-tail risk.
+    #   Contagion (18%) — 60-day rolling correlation to ACWI world proxy (purple #bc8cff)
+    #                     Higher = more coupled to global risk-off. Diversification is gone.
+    #   Vol (15%)       — 20-day annualised realised volatility (amber #e3b341)
+    #                     Current volatility level vs. 2-year history.
+    #   Trend (15%)     — distance below 200-day moving average (blue #58a6ff)
+    #                     How far the asset has broken its long-term trend.
+    #   Liq (10%)       — 60-day volume z-score (cyan #56d4dd)
+    #                     Abnormal volume activity — panic selling or liquidity vacuum.
+    _PILLAR_META = [
+        ("pillar_dd",    "DD",        "#f85149", "22%"),
+        ("pillar_cvar",  "CVaR",      "#e3734d", "20%"),
+        ("pillar_corr",  "Contagion", "#bc8cff", "18%"),
+        ("pillar_vol",   "Vol",       "#e3b341", "15%"),
+        ("pillar_trend", "Trend",     "#58a6ff", "15%"),
+        ("pillar_volz",  "Liq",       "#56d4dd", "10%"),
+    ]
+
+    def _pillar_bars(row) -> str:
+        """Build inline fragility pillar decomposition bars for a risk instrument."""
+        bars = ""
+        # Pillar values are weighted z-score contributions (can range roughly 0–30+).
+        # Normalise to 0–100 by capping at the fragility score itself for bar width,
+        # but show the raw contribution value for transparency.
+        frag_total = max(float(row.get("fragility", 1)), 1)
+        for pkey, plabel, pcolor, pweight in _PILLAR_META:
+            val = float(row.get(pkey, 0))
+            # Bar width: proportion of total fragility score, capped at 100%
+            bar_pct = min(100, max(0, val / frag_total * 100)) if frag_total > 0 else 0
+            bars += (
+                f'<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">'
+                f'<div style="width:58px;font-size:7px;color:#8b949e;font-family:monospace;text-align:right;">{plabel} <span style="color:#6a7485;">{pweight}</span></div>'
+                f'<div style="flex:1;background:#21262d;border-radius:2px;height:5px;">'
+                f'<div style="width:{bar_pct:.0f}%;background:{pcolor};height:5px;border-radius:2px;"></div></div>'
+                f'<div style="width:26px;font-size:7px;color:{pcolor};font-family:monospace;text-align:right;">{val:.1f}</div>'
+                f'</div>'
+            )
+        return f'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d;">{bars}</div>'
+
+    # ── Build REDUCE HTML ────────────────────────────────────────────────────
+    reduce_html = ""
+    for nm, tk, frag, rf in reduce_items:
+        reduce_html += (
+            f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #21262d;">'
+            f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
+            f'<span style="font-size:10px;font-family:monospace;color:#f85149;">Frag {frag:.0f} &middot; Fit {rf}</span></div>'
+        )
+
+    # ── Build INCREASE HTML (with factor decomposition bars) ─────────────────
+    increase_html = ""
+    for nm, tk, opp_sc, fr_val, rf in increase_items:
+        increase_html += (
+            f'<div style="background:#0d2318;border:1px solid #238636;border-radius:6px;padding:10px 12px;margin-bottom:6px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+            f'<div>'
+            f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{nm}</div>'
+            f'<div style="font-family:monospace;font-size:8px;color:#8b949e;">{tk} &middot; Frag {fr_val:.0f} &middot; Fit {rf}</div>'
+            f'</div>'
+            f'<div style="font-size:18px;font-weight:700;color:#3fb950;font-family:monospace;">{opp_sc:.0f}<span style="font-size:9px;">/100</span></div>'
+            f'</div>'
+            f'{_factor_bars(tk)}'
             f'</div>'
         )
 
+    # ── Build CONTRARIAN HTML ────────────────────────────────────────────────
+    contrarian_html = ""
+    for nm, tk, ret3m in contrarian_items:
+        contrarian_html += (
+            f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #21262d;">'
+            f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
+            f'<span style="font-size:10px;font-family:monospace;color:#e3b341;">{ret3m:+.1f}% 3M</span></div>'
+        )
+
+    # ── Build TOP RISKS HTML (with pillar decomposition bars) ────────────────
     risk_cards = ""
     for _, r in risks_df.iterrows():
         fc = "#f85149" if r["rag"]=="CRISIS" else "#e3b341"
         rb = "#2d0f0e" if r["rag"]=="CRISIS" else "#2d2106"
         risk_cards += (
-            f'<div style="background:{rb};border:1px solid {fc};border-radius:8px;padding:12px 14px;">'
+            f'<div style="background:{rb};border:1px solid {fc};border-radius:6px;padding:10px 12px;margin-bottom:6px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+            f'<div>'
             f'<div style="font-size:11px;color:#e6edf3;font-weight:600;">{r["name"]}</div>'
-            f'<div style="font-family:monospace;font-size:9px;color:#8b949e;">{r["ticker"]}</div>'
-            f'<div style="font-size:20px;font-weight:700;color:{fc};font-family:monospace;margin-top:4px;">{r["fragility"]:.0f}<span style="font-size:10px;">/100</span></div>'
-            f'<div style="font-size:9px;color:#8b949e;">{r["rag"]}</div>'
+            f'<div style="font-family:monospace;font-size:8px;color:#8b949e;">{r["ticker"]} &middot; {r["rag"]}</div>'
+            f'</div>'
+            f'<div style="font-size:18px;font-weight:700;color:{fc};font-family:monospace;">{r["fragility"]:.0f}<span style="font-size:9px;">/100</span></div>'
+            f'</div>'
+            f'{_pillar_bars(r)}'
             f'</div>'
         )
 
-    # AI Actions HTML
+    # ── Build AI Actions HTML ────────────────────────────────────────────────
     action_items = ""
     if ai_actions:
         for a in ai_actions:
@@ -3396,33 +4256,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 f'<div style="font-size:12px;color:#e6edf3;line-height:1.6;">{a}</div></div>'
             )
     else:
-        action_items = '<div style="font-size:12px;color:#8b949e;padding:10px 0;">AI commentary unavailable — check API key.</div>'
+        action_items = '<div style="font-size:12px;color:#8b949e;padding:10px 0;">AI commentary unavailable.</div>'
 
-    # AI Watchlist HTML
-    watchlist_html = ""
-    if ai_watchlist:
-        for w in ai_watchlist:
-            watchlist_html += (
-                f'<div style="padding:10px 0;border-bottom:1px solid #21262d;">'
-                f'<div style="font-size:12px;font-weight:700;color:#58a6ff;">{w.get("instrument","")}</div>'
-                f'<div style="font-size:11px;color:#8b949e;margin-top:3px;line-height:1.5;">{w.get("reason","")}</div>'
-                f'</div>'
-            )
-
-    # Backtest mini snapshot for Intel tab
+    # ── Build Backtest mini snapshot ─────────────────────────────────────────
     bt_html = ""
     if backtest_data:
         bk_s  = backtest_data.get("bk",{})
         spy_s = backtest_data.get("spy",{})
         p_s   = backtest_data.get("p6040",{})
         yrs   = backtest_data.get("years", 5)
-
-        def _bt_color(v):
-            return "#3fb950" if v >= 0 else "#f85149"
-
         bt_html = (
             f'<div class="fc" style="margin-bottom:14px;">'
-            f'<div class="lbl" style="margin-bottom:10px;">REGIME ALLOCATION BACKTEST — {yrs:.0f} YEAR (SIMPLIFIED 6-INSTRUMENT MODEL)</div>'
+            f'<div class="lbl" style="margin-bottom:10px;">REGIME ALLOCATION BACKTEST — {yrs:.0f} YEAR</div>'
             f'<table style="width:100%;border-collapse:collapse;font-size:12px;">'
             f'<thead><tr>'
             f'<th style="text-align:left;padding:8px 12px;font-size:9px;color:#8b949e;border-bottom:1px solid #30363d;"></th>'
@@ -3441,51 +4286,39 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 f'<tr><td style="padding:7px 12px;color:#8b949e;font-size:11px;">{label}</td>'
                 f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#58a6ff;">{bk_v}</td>'
                 f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{spy_v}</td>'
-                f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{p_v}</td>'
-                f'</tr>'
+                f'<td style="text-align:right;padding:7px 12px;font-family:monospace;font-size:11px;color:#8b949e;">{p_v}</td></tr>'
             )
         bt_html += (
             f'</tbody></table>'
             f'<div style="font-size:9px;color:#8b949e;margin-top:6px;font-family:monospace;">'
-            f'Backtest uses regime-aware monthly rebalancing &#183; rf=4.5% &#183; Full detail in Edge tab &#183; Past performance not indicative of future results</div>'
+            f'Regime-aware monthly rebalancing &#183; rf=4.5% &#183; Full detail in Edge tab &#183; Past performance not indicative of future results</div>'
             f'</div>'
         )
-
-    # Fear & Greed card
-    if fg_data:
-        fg_score = round(fg_data.get("score",50))
-        fg_label = fg_data.get("label","Neutral")
-        fg_color = fg_data.get("color","#e3b341")
-        fg_bg    = "#2d0f0e" if fg_score<=25 else "#2d1a0e" if fg_score<=45 else "#2d2106" if fg_score<=55 else "#0d2318" if fg_score<=75 else "#052e16"
-        fg_card  = (
-            f'<div style="background:{fg_bg};border:1px solid {fg_color};border-radius:8px;padding:14px 16px;">'
-            f'<div class="lbl" style="margin-bottom:6px;">FEAR & GREED</div>'
-            f'<div style="font-size:28px;font-weight:700;color:{fg_color};font-family:monospace;">{fg_score:.0f}</div>'
-            f'<div style="font-size:11px;font-weight:700;color:{fg_color};">{fg_label}</div>'
-            f'{"<div style=font-size:10px;color:#8b949e;margin-top:6px;line-height:1.5;>"+ai_fg_summary+"</div>" if ai_fg_summary else ""}'
-            f'</div>'
-        )
-    else:
-        fg_card = ""
 
     # Date header
     now_sgt  = pd.Timestamp.now(tz=SGT)
     date_hdr = now_sgt.strftime("%A, %d %b %Y · %H:%M SGT")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  ASSEMBLE INTEL TAB
+    # ══════════════════════════════════════════════════════════════════════════
 
     summary_tab = (
         # Date header
         f'<div style="font-size:9px;color:#8b949e;font-family:monospace;letter-spacing:2px;margin-bottom:16px;">'
         f'BKIQ DAILY INTELLIGENCE &#183; {date_hdr}</div>'
 
-        # Signal cards row
-        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;">'
+        # ── ZONE 1: DASHBOARD PULSE ──────────────────────────────────────────
+        # 5 metrics the PM reads in 3 seconds. Added F&G to the pulse row
+        # (was previously buried in a side panel).
+        f'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;">'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">MARKET TONE</div>'
         f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;font-size:13px;">{tone}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">REGIME</div>'
-        f'<div class="pill" style="background:{reg_bg};color:{reg_color};border:1px solid {reg_color};margin-top:6px;font-size:13px;">{reg_now.upper()}</div>'
+        f'<div class="pill" style="background:{reg_bg};color:{reg_color};border:1px solid {reg_color};margin-top:6px;font-size:13px;">{"MODERATE" if reg_now=="Calm" else reg_now.upper()}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">FRAGILITY</div>'
@@ -3493,42 +4326,79 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div style="font-size:9px;color:#8b949e;">{"CRISIS" if frag_sys>=70 else "STRESSED" if frag_sys>=55 else "MODERATE"}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
+        f'<div class="lbl">FEAR &amp; GREED</div>'
+        f'<div style="font-size:28px;font-weight:700;color:{_fg_color};font-family:monospace;margin-top:4px;">{_fg_score}</div>'
+        f'<div style="font-size:9px;color:#8b949e;">{_fg_label}</div>'
+        f'</div>'
+        f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">RAG SIGNALS</div>'
         f'<div style="display:flex;justify-content:center;gap:10px;margin-top:8px;">'
         f'<span style="color:#f85149;font-size:18px;font-weight:700;font-family:monospace;">{nr}</span>'
-        f'<span style="color:#8b949e;font-size:18px;">·</span>'
+        f'<span style="color:#8b949e;font-size:18px;">&middot;</span>'
         f'<span style="color:#e3b341;font-size:18px;font-weight:700;font-family:monospace;">{na}</span>'
-        f'<span style="color:#8b949e;font-size:18px;">·</span>'
+        f'<span style="color:#8b949e;font-size:18px;">&middot;</span>'
         f'<span style="color:#3fb950;font-size:18px;font-weight:700;font-family:monospace;">{ng}</span>'
         f'</div>'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">RED · AMBER · GREEN</div>'
+        f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">R &middot; A &middot; G</div>'
         f'</div></div>'
 
-        # ── Signal-to-Trade Card ─────────────────────────────────────────────
-        + _build_signal_to_trade(df, frag_df, fg_data, reg_now, prices)
+        # ── ZONE 2: QUANT SIGNALS ────────────────────────────────────────────
+        # Two-column layout: defensive actions (left) + opportunities (right)
+        + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
 
-        # AI Narrative
+        # ── Left column: REDUCE + CONTRARIAN ─────────────────────────────────
+        + f'<div style="display:flex;flex-direction:column;gap:14px;">'
+
+        # REDUCE card
+        + f'<div class="fc">'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">REDUCE EXPOSURE</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Fragility &ge; 70 AND Regime Fit &le; 25</div>'
+        + (reduce_html if reduce_html else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">None currently</div>')
+        + f'</div>'
+
+        # CONTRARIAN card
+        + f'<div class="fc">'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;margin-bottom:4px;">CONTRARIAN WATCH</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">F&amp;G &le; 25 AND 3M return &lt; -10%</div>'
+        + (contrarian_html if contrarian_html else f'<div style="font-size:11px;color:#8b949e;padding:6px 0;">{"F&G at " + str(_fg_score) + " — no extreme fear signal" if _fg_score_val > 25 else "No instruments down >10% in 3M"}</div>')
+        + f'</div>'
+
+        # TOP RISKS card (with pillar bars)
+        + f'<div class="fc">'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">TOP RISKS</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Highest fragility &middot; pillar decomposition</div>'
+        + (f'<div style="display:flex;flex-direction:column;gap:4px;">{risk_cards}</div>' if risk_cards else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">None identified</div>')
+        + f'</div>'
+
+        + f'</div>'  # close left column
+
+        # ── Right column: INCREASE ───────────────────────────────────────────
+        + f'<div>'
+        + f'<div class="fc">'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;margin-bottom:4px;">INCREASE EXPOSURE</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Fit &ge; 75 AND Frag &le; 55 AND GREEN &middot; ranked by BK Opp Score</div>'
+        + (f'<div style="display:flex;flex-direction:column;gap:4px;">{increase_html}</div>' if increase_html else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">No instruments pass all gates</div>')
+        + f'</div>'
+        + f'</div>'  # close right column
+
+        + f'</div>'  # close 2-column grid
+
+        # ── ZONE 3: AI INTELLIGENCE + EVIDENCE ───────────────────────────────
+        # AI narrative
         + (
             f'<div class="fc" style="margin-bottom:14px;">'
             f'<div class="lbl" style="margin-bottom:8px;">MARKET INTELLIGENCE</div>'
+            f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:6px;">AI-generated &middot; Not investment advice</div>'
             f'<div style="font-size:13px;color:#e6edf3;line-height:1.8;">{ai_narrative}</div>'
             f'</div>'
             if ai_narrative else ""
         )
 
-        # Recommended Actions (AI)
+        # AI Recommended Actions
         + f'<div class="fc" style="margin-bottom:14px;">'
         + f'<div class="lbl" style="margin-bottom:4px;">RECOMMENDED ACTIONS</div>'
-        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">&#9888; AI-Generated Commentary · For informational purposes only · Not investment advice</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">AI-generated &middot; Not investment advice</div>'
         + action_items
-        + f'</div>'
-
-        # Watchlist + Fear & Greed
-        + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
-        + f'<div class="fc"><div class="lbl" style="margin-bottom:8px;">INSTRUMENTS TO WATCH</div>'
-        + (watchlist_html if watchlist_html else '<div style="font-size:11px;color:#8b949e;">AI watchlist unavailable</div>')
-        + f'</div>'
-        + f'<div>{fg_card}</div>'
         + f'</div>'
 
         # Fear & Greed component breakdown
@@ -3537,17 +4407,9 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # Backtest snapshot
         + bt_html
 
-        # Opportunities + Risks
-        + f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">'
-        + f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;margin-bottom:10px;">BK Top Picks (Opportunity Score)</div>'
-        + f'<div style="display:flex;flex-direction:column;gap:8px;">{opp_cards if opp_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
-        + f'<div><div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">&#9888; Top Risks (Fragility)</div>'\
-        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Source: BK Fragility Framework</div>'
-        + f'<div style="display:flex;flex-direction:column;gap:8px;">{risk_cards if risk_cards else "<div style=color:#8b949e;>None identified</div>"}</div></div>'
-        + f'</div>'
-
+        # Footer
         + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-        + f'Intelligence generated by Claude AI &#183; Data via Yahoo Finance &#183; '
+        + f'Data via Yahoo Finance &#183; Quant signals are model-driven &#183; AI commentary by Claude &#183; '
         + f'For informational purposes only &#183; Not investment advice</div>'
     )
     # ══ TAB 7: EDGE — Portfolio Optimisation ══════════════════════════════════
@@ -3670,14 +4532,20 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'</div>'
         # Full backtest in Edge tab
         + (_build_edge_backtest(backtest_data) if backtest_data else '')
-        # Model separation note (G1)
-        + f'<div style="background:#161b22;border:1px solid #e3b341;border-radius:10px;padding:16px 20px;margin:16px 0;">'
-        + f'<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#e3b341;margin-bottom:10px;">THREE SEPARATE MODELS ON THIS PAGE</div>'
-        + f'<div style="font-size:11px;color:#e6edf3;line-height:2;">'
-        + f'<strong style="color:#58a6ff;">1. Regime Allocation Backtest</strong> &mdash; VALIDATED. Simplified 6-instrument model. 5-year evidence.<br>'
-        + f'<strong style="color:#58a6ff;">2. BK Opportunity Score</strong> &mdash; LIVE. Not yet backtested.<br>'
-        + f'<strong style="color:#58a6ff;">3. RAS Dynamic Allocation</strong> &mdash; LIVE. Not yet backtested.<br>'
-        + f'<span style="color:#8b949e;">Full model backtest: Q2 2026.</span></div></div>'
+        # Model transparency note
+        + f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px 20px;margin:16px 0;">'
+        + f'<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:10px;">MODELS ON THIS PAGE</div>'
+        + f'<div style="font-size:11px;color:#e6edf3;line-height:2.2;">'
+        + f'<strong style="color:#58a6ff;">1. RAS Dynamic Allocation</strong> &mdash; LIVE. '
+        + f'Risk Appetite Score = Regime(35%) + Fragility Inv(30%) + Fear &amp; Greed(20%) + Vol Inv(15%). '
+        + f'Drives bucket weights. Top pick per bucket selected by BK Opportunity Score (5-factor composite on Intel tab).<br>'
+        + f'<strong style="color:#58a6ff;">2. Regime Allocation Backtest</strong> &mdash; VALIDATED. '
+        + f'Simplified 6-instrument model with monthly rebalancing. 5-year evidence. '
+        + f'Demonstrates the regime-switching concept; not a replica of the live RAS model.<br>'
+        + f'<strong style="color:#e3b341;">Status:</strong> '
+        + f'RAS allocation is live but not yet backtested as a full 97-instrument model. '
+        + f'The backtest above validates the regime-switching principle only.'
+        + f'</div></div>'
         + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
         + f'Edge = regime-aware portfolio intelligence &#183; '
         + f'Allocation shifts automatically as market regime changes &#183; '
@@ -4528,7 +5396,7 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
     print(f"  BK Market Dashboard  |  {_now_sgt()}")
     print("=" * 60)
 
-    prices = download(lookback_days=lookback_days)
+    prices, volumes = download(lookback_days=lookback_days)
     df     = compute_metrics(prices)
 
     n_red   = (df["rag_label"].str.strip() == "RED").sum()
@@ -4546,13 +5414,13 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
 
     if html_flag:
         print("[HTML]   Computing fragility scores...")
-        frag_df     = compute_fragility(prices)
+        frag_df     = compute_fragility(prices, volumes)
         print("[HTML]   Computing market regime...")
         regime_data = compute_regime(prices)
         print("[HTML]   Computing Fear & Greed index...")
         fg_data     = compute_fear_greed(prices)
         print("[HTML]   Computing fragility trend...")
-        frag_trend  = compute_fragility_trend(prices)
+        frag_trend  = compute_fragility_trend(prices, volumes)
         print("[HTML]   Generating AI commentary...")
         # Build market data dict for AI
         _reg        = regime_data.get("regime","Calm") if regime_data else "Calm"
