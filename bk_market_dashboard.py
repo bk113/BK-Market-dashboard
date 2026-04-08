@@ -4196,11 +4196,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
     # ── Build REDUCE HTML ────────────────────────────────────────────────────
     reduce_html = ""
-    for nm, tk, frag, rf in reduce_items:
+    for nm, tk, frag_score, rf in reduce_items:
         reduce_html += (
             f'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #21262d;">'
             f'<span style="font-size:11px;color:#e6edf3;">{nm} <span style="color:#8b949e;font-size:9px;">{tk}</span></span>'
-            f'<span style="font-size:10px;font-family:monospace;color:#f85149;">Frag {frag:.0f} &middot; Fit {rf}</span></div>'
+            f'<span style="font-size:10px;font-family:monospace;color:#f85149;">Frag {frag_score:.0f} &middot; Fit {rf}</span></div>'
         )
 
     # ── Build INCREASE HTML (with factor decomposition bars) ─────────────────
