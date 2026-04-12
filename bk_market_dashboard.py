@@ -101,8 +101,12 @@ UNIVERSE = [
     ("EQ_DM",    "EWU",      "UK",                      "EQ Defensive"),
     ("EQ_DM",    "FLGB",     "FTSE 100 (UK)",           "EQ Defensive"),
 
-    # ── EQ_IDX — Specialist & Thematic (1) ──────────────────
+    # ── EQ_IDX — Specialist & Thematic (5) ──────────────────
     ("EQ_IDX",   "GURU",     "Global X Guru ETF",       "EQ Growth"),
+    ("EQ_IDX",   "ARKK",     "ARK Innovation",          "EQ Growth"),
+    ("EQ_IDX",   "SKYY",     "Cloud Computing",         "EQ Growth"),
+    ("EQ_IDX",   "ICLN",     "Clean Energy",            "EQ Growth"),
+    ("EQ_IDX",   "GRID",     "Smart Grid Infra",        "EQ Growth"),
 
     # ── EQ_EM — Emerging Markets (11) ────────────────────────
     ("EQ_EM",    "EWZ",      "Brazil",                  "EQ Growth"),
@@ -117,12 +121,14 @@ UNIVERSE = [
     ("EQ_EM",    "VNM",      "Vietnam",                 "EQ Growth"),
     ("EQ_EM",    "KSA",      "Saudi Arabia",            "Real Assets"),
 
-    # ── EQ_APAC — Asia Pacific (5) ──────────────────────────
+    # ── EQ_APAC — Asia Pacific (7) ──────────────────────────
     ("EQ_APAC",  "AAXJ",     "Asia ex-Japan",           "EQ Growth"),
     ("EQ_APAC",  "EWH",      "Hang Seng / HK",          "EQ Growth"),
     ("EQ_APAC",  "VPL",      "Asia Pacific",            "EQ Growth"),
     ("EQ_APAC",  "CNYA",     "China A-Shares",          "EQ Growth"),
     ("EQ_APAC",  "ASEA",     "ASEAN",                   "EQ Growth"),
+    ("EQ_APAC",  "THD",      "Thailand",                "EQ Growth"),
+    ("EQ_APAC",  "EPHE",     "Philippines",             "EQ Growth"),
 
     # ── DEFENCE — Defence & Geopolitical (2) ─────────────────
     ("DEFENCE",  "XAR",      "BAE Aerospace & Defence", "Alts"),
@@ -144,11 +150,14 @@ UNIVERSE = [
     ("FI",       "CWB",      "Convertible Bonds",       "EQ Growth"),
     ("FI",       "VCSH",     "ST IG Corporates",        "Fixed Income"),
     ("FI",       "PFF",      "Preferred Securities",    "Fixed Income"),
+    ("FI",       "HYD",      "Municipal HY",            "Fixed Income"),
 
-    # ── FI_INTL — FI International (3) ───────────────────────
+    # ── FI_INTL — FI International (5) ───────────────────────
     ("FI_INTL",  "BNDW",     "Global Aggregate",        "Fixed Income"),
     ("FI_INTL",  "IHY",      "Intl High Yield",         "EQ Growth"),
     ("FI_INTL",  "IGIB",     "US IG Credit (Intl)",     "Fixed Income"),
+    ("FI_INTL",  "BNDX",     "Intl Bonds",              "Fixed Income"),
+    ("FI_INTL",  "IGOV",     "Intl Govt Bonds",         "Fixed Income"),
 
     # ── RATES — Sovereign Rates (4) NEW ──────────────────────
     ("RATES",    "^TNX",     "10Y Treasury Yield",      "Fixed Income"),
@@ -169,6 +178,10 @@ UNIVERSE = [
     ("CMD",      "WEAT",     "Wheat",                   "Real Assets"),
     ("CMD",      "LIT",      "Lithium",                 "Alts"),
     ("CMD",      "VALE",     "Iron Ore (VALE)",         "Real Assets"),
+    ("CMD",      "CORN",     "Corn",                    "Real Assets"),
+    ("CMD",      "SOYB",     "Soybeans",                "Real Assets"),
+    ("CMD",      "PALL",     "Palladium",               "Real Assets"),
+    ("CMD",      "CPER",     "Copper ETF",              "Real Assets"),
 
     # ── CRYPTO (3) ───────────────────────────────────────────
     ("CRYPTO",   "BTC-USD",  "Bitcoin",                 "Alts"),
@@ -196,11 +209,14 @@ UNIVERSE = [
     ("VOL",      "GVZ",      "Gold Volatility (proxy)", "Alts"),
     ("VOL",      "OVX",      "Oil Volatility (proxy)",  "Alts"),
 
-    # ── ALT — Listed Alternatives (4) NEW ────────────────────
+    # ── ALT — Listed Alternatives (7) ────────────────────────
     ("ALT",      "IFRA",     "US Infrastructure",       "Real Assets"),
     ("ALT",      "PSP",      "Listed Private Equity",   "Alts"),
     ("ALT",      "AMLP",     "Energy Infrastructure",   "Real Assets"),
     ("ALT",      "REET",     "Global REITs",            "Real Assets"),
+    ("ALT",      "BCI",      "Commodities Index",       "Real Assets"),
+    ("ALT",      "PDBC",     "Diversified Commodity",   "Real Assets"),
+    ("ALT",      "KBWY",     "High Yield REIT",         "Real Assets"),
 ]
 
 SECTION_ORDER = ["EQ_US", "EQ_SECT", "EQ_DM", "EQ_IDX", "EQ_APAC", "EQ_EM", "DEFENCE",
@@ -224,9 +240,9 @@ SECTION_LABELS = {
     "ALT":     "LISTED ALTERNATIVES",
 }
 
-# Display count: 97 instruments shown to users (excludes GVZ, OVX display-only
+# Display count: 113 instruments shown to users (excludes GVZ, OVX display-only
 # proxies and ^VIX which is index-only). len(UNIVERSE) may differ.
-N_INSTRUMENTS = 97
+N_INSTRUMENTS = 113
 
 # ── BUCKET + REGIME FIT ──────────────────────────────────────────────────────
 INSTRUMENT_BUCKETS = {t: b for _sec, t, _n, b in UNIVERSE}
@@ -4424,7 +4440,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     ai_edge   = (ai_commentary or {}).get("edge_rationale", "")
     _df_rankable = df[df["ticker"].apply(is_rankable)]
     top_gain  = _df_rankable.nlargest(1,"ret_1m")["name"].iloc[0] if not _df_rankable.empty else "N/A"
-    top_risk  = frag_df.head(1)["name"].iloc[0] if frag_df is not None and not frag_df.empty else "N/A"
+    _frag_rankable = frag_df[frag_df["ticker"].apply(is_rankable)] if frag_df is not None and not frag_df.empty else pd.DataFrame()
+    top_risk  = _frag_rankable.iloc[0]["name"] if not _frag_rankable.empty else "N/A"
     _vol_mask = df["vol_now"].notna() & df["vol_1m_ago"].notna() if "vol_now" in df.columns else pd.Series(False, index=df.index)
     vol_count = int((df.loc[_vol_mask, "vol_now"] > df.loc[_vol_mask, "vol_1m_ago"]).sum()) if _vol_mask.any() else 0
     commentary = ai_edge if ai_edge else (
@@ -4436,8 +4453,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # Key metrics for context (rankable subset only — excludes indices/proxies)
     best_asset  = _df_rankable.nlargest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
     # Highest risk: use BK Fragility Score (top fragility instrument)
-    if frag_df is not None and not frag_df.empty:
-        top_frag = frag_df.iloc[0]
+    if not _frag_rankable.empty:
+        top_frag = _frag_rankable.iloc[0]
         highest_risk_name  = top_frag["name"]
         # Use round(), not int(), so this matches the :.0f format used in the
         # Fragility tab. Previously int() truncated while :.0f rounded, giving
@@ -4553,6 +4570,125 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'</div>'
     )
 
+    # ══ TAB 9: FUTURE DEVELOPMENT ════════════════════════════════════════════
+    future_tab = (
+        f'<div style="max-width:900px;margin:0 auto;">'
+        f'<div style="background:linear-gradient(135deg,#1c2128,#161b22);border:1px solid #30363d;'
+        f'border-radius:12px;padding:28px 32px;margin-bottom:20px;">'
+        f'<div style="font-size:10px;font-weight:700;letter-spacing:3px;color:#58a6ff;text-transform:uppercase;margin-bottom:8px;">Roadmap</div>'
+        f'<div style="font-size:22px;font-weight:700;color:#e6edf3;margin-bottom:8px;">Future Development</div>'
+        f'<div style="font-size:13px;color:#8b949e;line-height:1.7;">'
+        f'Planned analytical modules for upcoming releases. Each section below outlines the scope, '
+        f'methodology, and data sources intended for implementation.'
+        f'</div></div>'
+
+        # ── 1. Portfolio Optimisation ──────────────────────────────────────
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
+        f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
+        f'<div style="width:36px;height:36px;border-radius:8px;background:#0d2318;border:1px solid #238636;'
+        f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#9878;</div>'
+        f'<div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;">Module 1</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Portfolio Optimisation</div>'
+        f'</div></div>'
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+        + ''.join(
+            f'<div style="background:#1c2128;border:1px solid #21262d;border-radius:6px;padding:12px 14px;">'
+            f'<div style="font-size:10px;font-weight:700;color:#58a6ff;margin-bottom:4px;">{title}</div>'
+            f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
+            for title, desc in [
+                ("Mean-Variance / Efficient Frontier", "Markowitz optimisation across the instrument universe. Interactive frontier with risk/return tradeoff."),
+                ("Risk Parity", "Equal risk contribution weighting. Compared against equal-weight and current BK Dynamic Allocation."),
+                ("Max Sharpe &amp; Min Vol Portfolios", "Scipy-optimised portfolios with configurable constraints. Annualised Sharpe and drawdown shown."),
+                ("Correlation Heatmap (Portfolio View)", "Rolling 60/120-day correlation matrix. Cluster view to identify diversification opportunities."),
+                ("Rolling Beta to Benchmark", "Beta to SPY, AGG and custom benchmark. Time-varying with 63/126-day windows."),
+                ("Rebalancing Simulator", "Monthly vs quarterly rebalancing cost/benefit. Transaction cost impact on CAGR."),
+            ]
+        )
+        + f'</div></div>'
+
+        # ── 2. Algo & Spread Trading ───────────────────────────────────────
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
+        f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
+        f'<div style="width:36px;height:36px;border-radius:8px;background:#0d1a2d;border:1px solid #1f6feb;'
+        f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#9654;</div>'
+        f'<div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#58a6ff;text-transform:uppercase;">Module 2</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Algo &amp; Spread Trading</div>'
+        f'</div></div>'
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+        + ''.join(
+            f'<div style="background:#1c2128;border:1px solid #21262d;border-radius:6px;padding:12px 14px;">'
+            f'<div style="font-size:10px;font-weight:700;color:#58a6ff;margin-bottom:4px;">{title}</div>'
+            f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
+            for title, desc in [
+                ("Pairs Trading Signals", "Cointegration-based pairs (e.g. EWJ/EFA, GLD/SLV). Live z-score with entry/exit thresholds."),
+                ("Momentum Screens", "12-1 month momentum ranking across universe. Long/short signal with cross-sectional z-score."),
+                ("Mean-Reversion Screens", "RSI + Bollinger Band confluence. Flagged when price &gt;2 SD from 20-day mean."),
+                ("Spread P&amp;L Backtest", "Historical simulation of active pairs. Net P&amp;L, win rate, and max adverse excursion shown."),
+                ("Signal Aggregator", "Combined momentum + mean-reversion + regime score per instrument. Ranked signal table."),
+                ("Execution Notes", "Estimated bid/ask spread cost by instrument. Alerts when spread cost exceeds expected alpha."),
+            ]
+        )
+        + f'</div></div>'
+
+        # ── 3. Expert Signals ──────────────────────────────────────────────
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
+        f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
+        f'<div style="width:36px;height:36px;border-radius:8px;background:#2d1f06;border:1px solid #e3b341;'
+        f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#128161;</div>'
+        f'<div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;">Module 3</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Expert Signals</div>'
+        f'</div></div>'
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+        + ''.join(
+            f'<div style="background:#1c2128;border:1px solid #21262d;border-radius:6px;padding:12px 14px;">'
+            f'<div style="font-size:10px;font-weight:700;color:#e3b341;margin-bottom:4px;">{title}</div>'
+            f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
+            for title, desc in [
+                ("Analyst Consensus", "Aggregated buy/hold/sell ratios via yfinance. Net bullish score per instrument."),
+                ("Insider Buying Signals", "Recent insider purchase filings. Flagged where insiders are net buyers over 90 days."),
+                ("Short Interest", "Short interest as % of float. Rising short interest flagged as a risk or contrarian signal."),
+                ("COT Positioning", "Commitment of Traders data for commodities and FX. Commercial vs speculative net positioning."),
+                ("Earnings Surprise Tracker", "Historical EPS beat/miss vs consensus. Surprise magnitude and post-announcement drift."),
+                ("Macro Event Calendar", "Scheduled FOMC, CPI, NFP dates overlaid on regime timeline. Impact scoring."),
+            ]
+        )
+        + f'</div></div>'
+
+        # ── 4. Factor Dashboard ────────────────────────────────────────────
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
+        f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
+        f'<div style="width:36px;height:36px;border-radius:8px;background:#2d0a1e;border:1px solid #da3633;'
+        f'display:flex;align-items:center;justify-content:circle;font-size:16px;">&#9654;</div>'
+        f'<div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;">Module 4</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Factor Dashboard</div>'
+        f'</div></div>'
+        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
+        + ''.join(
+            f'<div style="background:#1c2128;border:1px solid #21262d;border-radius:6px;padding:12px 14px;">'
+            f'<div style="font-size:10px;font-weight:700;color:#f85149;margin-bottom:4px;">{title}</div>'
+            f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
+            for title, desc in [
+                ("Value / Momentum / Quality / Low-Vol", "Four-factor scores per instrument. Composite factor rank updated daily."),
+                ("Factor Rotation Tracker", "Which factors are leading vs lagging month-to-date. Bar chart with historical context."),
+                ("Factor-Regime Alignment", "Which factors historically outperform in Calm / Stressed / Crisis. Heatmap overlay."),
+                ("Cross-Asset Factor Exposure", "Factor tilt of current BK Dynamic Allocation. Detects unintended factor concentration."),
+                ("Smart Beta Comparison", "Performance of factor-tilted portfolios vs market-cap weight. Rolling 1Y/3Y attribution."),
+                ("Factor Dispersion", "Cross-sectional spread of factor scores. High dispersion = better stock/ETF selection environment."),
+            ]
+        )
+        + f'</div></div>'
+
+        # Footer note
+        f'<div style="text-align:center;padding:16px;font-size:10px;color:#4a5568;font-family:monospace;">'
+        f'All modules planned for implementation using Yahoo Finance data &#183; No external paid data sources required &#183; Scope subject to change'
+        f'</div>'
+        f'</div>'
+    )
+
     # ══ TAB 8: ABOUT ══════════════════════════════════════════════════════════
     about_tab = (
         f'<div style="max-width:800px;margin:0 auto;">'
@@ -4586,43 +4722,16 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'after it has arrived. Bhavesh built the framework to detect structural vulnerability before it crystallises '
         f'into loss — giving institutional investors an early warning system that conventional dashboards do not provide.</div>'
         f'</div>'
-        # Framework
-        f'<div class="fc" style="margin-bottom:14px;">'
-        f'<div class="lbl" style="margin-bottom:12px;">THE BK FRAGILITY FRAMEWORK</div>'
-        f'<div style="font-size:12px;color:#8b949e;line-height:1.8;margin-bottom:14px;">'
-        f'The BK Fragility Framework is a proprietary multi-factor risk scoring system that measures '
-        f'market stress across 6 dimensions, weighted by their empirical contribution to systemic risk:</div>'
-        f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-        + "".join(
-            f'<div style="background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:12px 14px;">'
-            f'<div style="font-size:10px;font-weight:700;color:{color};font-family:monospace;">{name}</div>'
-            f'<div style="font-size:18px;font-weight:700;color:{color};font-family:monospace;">{pct}%</div>'
-            f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">{desc}</div>'
-            f'</div>'
-            for name, pct, color, desc in [
-                ("Drawdown",           22, "#f85149", "Distance from rolling peak"),
-                ("CVaR / Tail Risk",   20, "#ff7b72", "Expected loss in worst 5% of days"),
-                ("Contagion",          18, "#e3b341", "Measures correlation-based contagion risk — the degree to which stress transmits to or from global markets (ACWI proxy)"),
-                ("Volatility",         15, "#58a6ff", "20-day realised annualised vol"),
-                ("Trend",              15, "#7ee787", "Distance below 200-day moving average"),
-                ("Volume Stress",      10, "#8b949e", "Liquidity dry-up or panic spike"),
-            ]
-        )
-        + f'</div>'
-        f'<div style="font-size:11px;color:#8b949e;margin-top:12px;line-height:1.7;">'
-        f'Scores are computed using robust time-series z-scores mapped to 0–100 via logistic function '
-        f'with EWMA smoothing. CRISIS ≥ 70 · STRESSED 55–69 · MODERATE < 55<br>'
-        f'<span style="color:#6a7485;font-style:italic;">BK Fragility Framework v1.0 · Methodology as of 2026</span></div>'
-        f'</div>'
         # What is BKIQ
         f'<div class="fc" style="margin-bottom:14px;">'
         f'<div class="lbl" style="margin-bottom:12px;">ABOUT BKIQ MARKETS</div>'
         f'<div style="font-size:12px;color:#8b949e;line-height:1.8;">'
         f'BKIQ Markets is a Singapore-based market intelligence platform delivering daily '
-        f'institutional-grade analysis across {N_INSTRUMENTS} instruments and 14 asset classes. '
+        f'institutional-grade analysis across 100+ instruments and 40+ markets. '
         f'The platform monitors global equities, fixed income, commodities, FX, crypto and volatility '
         f'through 6 analytical lenses — Performance, Risk, Fragility, Analysis, Regime and Edge.<br><br>'
-        f'Built for family office analysts, private bankers, wealth managers and institutional traders '
+        f'Built over 4 weeks and 90+ iterations — driven by a passion to build something world class. '
+        f'Designed for family office analysts, private bankers, wealth managers and institutional traders '
         f'who need actionable intelligence delivered before markets open.'
         f'</div>'
         f'</div>'
@@ -4759,6 +4868,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<button class='tb' onclick=\"sw('regime',this)\">Regime</button>"
         "<button class='tb' onclick=\"sw('edge',this)\">Edge</button>"
         "<button class='tb' onclick=\"sw('about',this)\">About</button>"
+        "<button class='tb' onclick=\"sw('future',this)\">Future Dev</button>"
         "</div>"
         f"<div id='t-intel' class='tab on'>{summary_tab}</div>"
         f"<div id='t-perf' class='tab'>{perf}</div>"
@@ -4768,6 +4878,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f"<div id='t-regime' class='tab'>{regime_tab}</div>"
         f"<div id='t-edge' class='tab'>{edge_tab}</div>"
         f"<div id='t-about' class='tab'>{about_tab}</div>"
+        f"<div id='t-future' class='tab'>{future_tab}</div>"
         "<div class='footer'><div class='fn'>"
         "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>"
         "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
