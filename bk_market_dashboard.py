@@ -1,7 +1,8 @@
 """
 BK Market Dashboard — Consolidated
 ====================================
-97-instrument universe · 15 asset classes · Performance, Risk & Fragility.
+114-instrument universe · 15 asset classes · Performance, Risk & Fragility.
+Last updated: 2026-04-13
 
 Outputs:
   docs/index.html   3-tab web page (GitHub Pages — auto-updated daily)
@@ -69,7 +70,7 @@ SGT = pytz.timezone("Asia/Singapore")
 
 # ── UNIVERSE ──────────────────────────────────────────────────────────────────
 # (section_key, ticker, display_name, bucket)
-# Bucket feeds dynamic allocation + regime-fit matrix + BK Opportunity Score.
+# Bucket feeds dynamic allocation + regime-fit matrix + BK Composite Score.
 
 UNIVERSE = [
     # ── EQ_US — US Equity (4) ────────────────────────────────
@@ -196,7 +197,6 @@ UNIVERSE = [
     ("FX",       "CHF=X",    "USD/CHF",                 "Cash"),
     ("FX",       "JPY=X",    "USD/JPY",                 "Cash"),
     ("FX",       "SGD=X",    "USD/SGD",                 "Alts"),
-    ("FX",       "CYB",      "Chinese Yuan (CYB)",      "Alts"),
     ("FX",       "CAD=X",    "Canadian Dollar",         "Real Assets"),
     ("FX",       "MXN=X",    "Mexican Peso",            "Alts"),
     ("FX",       "KRW=X",    "Korean Won",              "Alts"),
@@ -204,6 +204,7 @@ UNIVERSE = [
 
     # ── VOL — Volatility (5; GVZ/OVX computed from GLD/BNO) ─
     ("VOL",      "^VIX",     "VIX Index",               "Alts"),
+    ("VOL",      "^VIX3M",   "VIX 3-Month Index",       "Alts"),
     ("VOL",      "VXX",      "VIX Futures ETN",         "Alts"),
     ("VOL",      "VIXY",     "ST VIX ETF",              "Alts"),
     ("VOL",      "GVZ",      "Gold Volatility (proxy)", "Alts"),
@@ -240,9 +241,7 @@ SECTION_LABELS = {
     "ALT":     "LISTED ALTERNATIVES",
 }
 
-# Display count: 113 instruments shown to users (excludes GVZ, OVX display-only
-# proxies and ^VIX which is index-only). len(UNIVERSE) may differ.
-N_INSTRUMENTS = 113
+# N_INSTRUMENTS is derived after DISPLAY_EXCLUSIONS is defined (see below).
 
 # ── BUCKET + REGIME FIT ──────────────────────────────────────────────────────
 INSTRUMENT_BUCKETS = {t: b for _sec, t, _n, b in UNIVERSE}
@@ -291,10 +290,10 @@ RANKING_EXCLUSIONS = [
     # Yield indices (divided by 10 for display, but not investable)
     "^TNX", "^IRX", "^FVX", "^TYX",
     # Volatility instruments — ranking them confuses "up = bad"
-    "^VIX", "VIXY", "VXX",
+    "^VIX", "^VIX3M", "VIXY", "VXX",
     # FX pairs — not investable ETFs, must never appear in any ranking
     "EURUSD=X", "GBPUSD=X", "AUDUSD=X", "SGD=X", "CHF=X",
-    "JPY=X", "CAD=X", "MXN=X", "KRW=X", "BRL=X", "CYB", "DX-Y.NYB",
+    "JPY=X", "CAD=X", "MXN=X", "KRW=X", "BRL=X", "DX-Y.NYB",
 ]
 
 
@@ -305,28 +304,35 @@ def is_rankable(ticker: str) -> bool:
 
 # Tickers for which fragility scoring is meaningless (computed proxies,
 # fear-gauge indices). These show N/A in the Fragility tab.
-FRAGILITY_EXCLUSIONS = ["GVZ", "OVX", "^VIX"]
+FRAGILITY_EXCLUSIONS = ["GVZ", "OVX", "^VIX", "^VIX3M"]
 
 
 # Tickers entirely hidden from all user-facing tabs (Performance, Risk,
 # Fragility, Analysis RSR, accordion headers). These are computed proxies
 # held internally for vol-regime signals but never shown as instruments.
-DISPLAY_EXCLUSIONS = ["GVZ", "OVX"]
+DISPLAY_EXCLUSIONS = ["GVZ", "OVX", "^VIX3M"]
 
 
 def is_displayable(ticker: str) -> bool:
     return ticker not in DISPLAY_EXCLUSIONS
 
+# Displayable instrument count: total universe minus hidden computed proxies.
+# Derived dynamically so it stays correct whenever UNIVERSE or DISPLAY_EXCLUSIONS changes.
+N_INSTRUMENTS = len([t for _, t, _, _ in UNIVERSE if t not in DISPLAY_EXCLUSIONS])
 
-# Tickers for which the Sharpe ratio is meaningless (yield indices are
-# rate levels, not tradable returns). Show N/A in Risk tab Sharpe column.
-SHARPE_EXCLUSIONS = ["^TNX", "^IRX", "^FVX", "^TYX"]
+
+# Tickers for which the Sharpe ratio is meaningless or misleading.
+# Yield indices are rate levels, not tradable returns.
+# BIL/SHY: T-Bill ETFs whose total return is almost entirely distributions;
+# yfinance auto_adjust does not reliably capture dividend adjustments for these,
+# so price-return Sharpe produces deeply negative values that are economically wrong.
+SHARPE_EXCLUSIONS = ["^TNX", "^IRX", "^FVX", "^TYX", "BIL", "SHY"]
 
 
 # Vol-of-vol is not a sensible display metric for volatility indices
 # themselves (they routinely swing 50%+ in a day). Show N/A for their
 # vol columns in the Risk tab and Performance sparkline.
-VOL_VALUE_EXCLUSIONS = ["^VIX"]
+VOL_VALUE_EXCLUSIONS = ["^VIX", "^VIX3M"]
 
 
 # ── CURRENCY MAP ──────────────────────────────────────────────────────────────
@@ -342,7 +348,7 @@ FX_CCY_MAP = {
     "EURUSD=X": "EUR", "GBPUSD=X": "GBP", "JPY=X": "JPY",
     "SGD=X": "SGD", "AUDUSD=X": "AUD", "CHF=X": "CHF",
     "CAD=X": "CAD", "MXN=X": "MXN", "KRW=X": "KRW", "BRL=X": "BRL",
-    "DX-Y.NYB": "USD", "CYB": "CNY",
+    "DX-Y.NYB": "USD",
     # EQ_DM / EQ_EM display currencies (underlying local market)
     "EWA": "AUD", "EWG": "EUR", "EWJ": "JPY", "EWS": "SGD", "EWU": "GBP",
     "EWZ": "BRL", "FXI": "CNY", "INDA": "INR", "EWY": "KRW",
@@ -582,7 +588,7 @@ def download(lookback_days: int = 2520) -> tuple:
     # Real fetch list excludes synthetic tickers (computed post-download)
     tickers = [t for _s, t, _n, _b in UNIVERSE if t not in SYNTHETIC_TICKERS]
     # Volume is not meaningful for yield indices or vol fear gauges
-    NO_VOLUME_TICKERS = set(YIELD_TICKERS) | {"^VIX", "GVZ", "OVX"}
+    NO_VOLUME_TICKERS = set(YIELD_TICKERS) | {"^VIX", "^VIX3M", "GVZ", "OVX"}
     vol_tickers = [t for t in tickers if t not in NO_VOLUME_TICKERS]
     print(f"[Download] {len(tickers)} price tickers | {len(vol_tickers)} volume tickers | lookback={lookback_days} days ...")
 
@@ -2027,15 +2033,16 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
     scores["Strength"] = float(strength_pct)
     details["Strength"] = {"value": f"{near_high}/{total_avail} within 5% of 52W high", "score": scores["Strength"]}
 
-    # ── 7. Put/Call Proxy: VXX vs VIXY ratio (panic hedging) ─────────────────
-    if "VXX" in prices.columns and "VIXY" in prices.columns:
-        ratio_ts = prices["VXX"] / prices["VIXY"].replace(0, np.nan)
-        ratio_ts = ratio_ts.dropna()
-        cur      = float(ratio_ts.iloc[-1]) if not ratio_ts.empty else 1
-        raw      = _pct_rank(ratio_ts, cur)
-        # High ratio = panic = fear → invert
-        scores["Put/Call Proxy"] = max(0, min(100, 100 - raw))
-        details["Put/Call Proxy"] = {"value": f"VXX/VIXY ratio: {cur:.2f}", "score": scores["Put/Call Proxy"]}
+    # ── 7. Term Structure: VIX/VIX3M ratio (backwardation = panic) ──────────
+    if "^VIX" in prices.columns and "^VIX3M" in prices.columns:
+        ratio_ts = (prices["^VIX"] / prices["^VIX3M"].replace(0, np.nan)).dropna()
+        # Use 2-year rolling window (≈504 trading days)
+        window_2y = ratio_ts.iloc[-504:] if len(ratio_ts) >= 504 else ratio_ts
+        cur       = float(ratio_ts.iloc[-1]) if not ratio_ts.empty else 1.0
+        raw       = _pct_rank(window_2y, cur)
+        # High ratio = backwardation = panic = fear → invert
+        scores["Term Structure"] = max(0, min(100, (1 - raw / 100) * 100))
+        details["Term Structure"] = {"value": f"VIX/VIX3M ratio: {cur:.2f}", "score": scores["Term Structure"]}
 
     # ── Composite ─────────────────────────────────────────────────────────────
     if not scores:
@@ -2190,9 +2197,9 @@ def generate_ai_commentary(market_data: dict) -> dict:
     try:
         import urllib.request
         
-        prompt = f"""You are a senior market analyst writing a professional daily intelligence brief for institutional clients (family offices, private banks, hedge funds).
+        prompt = f"""You are a quantitative research assistant producing a personal, non-commercial daily market observation log. This is a private research tool — not a client-facing document and not financial advice.
 
-Current market data as of {market_data.get('date', 'today')}:
+Current model outputs as of {market_data.get('date', 'today')}:
 - Market Regime: {market_data.get('regime', 'Unknown')} (for {market_data.get('regime_days', 0)} consecutive trading days)
 - System Fragility Score: {market_data.get('fragility_score', 50)}/100 ({market_data.get('fragility_label', 'STRESSED')})
 - Fear & Greed Index: {market_data.get('fg_score', 50)}/100 ({market_data.get('fg_label', 'Neutral')})
@@ -2207,21 +2214,21 @@ Current market data as of {market_data.get('date', 'today')}:
 
 Generate a JSON response with exactly these fields:
 {{
-  "narrative": "4-5 sentence professional market narrative. Be specific, reference actual instruments and numbers. No generic statements. Sound like a senior analyst, not a robot.",
+  "narrative": "4-5 sentences describing what the model outputs and cross-asset data show today. Be specific — reference actual instruments and numbers. Use purely observational language: what is elevated, what has declined, what correlations suggest. Do NOT use the words: buy, sell, invest, allocate, position, exposure, recommend, opportunity, should, or must.",
   "actions": [
-    "Specific action 1 with instrument name and reason based on data",
-    "Specific action 2 with instrument name and reason based on data", 
-    "Specific action 3 with instrument name and reason based on data",
-    "Specific action 4 with instrument name and reason based on data"
+    "Observation 1: what the framework scores show for a specific instrument and why",
+    "Observation 2: what the framework scores show for a specific instrument and why",
+    "Observation 3: what the framework scores show for a specific instrument and why",
+    "Observation 4: what the framework scores show for a specific instrument and why"
   ],
   "watchlist": [
-    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}},
-    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}},
-    {{"instrument": "Name", "reason": "Specific data-driven reason to watch"}}
+    {{"instrument": "Name", "reason": "Data-driven observation — what the model flags and why it is notable"}},
+    {{"instrument": "Name", "reason": "Data-driven observation — what the model flags and why it is notable"}},
+    {{"instrument": "Name", "reason": "Data-driven observation — what the model flags and why it is notable"}}
   ],
-  "fg_summary": "One sentence explaining what the Fear & Greed score of {market_data.get('fg_score', 50)} means in current context",
-  "regime_interpretation": "2-3 sentences interpreting the current regime, what caused it and what would signal a shift",
-  "edge_rationale": "2-3 sentences explaining why the current portfolio allocation is appropriate for this regime, referencing specific asset classes and current signals"
+  "fg_summary": "One sentence describing what a Fear & Greed score of {market_data.get('fg_score', 50)} indicates about current market sentiment dynamics",
+  "regime_interpretation": "2-3 sentences describing what characterises the current regime, what data points drove the classification, and what a regime shift would look like",
+  "edge_rationale": "2-3 sentences describing why the current framework weights reflect the regime and fragility readings, referencing specific asset classes and model outputs"
 }}
 
 Return ONLY valid JSON. No preamble, no markdown, no explanation."""
@@ -2254,6 +2261,126 @@ Return ONLY valid JSON. No preamble, no markdown, no explanation."""
     except Exception as e:
         print(f"[AI] Commentary generation failed: {e}")
         return {}
+
+
+# ── D-08: News headlines ──────────────────────────────────────────────────────
+
+_HEADLINE_TICKERS = [
+    "SPY", "QQQ", "IWM", "EEM", "VEA",
+    "TLT", "HYG", "LQD",
+    "GLD", "USO",
+    "^VIX", "DX-Y.NYB",
+]
+
+def fetch_news_pool(tickers: list = None, max_per_ticker: int = 3) -> list:
+    """
+    Fetch recent news from yfinance for a curated subset of tickers.
+    Returns a deduplicated list of article dicts: title, publisher, link, published_ts.
+    Handles both legacy yfinance schema and the newer nested 'content' schema.
+    """
+    tickers = tickers or _HEADLINE_TICKERS
+    seen_titles: set = set()
+    pool: list = []
+    for tk in tickers:
+        try:
+            articles = yf.Ticker(tk).news or []
+            count = 0
+            for art in articles:
+                # New yfinance schema: data lives under art["content"]
+                if "content" in art and isinstance(art["content"], dict):
+                    c       = art["content"]
+                    title   = c.get("title", "").strip()
+                    pub     = c.get("provider", {}).get("displayName", "")
+                    link    = (c.get("canonicalUrl") or c.get("clickThroughUrl") or {}).get("url", "")
+                    pub_dt  = c.get("pubDate", "") or c.get("displayTime", "")
+                    # Convert ISO string to unix timestamp
+                    try:
+                        import datetime as _dt
+                        ts = int(_dt.datetime.fromisoformat(pub_dt.replace("Z", "+00:00")).timestamp()) if pub_dt else 0
+                    except Exception:
+                        ts = 0
+                else:
+                    # Legacy schema
+                    title   = art.get("title", "").strip()
+                    pub     = art.get("publisher", "")
+                    link    = art.get("link", "")
+                    ts      = art.get("providerPublishTime", 0)
+                if not title or title in seen_titles:
+                    continue
+                seen_titles.add(title)
+                pool.append({
+                    "title":        title,
+                    "publisher":    pub,
+                    "link":         link,
+                    "published_ts": ts,
+                })
+                count += 1
+                if count >= max_per_ticker:
+                    break
+        except Exception:
+            pass
+    # Sort by recency
+    pool.sort(key=lambda x: x["published_ts"], reverse=True)
+    return pool
+
+
+def select_top_headlines(news_pool: list, regime: str = "Unknown", api_key: str = "") -> list:
+    """
+    Use Claude API to select the 3 most market-relevant headlines from the pool.
+    Returns article dicts verbatim — no generated commentary is added.
+    Falls back to the 3 most recent articles if API is unavailable.
+    """
+    import os, json
+    if not api_key:
+        api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not news_pool:
+        return []
+    fallback = news_pool[:3]
+    if not api_key or DEVELOPMENT_MODE:
+        return fallback
+
+    # Build the article list for the prompt (cap at 30 to stay within token budget)
+    articles_text = "\n".join(
+        f'{i+1}. [{a["publisher"]}] {a["title"]}'
+        for i, a in enumerate(news_pool[:30])
+    )
+    prompt = (
+        f"You are a quantitative research assistant. The current market regime is {regime}.\n\n"
+        f"Below are recent financial news headlines. Select the 3 that are most relevant to "
+        f"understanding current cross-asset market conditions.\n\n"
+        f"{articles_text}\n\n"
+        f"Return ONLY a JSON array of exactly 3 integers — the 1-based index numbers of the "
+        f"selected articles. Example: [4, 12, 7]. No preamble, no markdown, no explanation."
+    )
+    try:
+        import urllib.request
+        payload = json.dumps({
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 60,
+            "messages": [{"role": "user", "content": prompt}]
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            }
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            result = json.loads(resp.read())
+            text = result["content"][0]["text"].replace("```json","").replace("```","").strip()
+            indices = json.loads(text)
+            output = []
+            for idx in indices[:3]:
+                i = int(idx) - 1
+                if 0 <= i < len(news_pool):
+                    output.append(dict(news_pool[i]))  # verbatim, no observation field added
+            return output if output else fallback
+    except Exception as e:
+        print(f"[Headlines] Selection failed: {e}")
+        return fallback
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2387,7 +2514,7 @@ def compute_bk_opportunity_scores(df: pd.DataFrame,
                                   frag_df: pd.DataFrame,
                                   current_regime: str) -> tuple:
     """
-    BK Opportunity Score — 5-factor composite ranking model (0–100).
+    BK Composite Score — 5-factor composite ranking model (0–100).
 
     Returns:
         (scores_dict, factors_dict)
@@ -2571,15 +2698,56 @@ def get_top_instruments_per_bucket(bk_opp_scores: dict, bucket: str, n: int = 2)
     return scored[:n]
 
 
-def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None, ai_commentary: dict = None, backtest_data: dict = None) -> str:
+def _build_headlines_html(headlines: list) -> str:
+    """Render the Today's Headlines card for the Intel tab."""
+    if not headlines:
+        return ""
+    import datetime as _dt
+    cards = ""
+    for art in headlines[:3]:
+        title     = art.get("title", "")
+        publisher = art.get("publisher", "")
+        link      = art.get("link", "#")
+        ts        = art.get("published_ts", 0)
+        try:
+            ts_str = _dt.datetime.utcfromtimestamp(ts).strftime("%d %b %Y") if ts else ""
+        except Exception:
+            ts_str = ""
+        cards += (
+            f'<div style="background:#1c2128;border:1px solid #21262d;border-radius:6px;padding:12px 14px;margin-bottom:8px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">'
+            f'<span style="font-size:9px;color:#58a6ff;font-family:monospace;text-transform:uppercase;">{publisher}</span>'
+            f'<span style="font-size:9px;color:#6e7681;font-family:monospace;">{ts_str}</span>'
+            f'</div>'
+            f'<a href="{link}" target="_blank" rel="noopener noreferrer" '
+            f'style="font-size:12px;font-weight:600;color:#e6edf3;text-decoration:none;line-height:1.5;">'
+            f'{title}</a>'
+            f'</div>'
+        )
+    return (
+        f'<div class="fc" style="margin-bottom:14px;">'
+        f'<div class="lbl" style="margin-bottom:4px;">TODAY\'S HEADLINES</div>'
+        f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">'
+        f'Selection by rule &middot; Headlines verbatim from Yahoo Finance &middot; No commentary by BKIQ</div>'
+        + cards
+        + f'<div style="font-size:9px;color:#6e7681;font-family:monospace;margin-top:4px;">'
+        f'Headlines shown verbatim from original publishers via Yahoo Finance. '
+        f'BKIQ does not curate, endorse, or verify these headlines. Not investment advice.</div>'
+        + f'</div>'
+    )
+
+
+def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None, ai_commentary: dict = None, backtest_data: dict = None, headlines_data: list = None) -> str:
     import math
     now         = datetime.now(SGT)
     date_str    = now.strftime("%A, %d %b %Y %H:%M SGT")
     gen_ts      = now.strftime("%Y-%m-%dT%H:%M:%S")
     market_open = bool(df["market_open"].iloc[0]) if "market_open" in df.columns else True
     GA          = ""  # Set your GA4 ID here e.g. "G-XXXXXXXXXX"
+    # Derive data-review tickers from the scored df (set by compute_scores sanity checks)
+    data_review_tickers = set(df.loc[df.get("data_review", pd.Series(False, index=df.index)).astype(bool), "ticker"]) if "data_review" in df.columns else set()
 
-    # ── S2: BK Opportunity Score + Risk Appetite Score + Dynamic Allocation ──
+    # ── S2: BK Composite Score + Risk Appetite Score + Dynamic Allocation ──
     _cur_regime = regime_data.get("regime", "Calm") if regime_data else "Calm"
     _frag_sys   = (frag_df.attrs.get("system_score", float(frag_df["fragility"].median()))
                    if frag_df is not None and not frag_df.empty else 50.0)
@@ -2776,7 +2944,26 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
           + _acc_controls("perf")
           + f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th><th>CCY</th><th style="min-width:80px;">Trend 20D</th>'
           f'{d1th}<th>1W</th><th>1M</th><th>3M</th><th>YTD</th><th>Signal</th>'
-          f'</tr></thead>{pr}</tbody></table></div>')
+          f'</tr></thead>{pr}</tbody></table></div>'
+          + (
+             (lambda _bno_ytd: (
+               f'<div style="margin-top:8px;padding:8px 14px;background:#2d1a0e;border-left:3px solid #e3b341;'
+               f'font-size:9px;color:#8b949e;line-height:1.7;">'
+               f'<strong style="color:#e3b341;">&#9888; DATA REVIEW — BNO (Brent Oil ETF):</strong> '
+               f'yfinance auto-adjusted close prices for BNO show anomalous 2026 YTD of {_bno_ytd} '
+               f'while Brent crude spot prices have declined. Likely cause: unadjusted corporate action '
+               f'(reverse split or NAV reset) in the upstream data source. '
+               f'YTD / 3M / 1M return cells are dashed until the source data is confirmed clean. '
+               f'Vol, Max DD, and RAG signal calculations are unaffected.'
+               f'</div>'
+             ))(
+               (lambda r: f'{r["ret_ytd"]*100:+.1f}%' if r is not None and pd.notna(r.get("ret_ytd")) else '+73.3%')(
+                 df[df["ticker"]=="BNO"].iloc[0].to_dict() if not df[df["ticker"]=="BNO"].empty else None
+               )
+             )
+             if "BNO" in data_review_tickers else ''
+          )
+          )
 
     # ══ TAB 2: RISK ═══════════════════════════════════════════════════════════
     def _varrow(now_v, ago_v):
@@ -3009,10 +3196,16 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         _frag_sorted = _frag_sorted.sort_values(
             ["_sec_order", "fragility"], ascending=[True, False])
 
+        # FX excluded from Fragility tab: currency pair pillars (Contagion, Trend,
+        # Vol Stress) return 0.0 or meaningless values for FX pairs.
+        _frag_display = _frag_sorted[_frag_sorted["section"] != "FX"]
+        _n_fx_excl    = len([t for sec, t, _, _ in UNIVERSE if sec == "FX" and t not in DISPLAY_EXCLUSIONS])
+        _n_frag_scored = N_INSTRUMENTS - _n_fx_excl
+
         # Per-section summaries for Fragility accordion headers
         _frag_sum = {}
-        for _sec in _frag_sorted["section"].unique():
-            _sub = _frag_sorted[_frag_sorted["section"] == _sec]
+        for _sec in _frag_display["section"].unique():
+            _sub = _frag_display[_frag_display["section"] == _sec]
             _avg = float(_sub["fragility"].mean())
             _top = _sub.iloc[0]
             _frag_sum[_sec] = (
@@ -3022,7 +3215,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             )
 
         fr=""; _frag_pv = None; _frag_first=True
-        for _,r in _frag_sorted.iterrows():
+        for _,r in _frag_display.iterrows():
             _sec = r["section"]
             if _sec != _frag_pv:
                 _frag_pv = _sec
@@ -3060,9 +3253,9 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'<div style="font-size:28px;font-weight:700;color:#3fb950;font-family:monospace;">{nca}</div>'
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 55</div></div>'
               f'<div class="fc" style="text-align:center;"><div class="lbl">TOTAL</div>'
-              f'<div style="font-size:28px;font-weight:700;color:#e6edf3;font-family:monospace;">{len(frag_df)}</div>'
-              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">{len(frag_df)} scored of {N_INSTRUMENTS}</div>'
-              f'<div style="font-size:8px;color:#6a7485;margin-top:2px;">Yield indices excluded from fragility scoring</div></div></div>'
+              f'<div style="font-size:28px;font-weight:700;color:#e6edf3;font-family:monospace;">{_n_frag_scored}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">{_n_frag_scored} of {N_INSTRUMENTS} scored (FX excluded)</div>'
+              f'<div style="font-size:8px;color:#6a7485;margin-top:2px;">Yield indices &amp; FX pairs excluded from fragility scoring</div></div></div>'
               f'<div class="fc" style="margin-bottom:14px;">'
               f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:12px;text-transform:uppercase;">&#9888; Top 5 Most Fragile</div>'
               f'{t5h}</div>'
@@ -3077,8 +3270,9 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'A safe-haven asset can show elevated fragility when its price is declining.<br>'
               f'<strong style="color:#c8cfe0;">T-Bills (BIL):</strong> Fragility reflects rate '
               f'sensitivity and reinvestment risk, not credit or liquidity risk.<br>'
-              f'<strong style="color:#c8cfe0;">FX pairs:</strong> Fragility uses price return vol '
-              f'only &mdash; some pillars (e.g. contagion) may show 0.0 for currency pairs.'
+              f'<strong style="color:#c8cfe0;">FX pairs:</strong> Excluded from this tab — '
+              f'currency pair pillars (Contagion, Trend, Vol Stress) are not meaningful for FX. '
+              f'FX instruments appear on Performance, Risk, and Analysis tabs.'
               f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
               f'BK Fragility Framework &#183; Drawdown 22% + CVaR 20% + Contagion 18% + Volatility 15% + Trend 15% + Vol Stress 10% &#183; '
@@ -3138,6 +3332,16 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<span><span style="color:#8b949e;">- - -</span> SPY Buy & Hold</span>'
             f'<span><span style="color:#3fb950;">&#183;&#183;&#183;</span> 60/40 Portfolio</span>'
             f'</div>'
+            f'<div style="margin-bottom:10px;padding:10px 14px;background:#0d2318;border:1px solid #3fb950;'
+            f'border-radius:6px;font-size:11px;color:#c8cfe0;line-height:1.7;">'
+            f'<strong style="color:#3fb950;">&#9432; Note:</strong> BK cumulative return is lower by design — '
+            f'the strategy trades raw upside for drawdown protection. '
+            f'Risk-adjusted performance (Sharpe <strong style="color:#58a6ff;">{bk_s.get("sharpe",0):.2f}</strong> vs '
+            f'<strong style="color:#8b949e;">{spy_s.get("sharpe",0):.2f}</strong>) and maximum drawdown '
+            f'(<strong style="color:#58a6ff;">{bk_s.get("max_dd",0):.1f}%</strong> vs '
+            f'<strong style="color:#8b949e;">{spy_s.get("max_dd",0):.1f}%</strong>) both favour BK. '
+            f'See table below.'
+            f'</div>'
             f'{svg}'
             f'<table style="width:100%;border-collapse:collapse;margin-top:12px;">'
             f'<thead><tr>'
@@ -3187,7 +3391,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;color:#8b949e;margin-bottom:6px;letter-spacing:2px;">WHAT HAS NOT BEEN BACKTESTED (COMING IN S3)</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
             f'&middot; BK Fragility Framework predictive validity (hit rate, false positive rate, avg drawdown after CRISIS signal)<br>'
-            f'&middot; BK Opportunity Score forward returns (top quintile vs bottom quintile, 21-day holding period)<br>'
+            f'&middot; BK Composite Score forward returns (top quintile vs bottom quintile, 21-day holding period)<br>'
             f'&middot; Full 97-instrument RAS model backtest</div></div></div>'
             # ── Regime weights table ──
             f'<div style="margin-top:16px;">'
@@ -3911,7 +4115,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'Union-of-risk &mdash; most severe model call wins. '
             f'Conservative by design: false positives preferred over missed crises.<br>'
             f'<strong style="color:#c8cfe0;">Model Agreement:</strong> '
-            f'Count of models on same call. 3/3 = high conviction. 1/3 = hedge or reduce sizing.'
+            f'Count of models on same call. 3/3 = full model consensus. 1/3 = models diverge.'
             f'</div></div>'
         )
     else:
@@ -3938,7 +4142,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             'Volatility':     'VIXY level vs 50-day average',
             'Junk Bonds':     'HYG vs IEF credit spread (20D)',
             'Strength':       '% instruments within 5% of 52-week high',
-            'Put/Call Proxy': 'VXX/VIXY ratio (panic hedging proxy)',
+            'Term Structure':  'VIX/VIX3M ratio (vol curve; backwardation = panic)',
         }
 
         # Component bars
@@ -4018,7 +4222,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     #      CONTRARIAN WATCH — F&G ≤ 25 AND 3M return < -10%
     #    Right column:
     #      INCREASE EXPOSURE — regime fit ≥ 75 AND fragility ≤ 55 AND GREEN
-    #        Ranked by BK Opportunity Score with factor decomposition bars.
+    #        Ranked by BK Composite Score with factor decomposition bars.
     #        (Merged: old Signal-to-Trade INCREASE + old BK Top Picks)
     #      TOP RISKS — highest fragility instruments with pillar decomposition bars.
     #
@@ -4085,7 +4289,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
     # ── INCREASE EXPOSURE (merged: Signal-to-Trade INCREASE + BK Top Picks) ─
     # Gate: regime fit ≥ 75 AND fragility ≤ 55 AND RAG = GREEN
-    # Ranked by: BK Opportunity Score (5-factor composite)
+    # Ranked by: BK Composite Score (5-factor composite)
     # This merges the old binary filter with the continuous scorer —
     # instruments must PASS the gates AND are ranked by Opp Score.
     increase_items = []
@@ -4262,17 +4466,44 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'</div>'
         )
 
-    # ── Build AI Actions HTML ────────────────────────────────────────────────
-    action_items = ""
-    if ai_actions:
-        for a in ai_actions:
-            action_items += (
-                f'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #21262d;">'
-                f'<div style="color:{reg_color};font-size:14px;margin-top:1px;">&#10148;</div>'
-                f'<div style="font-size:12px;color:#e6edf3;line-height:1.6;">{a}</div></div>'
+    # ── Build FRAMEWORK OBSERVATIONS (deterministic — top 4 by |MoM|) ─────────
+    _pillar_label_map = {
+        "pillar_dd": "Drawdown", "pillar_cvar": "CVaR", "pillar_corr": "Contagion",
+        "pillar_vol": "Vol Stress", "pillar_trend": "Trend", "pillar_volz": "Liquidity",
+    }
+    _frag_idx = (frag_df.set_index("ticker") if frag_df is not None and not frag_df.empty else pd.DataFrame())
+    _obs_rows = []
+    _df_rankable_obs = df[df["ticker"].apply(is_rankable) & df["ret_1m"].notna()].copy()
+    if not _df_rankable_obs.empty:
+        _top2_gain = _df_rankable_obs.nlargest(2, "ret_1m")
+        _top2_loss = _df_rankable_obs.nsmallest(2, "ret_1m")
+        for _, _row in pd.concat([_top2_gain, _top2_loss]).iterrows():
+            _tk   = _row["ticker"]
+            _nm   = _row.get("name", _tk)
+            _mom  = _row["ret_1m"] * 100
+            # Fragility
+            _frag_val = "N/A"
+            _lead_pill = "N/A"
+            if not _frag_idx.empty and _tk in _frag_idx.index:
+                _fr = _frag_idx.loc[_tk]
+                _frag_val = f'{float(_fr.get("fragility", 0)):.0f}'
+                # Leading pillar = highest pillar value
+                _pill_vals = {k: float(_fr.get(k, 0)) for k in _pillar_label_map if k in _fr}
+                if _pill_vals:
+                    _lead_pill = _pillar_label_map[max(_pill_vals, key=_pill_vals.get)]
+            # Regime fit
+            _rf = get_regime_fit_score(_tk, reg_now)
+            _obs_rows.append(
+                f'<div style="padding:8px 0;border-bottom:1px solid #21262d;font-family:monospace;font-size:11px;color:#e6edf3;">'
+                f'<span style="color:#58a6ff;font-weight:700;">{_tk}</span>'
+                f' <span style="color:#8b949e;">({_nm})</span>'
+                f' &mdash; MoM <span style="color:{"#3fb950" if _mom >= 0 else "#f85149"};font-weight:700;">{_mom:+.1f}%</span>'
+                f' &middot; Fragility <span style="color:#e3b341;">{_frag_val}</span>'
+                f' &middot; Regime Fit <span style="color:#8b949e;">{_rf}</span>'
+                f' &middot; Leading pillar: <span style="color:#bc8cff;">{_lead_pill}</span>'
+                f'</div>'
             )
-    else:
-        action_items = '<div style="font-size:12px;color:#8b949e;padding:10px 0;">AI commentary unavailable.</div>'
+    action_items = "".join(_obs_rows) if _obs_rows else '<div style="font-size:11px;color:#8b949e;padding:8px 0;">Insufficient data.</div>'
 
     # ── Build Backtest mini snapshot ─────────────────────────────────────────
     bt_html = ""
@@ -4367,21 +4598,21 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
         # REDUCE card
         + f'<div class="fc">'
-        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">REDUCE EXPOSURE</div>'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">STRESSED INSTRUMENTS</div>'
         + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Fragility &ge; 70 AND Regime Fit &le; 25</div>'
         + (reduce_html if reduce_html else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">None currently</div>')
         + f'</div>'
 
         # CONTRARIAN card
         + f'<div class="fc">'
-        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;margin-bottom:4px;">CONTRARIAN WATCH</div>'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;margin-bottom:4px;">OBSERVED FLAGS</div>'
         + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">F&amp;G &le; 25 AND 3M return &lt; -10%</div>'
         + (contrarian_html if contrarian_html else f'<div style="font-size:11px;color:#8b949e;padding:6px 0;">{"F&G at " + str(_fg_score) + " — no extreme fear signal" if _fg_score_val > 25 else "No instruments down >10% in 3M"}</div>')
         + f'</div>'
 
         # TOP RISKS card (with pillar bars)
         + f'<div class="fc">'
-        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">TOP RISKS</div>'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;margin-bottom:4px;">HIGHEST FRAGILITY INSTRUMENTS</div>'
         + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Highest fragility &middot; pillar decomposition</div>'
         + (f'<div style="display:flex;flex-direction:column;gap:4px;">{risk_cards}</div>' if risk_cards else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">None identified</div>')
         + f'</div>'
@@ -4391,29 +4622,21 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # ── Right column: INCREASE ───────────────────────────────────────────
         + f'<div>'
         + f'<div class="fc">'
-        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;margin-bottom:4px;">INCREASE EXPOSURE</div>'
+        + f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;margin-bottom:4px;">HIGH FRAMEWORK SCORES</div>'
         + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">Fit &ge; 75 AND Frag &le; 55 AND GREEN &middot; ranked by BK Opp Score</div>'
+        + f'<div style="font-size:8px;color:#6e7681;font-style:italic;margin-bottom:6px;">Ranked by composite BK score. Descriptive only &mdash; not a recommendation to invest.</div>'
         + (f'<div style="display:flex;flex-direction:column;gap:4px;">{increase_html}</div>' if increase_html else '<div style="font-size:11px;color:#8b949e;padding:6px 0;">No instruments pass all gates</div>')
         + f'</div>'
         + f'</div>'  # close right column
 
         + f'</div>'  # close 2-column grid
 
-        # ── ZONE 3: AI INTELLIGENCE + EVIDENCE ───────────────────────────────
-        # AI narrative
-        + (
-            f'<div class="fc" style="margin-bottom:14px;">'
-            f'<div class="lbl" style="margin-bottom:8px;">MARKET INTELLIGENCE</div>'
-            f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:6px;">AI-generated &middot; Not investment advice</div>'
-            f'<div style="font-size:13px;color:#e6edf3;line-height:1.8;">{ai_narrative}</div>'
-            f'</div>'
-            if ai_narrative else ""
-        )
-
-        # AI Recommended Actions
+        # ── ZONE 3: FRAMEWORK OBSERVATIONS + EVIDENCE ────────────────────────
+        # Framework Observations (deterministic)
         + f'<div class="fc" style="margin-bottom:14px;">'
-        + f'<div class="lbl" style="margin-bottom:4px;">RECOMMENDED ACTIONS</div>'
-        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:8px;">AI-generated &middot; Not investment advice</div>'
+        + f'<div class="lbl" style="margin-bottom:4px;">FRAMEWORK OBSERVATIONS</div>'
+        + f'<div style="font-size:8px;color:#8b949e;font-family:monospace;margin-bottom:6px;">Deterministic &middot; Top 4 by absolute MoM move &middot; Descriptive only</div>'
+        + f'<div style="font-size:11px;color:#6e7681;font-style:italic;margin-bottom:8px;">The framework highlights the four largest absolute movers in the universe month-to-date, with current pillar context.</div>'
         + action_items
         + f'</div>'
 
@@ -4423,9 +4646,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # Backtest snapshot
         + bt_html
 
+        # ── D-08: Today's Headlines ──────────────────────────────────────────
+        + _build_headlines_html(headlines_data)
+
         # Footer
         + f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-        + f'Data via Yahoo Finance &#183; Quant signals are model-driven &#183; AI commentary by Claude &#183; '
+        + f'Data via Yahoo Finance &#183; Quant signals are model-driven &#183; '
         + f'For informational purposes only &#183; Not investment advice</div>'
     )
     # ══ TAB 7: EDGE — Portfolio Optimisation ══════════════════════════════════
@@ -4508,7 +4734,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'{_alloc_rows_html}'
         f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.6;">'
         f'RAS = Regime(35%) + Fragility Inv(30%) + Fear &amp; Greed(20%) + Vol Inv(15%) &#183; '
-        f'Top pick per bucket = highest BK Opportunity Score'
+        f'Highest composite score per bucket = highest BK Composite Score'
         f'</div>'
         f'</div>'
     )
@@ -4525,13 +4751,13 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # single source of truth for allocation.
         f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">'
         f'<div class="fc">'
-        f'<div class="lbl" style="margin-bottom:8px;">TOP PERFORMER &mdash; ROLLING 1M</div>'
+        f'<div class="lbl" style="margin-bottom:8px;">HIGHEST MONTH-TO-DATE PERFORMER</div>'
         f'<div style="font-size:18px;font-weight:700;color:#3fb950;font-family:monospace;">{best_asset["name"]}</div>'
         f'<div style="font-size:24px;font-weight:700;color:#3fb950;font-family:monospace;">{best_asset["ret_1m"]*100:+.1f}%</div>'
         f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Rolling 1M Return (21 trading days)</div>'
         f'</div>'
         f'<div class="fc">'
-        f'<div class="lbl" style="margin-bottom:8px;">HIGHEST RISK TO MONITOR</div>'
+        f'<div class="lbl" style="margin-bottom:8px;">HIGHEST FRAGILITY SCORE</div>'
         + (f'<div style="font-size:18px;font-weight:700;color:#f85149;font-family:monospace;">{highest_risk_name}</div>'
            f'<div style="font-size:24px;font-weight:700;color:#f85149;font-family:monospace;">{highest_risk_score}/100</div>'
            f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">BK Fragility Score · {highest_risk_label}</div>'
@@ -4555,7 +4781,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'<div style="font-size:11px;color:#e6edf3;line-height:2.2;">'
         + f'<strong style="color:#58a6ff;">1. RAS Dynamic Allocation</strong> &mdash; LIVE. '
         + f'Risk Appetite Score = Regime(35%) + Fragility Inv(30%) + Fear &amp; Greed(20%) + Vol Inv(15%). '
-        + f'Drives bucket weights. Top pick per bucket selected by BK Opportunity Score (5-factor composite on Intel tab).<br>'
+        + f'Drives bucket weights. Highest composite score per bucket selected by BK Composite Score (5-factor composite on Intel tab).<br>'
         + f'<strong style="color:#58a6ff;">2. Regime Allocation Backtest</strong> &mdash; VALIDATED. '
         + f'Simplified 6-instrument model with monthly rebalancing. 5-year evidence. '
         + f'Demonstrates the regime-switching concept; not a replica of the live RAS model.<br>'
@@ -4570,26 +4796,26 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'</div>'
     )
 
-    # ══ TAB 9: FUTURE DEVELOPMENT ════════════════════════════════════════════
+    # ══ TAB 9: RESEARCH DIRECTIONS ═══════════════════════════════════════════
     future_tab = (
         f'<div style="max-width:900px;margin:0 auto;">'
         f'<div style="background:linear-gradient(135deg,#1c2128,#161b22);border:1px solid #30363d;'
         f'border-radius:12px;padding:28px 32px;margin-bottom:20px;">'
-        f'<div style="font-size:10px;font-weight:700;letter-spacing:3px;color:#58a6ff;text-transform:uppercase;margin-bottom:8px;">Roadmap</div>'
-        f'<div style="font-size:22px;font-weight:700;color:#e6edf3;margin-bottom:8px;">Future Development</div>'
+        f'<div style="font-size:10px;font-weight:700;letter-spacing:3px;color:#58a6ff;text-transform:uppercase;margin-bottom:8px;">Open Questions</div>'
+        f'<div style="font-size:22px;font-weight:700;color:#e6edf3;margin-bottom:8px;">Research Directions</div>'
         f'<div style="font-size:13px;color:#8b949e;line-height:1.7;">'
-        f'Planned analytical modules for upcoming releases. Each section below outlines the scope, '
-        f'methodology, and data sources intended for implementation.'
+        f'Analytical questions this framework has not yet answered. Each section below identifies a research gap, '
+        f'the methodology being explored, and what evidence would be needed to validate it.'
         f'</div></div>'
 
-        # ── 1. Portfolio Optimisation ──────────────────────────────────────
+        # ── 1. Portfolio Construction ──────────────────────────────────────
         f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
         f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
         f'<div style="width:36px;height:36px;border-radius:8px;background:#0d2318;border:1px solid #238636;'
         f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#9878;</div>'
         f'<div>'
-        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;">Module 1</div>'
-        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Portfolio Optimisation</div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#3fb950;text-transform:uppercase;">Research Area 1</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Portfolio Construction Under Regime Constraints</div>'
         f'</div></div>'
         f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
         + ''.join(
@@ -4597,24 +4823,24 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;font-weight:700;color:#58a6ff;margin-bottom:4px;">{title}</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
             for title, desc in [
-                ("Mean-Variance / Efficient Frontier", "Markowitz optimisation across the instrument universe. Interactive frontier with risk/return tradeoff."),
-                ("Risk Parity", "Equal risk contribution weighting. Compared against equal-weight and current BK Dynamic Allocation."),
-                ("Max Sharpe &amp; Min Vol Portfolios", "Scipy-optimised portfolios with configurable constraints. Annualised Sharpe and drawdown shown."),
-                ("Correlation Heatmap (Portfolio View)", "Rolling 60/120-day correlation matrix. Cluster view to identify diversification opportunities."),
-                ("Rolling Beta to Benchmark", "Beta to SPY, AGG and custom benchmark. Time-varying with 63/126-day windows."),
-                ("Rebalancing Simulator", "Monthly vs quarterly rebalancing cost/benefit. Transaction cost impact on CAGR."),
+                ("Does regime-conditioned mean-variance outperform unconditional?", "Research question: does applying Markowitz within each regime state produce better risk-adjusted outcomes than a single static frontier?"),
+                ("Does risk parity hold up in Stressed regimes?", "Equal risk contribution weighting tends to concentrate in low-vol assets. Exploring whether this is protective or deceptive in crisis."),
+                ("What is the rebalancing frequency that maximises Sharpe net of costs?", "Monthly vs quarterly vs threshold-based rebalancing. Transaction cost sensitivity across different regime states."),
+                ("How much does correlation structure change between Calm and Stressed?", "Rolling 60/120-day correlation matrix. Hypothesis: diversification degrades precisely when it is needed most."),
+                ("Does beta to benchmark vary predictably with fragility score?", "Exploring time-varying beta using 63/126-day windows against SPY and AGG. Is rising beta a leading fragility indicator?"),
+                ("What is the marginal value of adding a new bucket to the RAS model?", "Current model has 6 buckets. Research question: does adding Alts or Crypto change regime-adjusted Sharpe materially?"),
             ]
         )
         + f'</div></div>'
 
-        # ── 2. Algo & Spread Trading ───────────────────────────────────────
+        # ── 2. Signal Research ─────────────────────────────────────────────
         f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
         f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
         f'<div style="width:36px;height:36px;border-radius:8px;background:#0d1a2d;border:1px solid #1f6feb;'
         f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#9654;</div>'
         f'<div>'
-        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#58a6ff;text-transform:uppercase;">Module 2</div>'
-        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Algo &amp; Spread Trading</div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#58a6ff;text-transform:uppercase;">Research Area 2</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Cross-Asset Signal Persistence</div>'
         f'</div></div>'
         f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
         + ''.join(
@@ -4622,24 +4848,24 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;font-weight:700;color:#58a6ff;margin-bottom:4px;">{title}</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
             for title, desc in [
-                ("Pairs Trading Signals", "Cointegration-based pairs (e.g. EWJ/EFA, GLD/SLV). Live z-score with entry/exit thresholds."),
-                ("Momentum Screens", "12-1 month momentum ranking across universe. Long/short signal with cross-sectional z-score."),
-                ("Mean-Reversion Screens", "RSI + Bollinger Band confluence. Flagged when price &gt;2 SD from 20-day mean."),
-                ("Spread P&amp;L Backtest", "Historical simulation of active pairs. Net P&amp;L, win rate, and max adverse excursion shown."),
-                ("Signal Aggregator", "Combined momentum + mean-reversion + regime score per instrument. Ranked signal table."),
-                ("Execution Notes", "Estimated bid/ask spread cost by instrument. Alerts when spread cost exceeds expected alpha."),
+                ("Does 12-1 momentum persist within the BK universe?", "Cross-sectional momentum ranking across 113 instruments. Research question: does the signal decay faster in high-fragility regimes?"),
+                ("Do cointegrated pairs offer regime-independent return?", "Exploring EWJ/EFA, GLD/SLV and similar pairs. Hypothesis: spread mean-reversion weakens during Crisis regime."),
+                ("Does RSI divergence from price predict reversal at the asset-class level?", "Mean-reversion screening. Quantifying false positive rate across regime states."),
+                ("How much of the BK GREEN signal decays within 5 trading days?", "Signal half-life analysis. Measuring whether composite scores lead or lag price by regime."),
+                ("Is COT commercial positioning a leading indicator for commodity fragility?", "Exploring CFTC data for crude, gold, wheat. Hypothesis: extreme commercial short correlates with fragility spikes."),
+                ("Do earnings surprise magnitudes vary with the fragility score?", "Exploring whether HIGH fragility periods coincide with larger post-earnings moves. Potential volatility timing signal."),
             ]
         )
         + f'</div></div>'
 
-        # ── 3. Expert Signals ──────────────────────────────────────────────
+        # ── 3. Regime Detection ────────────────────────────────────────────
         f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
         f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
         f'<div style="width:36px;height:36px;border-radius:8px;background:#2d1f06;border:1px solid #e3b341;'
         f'display:flex;align-items:center;justify-content:center;font-size:16px;">&#128161;</div>'
         f'<div>'
-        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;">Module 3</div>'
-        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Expert Signals</div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#e3b341;text-transform:uppercase;">Research Area 3</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Regime Detection Accuracy &amp; Transition Lead Time</div>'
         f'</div></div>'
         f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
         + ''.join(
@@ -4647,24 +4873,24 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;font-weight:700;color:#e3b341;margin-bottom:4px;">{title}</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
             for title, desc in [
-                ("Analyst Consensus", "Aggregated buy/hold/sell ratios via yfinance. Net bullish score per instrument."),
-                ("Insider Buying Signals", "Recent insider purchase filings. Flagged where insiders are net buyers over 90 days."),
-                ("Short Interest", "Short interest as % of float. Rising short interest flagged as a risk or contrarian signal."),
-                ("COT Positioning", "Commitment of Traders data for commodities and FX. Commercial vs speculative net positioning."),
-                ("Earnings Surprise Tracker", "Historical EPS beat/miss vs consensus. Surprise magnitude and post-announcement drift."),
-                ("Macro Event Calendar", "Scheduled FOMC, CPI, NFP dates overlaid on regime timeline. Impact scoring."),
+                ("How early does HMM detect regime transitions vs GMM?", "Comparing HMM and GMM lead times on the 2020 and 2022 episodes. Research question: which model minimises false positives?"),
+                ("Does a 3-state model outperform a 2-state model in real time?", "Current model uses 3 states. Exploring whether adding a 4th (Recovery) state improves out-of-sample transition accuracy."),
+                ("What is the false positive rate for transition risk flags?", "Currently flagged as Elevated when models disagree. Measuring how often this precedes actual regime change vs mean-reverts."),
+                ("Does analyst consensus data lead or lag the regime signal?", "Exploring yfinance consensus ratios as a sentiment crosscheck on HMM/GMM regime classification."),
+                ("Can macro event timing improve regime change probability estimates?", "FOMC, CPI, NFP dates as covariates in regime transition probabilities. Do they add explanatory power?"),
+                ("Is the current 3-model consensus robust to instrument universe changes?", "Testing whether adding or removing asset classes materially shifts regime classification on historical episodes."),
             ]
         )
         + f'</div></div>'
 
-        # ── 4. Factor Dashboard ────────────────────────────────────────────
+        # ── 4. Fragility Model ─────────────────────────────────────────────
         f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:24px 28px;margin-bottom:16px;">'
         f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
         f'<div style="width:36px;height:36px;border-radius:8px;background:#2d0a1e;border:1px solid #da3633;'
         f'display:flex;align-items:center;justify-content:circle;font-size:16px;">&#9654;</div>'
         f'<div>'
-        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;">Module 4</div>'
-        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Factor Dashboard</div>'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#f85149;text-transform:uppercase;">Research Area 4</div>'
+        f'<div style="font-size:16px;font-weight:700;color:#e6edf3;">Fragility Score Validation &amp; Factor Decomposition</div>'
         f'</div></div>'
         f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
         + ''.join(
@@ -4672,19 +4898,19 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;font-weight:700;color:#f85149;margin-bottom:4px;">{title}</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
             for title, desc in [
-                ("Value / Momentum / Quality / Low-Vol", "Four-factor scores per instrument. Composite factor rank updated daily."),
-                ("Factor Rotation Tracker", "Which factors are leading vs lagging month-to-date. Bar chart with historical context."),
-                ("Factor-Regime Alignment", "Which factors historically outperform in Calm / Stressed / Crisis. Heatmap overlay."),
-                ("Cross-Asset Factor Exposure", "Factor tilt of current BK Dynamic Allocation. Detects unintended factor concentration."),
-                ("Smart Beta Comparison", "Performance of factor-tilted portfolios vs market-cap weight. Rolling 1Y/3Y attribution."),
-                ("Factor Dispersion", "Cross-sectional spread of factor scores. High dispersion = better stock/ETF selection environment."),
+                ("Does a high fragility score predict subsequent drawdown within 30 days?", "Core validation question. Measuring hit rate on score &gt; 70 → max drawdown &gt; 10% within 21 trading days."),
+                ("Which fragility pillars are most predictive of drawdown vs volatility?", "Factor attribution: decomposing which of the 5 pillar components explains most of subsequent loss."),
+                ("Is the equal-weighting of fragility pillars optimal?", "Research question: do value/momentum/quality/low-vol weights derived from factor regressions outperform equal weights?"),
+                ("Does fragility dispersion across asset classes predict regime transition?", "Hypothesis: rising cross-asset fragility dispersion (not just mean) is a leading regime indicator."),
+                ("How does the fragility score behave for FX instruments excluded from display?", "FX is excluded from the fragility tab. Research question: does including it change the system-level fragility reading?"),
+                ("Can the fragility score be extended to individual equities?", "Current model is ETF/index-based. Exploring whether pillar methodology transfers to single-stock screening."),
             ]
         )
         + f'</div></div>'
 
         # Footer note
         f'<div style="text-align:center;padding:16px;font-size:10px;color:#4a5568;font-family:monospace;">'
-        f'All modules planned for implementation using Yahoo Finance data &#183; No external paid data sources required &#183; Scope subject to change'
+        f'Research questions only &#183; No conclusions implied &#183; All analysis uses Yahoo Finance data &#183; Scope subject to revision'
         f'</div>'
         f'</div>'
     )
@@ -4699,8 +4925,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'margin:0 auto 16px;display:flex;align-items:center;justify-content:center;">'
         f'<div style="font-size:28px;font-weight:700;color:#fff;font-family:monospace;">BK</div></div>'
         f'<div style="font-size:22px;font-weight:700;color:#e6edf3;font-family:monospace;letter-spacing:1px;">Bhavesh Kamdar</div>'
-        f'<div style="font-size:12px;color:#58a6ff;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">FRM · CQF · Risk Manager · Founder, BKIQ Markets</div>'
-        f'<div style="font-size:11px;color:#8b949e;margin-top:4px;">AIA Investment Management · Singapore</div>'
+        f'<div style="font-size:12px;color:#58a6ff;margin-top:6px;letter-spacing:2px;text-transform:uppercase;">FRM · CQF · Risk Manager</div>'
         f'</div>'
         # Philosophy
         f'<div class="fc" style="margin-bottom:14px;">'
@@ -4713,45 +4938,76 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'</div>'
         f'<div style="font-size:12px;color:#8b949e;margin-top:16px;line-height:1.8;">'
         f'Bhavesh Kamdar is a senior risk professional with 25 years of experience across global asset management. '
-        f'Currently serving as Risk Manager at AIA Investment Management (AIAIM) in Singapore, Bhavesh has spent '
-        f'his career building risk frameworks for some of the world&#39;s largest institutional investors.<br><br>'
+        f'He has spent his career building risk frameworks across global asset management.<br><br>'
         f'Holding both the Financial Risk Manager (FRM) designation and the Certificate in Quantitative Finance (CQF), '
         f'Bhavesh combines deep quantitative expertise with practical investment risk management experience '
         f'across equities, fixed income, commodities and alternatives.<br><br>'
         f'The BK Fragility Framework was born from a simple observation: traditional risk models measure volatility '
-        f'after it has arrived. Bhavesh built the framework to detect structural vulnerability before it crystallises '
-        f'into loss — giving institutional investors an early warning system that conventional dashboards do not provide.</div>'
+        f'after it has arrived. Bhavesh built the framework to detect structural vulnerability before it crystallises into loss.</div>'
         f'</div>'
-        # What is BKIQ
-        f'<div class="fc" style="margin-bottom:14px;">'
-        f'<div class="lbl" style="margin-bottom:12px;">ABOUT BKIQ MARKETS</div>'
-        f'<div style="font-size:12px;color:#8b949e;line-height:1.8;">'
-        f'BKIQ Markets is a Singapore-based market intelligence platform delivering daily '
-        f'institutional-grade analysis across 100+ instruments and 40+ markets. '
-        f'The platform monitors global equities, fixed income, commodities, FX, crypto and volatility '
-        f'through 6 analytical lenses — Performance, Risk, Fragility, Analysis, Regime and Edge.<br><br>'
-        f'Built over 4 weeks and 90+ iterations — driven by a passion to build something world class. '
-        f'Designed for family office analysts, private bankers, wealth managers and institutional traders '
-        f'who need actionable intelligence delivered before markets open.'
-        f'</div>'
-        f'</div>'
-        # Contact
-        f'<div style="text-align:center;padding:20px;border-top:1px solid #30363d;margin-top:6px;">'
-        f'<div style="font-size:11px;color:#8b949e;margin-bottom:12px;">Get in touch</div>'
-        f'<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px;">'
-        f'<a href="https://www.linkedin.com/in/bhavesh-kamdar-frm-cqf-8ba4178" target="_blank" '
-        f'style="display:inline-block;background:#0a66c2;color:#fff;font-size:11px;font-weight:700;'
-        f'padding:8px 18px;border-radius:6px;text-decoration:none;font-family:monospace;">LinkedIn</a>'
-        f'<a href="mailto:bhavesh113@gmail.com" '
-        f'style="display:inline-block;background:#1c2128;border:1px solid #30363d;color:#e6edf3;font-size:11px;font-weight:700;'
-        f'padding:8px 18px;border-radius:6px;text-decoration:none;font-family:monospace;">bhavesh113@gmail.com</a>'
-        f'<a href="tel:+6589474681" '
-        f'style="display:inline-block;background:#1c2128;border:1px solid #30363d;color:#e6edf3;font-size:11px;font-weight:700;'
-        f'padding:8px 18px;border-radius:6px;text-decoration:none;font-family:monospace;">+65 8947 4681</a>'
-        f'</div>'
-        f'<div style="font-size:9px;color:#8b949e;margin-top:12px;font-family:monospace;">'
-        f'&#169; 2026 BKIQ Markets &#183; Singapore &#183; Framework v1.0 &#183; Methodology as of 2026 &#183; For informational purposes only &#183; Not investment advice</div>'
-        f'</div>'
+
+        # ── D-05: Six disclosure blocks ────────────────────────────────────────
+        f'<div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">'
+
+        # 1. Nature of this tool
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">1. Nature of This Tool</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'This dashboard is a <strong style="color:#e6edf3;">personal, non-commercial research project</strong>. '
+        f'It is built and maintained by Bhavesh Kamdar for private analytical use. '
+        f'It is not a financial product, not a regulated service, and is not offered commercially to any third party.'
+        f'</div></div>'
+
+        # 2. No investment advice
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">2. Not Investment Advice</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'Nothing on this dashboard constitutes investment advice, a solicitation to buy or sell any security, '
+        f'or a recommendation of any investment strategy. '
+        f'All content is <strong style="color:#e6edf3;">observational and descriptive</strong> — it describes what the models output, '
+        f'not what any person should do with their capital.'
+        f'</div></div>'
+
+        # 3. Model outputs are not predictions
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">3. Model Outputs Are Not Predictions</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'Framework scores (fragility, regime, fear &amp; greed, opportunity) are <strong style="color:#e6edf3;">quantitative model outputs</strong> '
+        f'derived from historical price and volume data. They describe current statistical conditions — '
+        f'they do not predict future prices, returns, or market behaviour. '
+        f'Past model performance is not indicative of future results.'
+        f'</div></div>'
+
+        # 4. Data limitations
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">4. Data Limitations</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'Price and volume data is sourced from Yahoo Finance via yfinance. '
+        f'Data may contain errors, gaps, stale prices, or corporate-action anomalies '
+        f'(see the DATA REVIEW flag on the Performance tab for known issues). '
+        f'<strong style="color:#e6edf3;">No warranty is made as to data accuracy or completeness.</strong>'
+        f'</div></div>'
+
+        # 5. No commercial relationship
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">5. No Commercial Relationship</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'This tool is not affiliated with, endorsed by, or sponsored by any employer or institution. '
+        f'It is developed independently in a personal capacity. '
+        f'<strong style="color:#e6edf3;">No subscription, payment, or commercial arrangement exists or is offered.</strong>'
+        f'</div></div>'
+
+        # 6. Personal use only
+        f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
+        f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">6. Personal Use Only</div>'
+        f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
+        f'This dashboard is hosted publicly solely for technical convenience (GitHub Pages). '
+        f'It is <strong style="color:#e6edf3;">not distributed, marketed, or promoted</strong> to any audience. '
+        f'Any person accessing it does so for their own information and takes sole responsibility for any use they make of the content.'
+        f'</div></div>'
+
+        f'</div>'  # close disclosure blocks container
+
         f'</div>'
     )
 
@@ -4852,7 +5108,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + "</head><body><div class='wrap'>"
         + "<div class='hdr'><div>"
         + "<div class='logo'>BKIQ <span>MARKETS</span></div>"
-        + f"<div class='sub'>{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;&#183;&nbsp; Intelligence Before the Market Opens</div>"
+        + f"<div class='sub'>{N_INSTRUMENTS}-INSTRUMENT UNIVERSE &nbsp;&#183;&nbsp; Daily snapshot &middot; 07:00 SGT</div>"
         + f"<div class='badge'><span class='dot'></span> Last updated: {date_str}</div>"
         + "</div><div style='text-align:right;'>"
         f"<div style='font-family:monospace;font-size:13px;color:#e6edf3;font-weight:600;'>{date_str}</div>"
@@ -4868,7 +5124,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<button class='tb' onclick=\"sw('regime',this)\">Regime</button>"
         "<button class='tb' onclick=\"sw('edge',this)\">Edge</button>"
         "<button class='tb' onclick=\"sw('about',this)\">About</button>"
-        "<button class='tb' onclick=\"sw('future',this)\">Future Dev</button>"
+        "<button class='tb' onclick=\"sw('future',this)\">Research</button>"
         "</div>"
         f"<div id='t-intel' class='tab on'>{summary_tab}</div>"
         f"<div id='t-perf' class='tab'>{perf}</div>"
@@ -4920,6 +5176,15 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "}"
         "document.addEventListener('DOMContentLoaded',bkInitAccordions);"
         "</script>"
+        # ── D-06: Persistent footer strip ─────────────────────────────────────
+        '<div style="position:fixed;bottom:0;left:0;right:0;z-index:9999;'
+        'background:#0d1117;border-top:1px solid #30363d;'
+        'padding:6px 16px;text-align:center;font-size:9px;color:#6e7681;font-family:monospace;'
+        'letter-spacing:1px;">'
+        'Personal research &nbsp;&middot;&nbsp; Not investment advice &nbsp;&middot;&nbsp; No commercial offering'
+        '</div>'
+        # Spacer so page content is not obscured by the fixed footer
+        '<div style="height:28px;"></div>'
         "</body></html>"
     )
 
@@ -5579,7 +5844,13 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
             market_data_for_ai["bt_bk"]   = f'{backtest_data["bk"]["total"]:+.1f}%'
             market_data_for_ai["bt_spy"]  = f'{backtest_data["spy"]["total"]:+.1f}%'
             market_data_for_ai["bt_6040"] = f'{backtest_data["p6040"]["total"]:+.1f}%'
-        web_html    = build_web_html(df, frag_df, prices, regime_data, fg_data, frag_trend, ai_commentary, backtest_data)
+        # D-08: Fetch and select today's headlines
+        print("[HTML]   Fetching today's headlines...")
+        _regime_label = (regime_data.get("regime", "Unknown") if regime_data else "Unknown")
+        _news_pool    = fetch_news_pool()
+        headlines_data = select_top_headlines(_news_pool, _regime_label)
+        print(f"[HTML]   Headlines: {len(headlines_data)} selected from {len(_news_pool)} articles")
+        web_html    = build_web_html(df, frag_df, prices, regime_data, fg_data, frag_trend, ai_commentary, backtest_data, headlines_data)
         docs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs")
         os.makedirs(docs_dir, exist_ok=True)
         html_path = os.path.join(docs_dir, "index.html")
