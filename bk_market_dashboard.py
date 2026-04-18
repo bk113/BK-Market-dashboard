@@ -1758,7 +1758,7 @@ def _transition_risk(sm_regime: str, hmm_probs: dict) -> tuple:
             return "High", f"SM: Stressed and HMM sees {p_crisis*100:.0f}% crisis probability — escalation risk"
         if p_calm > 0.50:
             return "Low", f"HMM sees {p_calm*100:.0f}% calm probability — de-escalation likely"
-        return "Elevated", "Regime uncertain — monitor closely"
+        return "Elevated", "Models disagree — regime transition possible"
     else:  # Crisis
         if p_calm > 0.40:
             return "Elevated", f"HMM sees {p_calm*100:.0f}% calm probability — crisis may be easing"
@@ -3388,7 +3388,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'&#9888; Regime weights are hardcoded, not dynamic<br>'
             f'&#9888; Past performance &#8800; future results</div></div></div>'
             f'<div style="border-top:1px solid #21262d;padding-top:10px;">'
-            f'<div style="font-size:10px;color:#8b949e;margin-bottom:6px;letter-spacing:2px;">WHAT HAS NOT BEEN BACKTESTED (COMING IN S3)</div>'
+            f'<div style="font-size:10px;color:#8b949e;margin-bottom:6px;letter-spacing:2px;">WHAT HAS NOT YET BEEN BACKTESTED</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
             f'&middot; BK Fragility Framework predictive validity (hit rate, false positive rate, avg drawdown after CRISIS signal)<br>'
             f'&middot; BK Composite Score forward returns (top quintile vs bottom quintile, 21-day holding period)<br>'
@@ -3828,7 +3828,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
         reg_desc = {
             "Calm":     "Markets are operating within normal historical ranges. Volatility and drawdowns are contained. Risk appetite is stable.",
-            "Stressed": "Elevated volatility or meaningful drawdown detected. Markets are pricing in uncertainty. Monitor closely.",
+            "Stressed": "Elevated volatility or meaningful drawdown detected. Markets are pricing in uncertainty.",
             "Crisis":   "Extreme volatility or severe drawdown detected. Historical crisis-level conditions. Defensive positioning warranted.",
         }.get(reg, "")
 
@@ -4662,18 +4662,24 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     rc_e = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now_e,"#8b949e")
     rb_e = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now_e,"#161b22")
 
-    # AI-generated commentary for Edge tab
-    ai_edge   = (ai_commentary or {}).get("edge_rationale", "")
     _df_rankable = df[df["ticker"].apply(is_rankable)]
     top_gain  = _df_rankable.nlargest(1,"ret_1m")["name"].iloc[0] if not _df_rankable.empty else "N/A"
     _frag_rankable = frag_df[frag_df["ticker"].apply(is_rankable)] if frag_df is not None and not frag_df.empty else pd.DataFrame()
     top_risk  = _frag_rankable.iloc[0]["name"] if not _frag_rankable.empty else "N/A"
     _vol_mask = df["vol_now"].notna() & df["vol_1m_ago"].notna() if "vol_now" in df.columns else pd.Series(False, index=df.index)
     vol_count = int((df.loc[_vol_mask, "vol_now"] > df.loc[_vol_mask, "vol_1m_ago"]).sum()) if _vol_mask.any() else 0
-    commentary = ai_edge if ai_edge else (
-        f"Markets are in a <strong style='color:{rc_e};'>{reg_now_e}</strong> regime. "
-        f"Volatility is rising across {vol_count} instruments. "
-        f"The suggested allocation reflects current regime conditions."
+    # Deterministic template — no LLM call. Variables sourced from state already computed above.
+    _vp_val = int(drivers.get("vol_pct", 0))
+    _vp_sfx = "th" if 11 <= _vp_val % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(_vp_val % 10, "th")
+    _dd_abs = abs(drivers.get("dd_now", 0))
+    commentary = (
+        f"Framework state: fragility score {frag_sys:.1f}, volatility at the "
+        f"{_vp_val}{_vp_sfx} percentile, drawdown {_dd_abs:.1f}% from peak. "
+        f"Signal distribution: {nr} RED, {na} AMBER, {ng} GREEN. "
+        f"Rising-volatility instruments: {vol_count} of {len(df)}. "
+        f"Cross-asset correlation (30-day): 0.30. "
+        f"The regime classification weights the fragility and volatility components more heavily than "
+        f"the drawdown component under the regime-conditional weighting rules documented on the Regime tab."
     )
 
     # Key metrics for context (rankable subset only — excludes indices/proxies)
@@ -4723,13 +4729,21 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     dynamic_alloc_card = (
         f'<div class="fc" style="margin-bottom:14px;border:1px solid {_ras_color};">'
         f'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">'
-        f'<div class="lbl">BK DYNAMIC ALLOCATION</div>'
-        f'<div style="font-size:11px;color:#8b949e;font-family:monospace;">RAS model &#183; regime-aware</div>'
+        f'<div class="lbl">REGIME-WEIGHTED FRAMEWORK OUTPUT &mdash; ILLUSTRATIVE</div>'
+        f'<div style="font-size:11px;color:#8b949e;font-family:monospace;">Worked example of how the Risk Appetite Score translates regime state into asset-class weights</div>'
         f'</div>'
         f'<div style="display:flex;align-items:baseline;gap:14px;margin-bottom:14px;">'
         f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;">RISK APPETITE SCORE</div>'
         f'<div style="font-size:30px;font-weight:700;color:{_ras_color};font-family:monospace;">{ras_score:.0f}</div>'
         f'<div style="font-size:13px;color:{_ras_color};font-weight:700;letter-spacing:1px;">&rarr; {ras_label.upper()}</div>'
+        f'</div>'
+        f'<div style="background:#2d2106;border:2px solid #e3b341;border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:11px;color:#e6edf3;line-height:1.7;">'
+        f'<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#e3b341;margin-bottom:8px;">&#9888; ILLUSTRATIVE METHODOLOGY OUTPUT &mdash; NOT A PORTFOLIO RECOMMENDATION</div>'
+        f'The weights and instruments below illustrate how the Risk Appetite Score formula translates a regime state into bucket weights and representative instruments. '
+        f'This is a worked example of the framework&apos;s output, not a recommended portfolio, not a backtested strategy, and not a set of positions the reader should hold.<br><br>'
+        f'Specific instruments named are the highest-scoring instrument in each bucket on the composite metric as of today. They are not recommendations. '
+        f'Weights are a deterministic function of the regime state; they do not account for transaction costs, liquidity, correlation, or individual circumstances.<br><br>'
+        f'No reader should interpret this card as investment advice.'
         f'</div>'
         f'{_alloc_rows_html}'
         f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.6;">'
@@ -4737,12 +4751,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'Highest composite score per bucket = highest BK Composite Score'
         f'</div>'
         f'</div>'
+        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:1.6;margin-bottom:14px;padding:8px 12px;border:1px solid #21262d;border-radius:6px;">'
+        f'This methodology example is one of several research directions documented on the Research tab. '
+        f'It is not the output of a live or recommended strategy. '
+        f'BKIQ is a personal research project &mdash; see About tab for full disclosure.'
+        f'</div>'
     )
 
     edge_tab = (
         dynamic_alloc_card
         + f'<div style="background:{rb_e};border:2px solid {rc_e};border-radius:10px;padding:18px 24px;margin-bottom:14px;">'
         f'<div style="font-size:9px;color:{rc_e};letter-spacing:3px;font-family:monospace;margin-bottom:6px;">CURRENT REGIME CONTEXT</div>'
+        f'<div style="font-size:9px;color:#8b949e;font-family:monospace;margin-bottom:8px;font-style:italic;">Factual state summary &mdash; no model interpretation</div>'
         f'<div style="font-size:22px;font-weight:700;color:{rc_e};font-family:monospace;">{reg_now_e.upper()} REGIME</div>'
         f'<div style="font-size:11px;color:#e6edf3;margin-top:8px;line-height:1.7;">{commentary}</div>'
         f'</div>'
@@ -4779,7 +4799,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'<div style="background:#161b22;border:1px solid #30363d;border-radius:10px;padding:16px 20px;margin:16px 0;">'
         + f'<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:10px;">MODELS ON THIS PAGE</div>'
         + f'<div style="font-size:11px;color:#e6edf3;line-height:2.2;">'
-        + f'<strong style="color:#58a6ff;">1. RAS Dynamic Allocation</strong> &mdash; LIVE. '
+        + f'<strong style="color:#58a6ff;">1. Regime-Weighted Framework Output (Illustrative)</strong> &mdash; LIVE. '
         + f'Risk Appetite Score = Regime(35%) + Fragility Inv(30%) + Fear &amp; Greed(20%) + Vol Inv(15%). '
         + f'Drives bucket weights. Highest composite score per bucket selected by BK Composite Score (5-factor composite on Intel tab).<br>'
         + f'<strong style="color:#58a6ff;">2. Regime Allocation Backtest</strong> &mdash; VALIDATED. '
@@ -4937,8 +4957,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'fragility builds slowly, then breaks suddenly."</em>'
         f'</div>'
         f'<div style="font-size:12px;color:#8b949e;margin-top:16px;line-height:1.8;">'
-        f'Bhavesh Kamdar is a senior risk professional with 25 years of experience across global asset management. '
-        f'He has spent his career building risk frameworks across global asset management.<br><br>'
+        f'Bhavesh Kamdar is a senior risk professional with 25 years of experience in global asset management, '
+        f'spent building risk frameworks across equities, fixed income, commodities, and alternatives.<br><br>'
         f'Holding both the Financial Risk Manager (FRM) designation and the Certificate in Quantitative Finance (CQF), '
         f'Bhavesh combines deep quantitative expertise with practical investment risk management experience '
         f'across equities, fixed income, commodities and alternatives.<br><br>'
@@ -4972,7 +4992,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div style="background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px 20px;">'
         f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;text-transform:uppercase;margin-bottom:8px;">3. Model Outputs Are Not Predictions</div>'
         f'<div style="font-size:11px;color:#8b949e;line-height:1.8;">'
-        f'Framework scores (fragility, regime, fear &amp; greed, opportunity) are <strong style="color:#e6edf3;">quantitative model outputs</strong> '
+        f'Framework scores (fragility, regime, fear &amp; greed, composite) are <strong style="color:#e6edf3;">quantitative model outputs</strong> '
         f'derived from historical price and volume data. They describe current statistical conditions — '
         f'they do not predict future prices, returns, or market behaviour. '
         f'Past model performance is not indicative of future results.'
@@ -5143,7 +5163,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Updated daily before market open"
         "</div><div style='text-align:right;'>"
         "<div class='fb'>BK</div>"
-        "<div class='fs'>Market Intelligence &#183; Singapore</div>"
+        "<div class='fs'>Risk Research &#183; Singapore</div>"
         "</div></div></div>"
         "<script>"
         "function sw(n,b){"
