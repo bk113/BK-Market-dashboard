@@ -1,8 +1,8 @@
 name: Daily Market Dashboard
 
 on:
-  #schedule:
-   # - cron: '0 23 * * 0-4'
+  schedule:
+    - cron: '0 23 * * 0-4'
   workflow_dispatch:
 
 permissions:
