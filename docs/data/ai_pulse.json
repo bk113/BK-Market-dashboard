@@ -1,0 +1,7 @@
+{
+  "as_of": "pending first workflow run",
+  "basket_breadth_above_50dma_pct": null,
+  "basket_avg_ann_vol_21d_pct": null,
+  "constituents": [],
+  "methodology": "1M/3M returns are trailing 21/63 trading-day price changes. Vol (per name) = annualised stdev of that name's own trailing 21-day daily returns. Basket vol = same calculation pooled across the equity subset. Breadth = % of equity subset trading above its own 50-day moving average. Drawdown = max peak-to-trough over trailing 90 sessions per name. Descriptive only; not a signal or recommendation."
+}

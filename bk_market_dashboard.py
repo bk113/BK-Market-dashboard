@@ -4966,6 +4966,15 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'after it has arrived. Bhavesh built the framework to detect structural vulnerability before it crystallises into loss.</div>'
         f'</div>'
 
+        # ── Related: AI Pulse page ───────────────────────────────────────────
+        f'<div class="fc" style="margin-bottom:14px;">'
+        f'<div class="lbl" style="margin-bottom:8px;">RELATED</div>'
+        f'<div style="font-size:12px;color:#8b949e;line-height:1.7;">'
+        f'<a href="ai.html" style="color:#58a6ff;text-decoration:none;font-weight:700;">AI Pulse &rarr;</a>'
+        f'<br>Daily-refreshed AI-markets equity/credit basket, plus manually curated private-company '
+        f'valuations and circular-deal tracking.'
+        f'</div></div>'
+
         # ── D-05: Six disclosure blocks ────────────────────────────────────────
         f'<div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">'
 

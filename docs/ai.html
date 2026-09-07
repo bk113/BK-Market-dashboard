@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BK/IQ — AI Pulse &amp; Investor Watch</title>
+<meta name="description" content="A rule-based read on AI-exposed markets, refreshed daily, plus a standing watch-list of what tends to get glossed over in AI investing.">
+<style>
+  :root{
+    --bg: #0b0d10;
+    --panel: #0f1215;
+    --line: #1e2226;
+    --ink: #e8e6e1;
+    --ink-dim: #9a9d9f;
+    --ink-faint: #6b6e70;
+    --amber: #c9a15c;
+    --up: #6fa287;
+    --down: #b4574a;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:48px 20px 80px;}
+  a{color:var(--amber);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  a:focus-visible, button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+
+  .kicker{
+    font-size:13px;color:var(--ink-faint);letter-spacing:0.02em;margin-bottom:6px;
+  }
+  h1{
+    font-size:28px;line-height:1.25;margin:0 0 8px;font-weight:600;
+    letter-spacing:-0.01em;
+  }
+  .lede{color:var(--ink-dim);font-size:15px;max-width:56ch;margin:0 0 40px;}
+
+  section{margin-bottom:56px;}
+  h2{font-size:19px;font-weight:600;margin:0 0 4px;}
+  .section-note{color:var(--ink-faint);font-size:13px;margin:0 0 20px;max-width:58ch;}
+
+  /* AI Pulse ledger */
+  .pulse-meta{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:12px;color:var(--ink-faint);font-family:var(--font-mono);
+    margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);
+  }
+  .stat-row{
+    display:flex;gap:28px;margin-bottom:24px;flex-wrap:wrap;
+  }
+  .stat{min-width:140px;}
+  .stat-value{font-family:var(--font-mono);font-size:22px;color:var(--ink);}
+  .stat-label{font-size:12px;color:var(--ink-faint);margin-top:2px;}
+
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px;}
+  thead th{
+    text-align:right;font-weight:400;color:var(--ink-faint);
+    font-size:12px;padding:0 0 8px;border-bottom:1px solid var(--line);
+  }
+  thead th:first-child, thead th:nth-child(2), thead th:nth-child(3){text-align:left;}
+  tbody td{
+    padding:9px 0;border-bottom:1px solid var(--line);
+    font-family:var(--font-mono);text-align:right;white-space:nowrap;
+  }
+  tbody td:first-child{
+    text-align:left;font-family:var(--font-body);color:var(--ink);
+  }
+  tbody td:nth-child(2){text-align:left;color:var(--ink-faint);font-family:var(--font-body);font-size:13px;}
+  tbody td:nth-child(3){text-align:left;color:var(--amber);font-family:var(--font-mono);font-size:12px;}
+  .up{color:var(--up);}
+  .down{color:var(--down);}
+  .empty-state{
+    color:var(--ink-faint);font-size:13px;padding:20px 0;border-bottom:1px solid var(--line);
+  }
+
+  /* Lessons */
+  .lesson{
+    padding:18px 0;border-bottom:1px solid var(--line);
+  }
+  .lesson:last-child{border-bottom:none;}
+  .lesson-watch{font-size:15px;color:var(--ink);margin:0 0 5px;font-weight:600;}
+  .lesson-why{font-size:14px;color:var(--ink-dim);margin:0;max-width:60ch;}
+
+  footer{
+    border-top:1px solid var(--line);padding-top:20px;margin-top:40px;
+    font-size:12px;color:var(--ink-faint);
+  }
+  footer p{margin:0 0 6px;}
+  .circle-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;}
+  .circle-table th{text-align:left;font-weight:400;color:var(--ink-faint);font-size:12px;padding:0 10px 8px 0;border-bottom:1px solid var(--line);}
+  .circle-table td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);vertical-align:top;}
+  .circle-table td:first-child{font-weight:600;white-space:nowrap;}
+  .circle-table td.amt{font-family:var(--font-mono);color:var(--amber);white-space:nowrap;}
+  .caveat{
+    font-size:12px;color:var(--ink-faint);border-left:2px solid var(--line);
+    padding-left:12px;margin:16px 0 0;
+  }
+  .navbar{
+    display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:36px;
+    padding-bottom:16px;border-bottom:1px solid var(--line);
+  }
+  .navbar a{color:var(--ink-dim);}
+  .navbar a:hover{color:var(--amber);}
+  .badge{
+    display:inline-block;font-size:10px;letter-spacing:0.03em;
+    padding:2px 7px;border-radius:3px;margin-left:8px;vertical-align:middle;
+    font-family:var(--font-mono);text-transform:uppercase;
+  }
+  .badge-live{background:rgba(111,162,135,0.15);color:var(--up);}
+  .badge-static{background:rgba(201,161,92,0.15);color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">BK/IQ · AI markets</div>
+  <h1>AI Pulse &amp; investor watch</h1>
+  <p class="lede">
+    A holistic read across AI-exposed equities, credit and private markets —
+    live data where it exists, curated tables where it doesn't, always
+    labelled which is which. Descriptive only. Not a signal, not advice.
+  </p>
+
+  <nav class="navbar">
+    <a href="#pulse">Equities + credit</a>
+    <a href="#privates">Privates</a>
+    <a href="#circular">Circular deals</a>
+    <a href="#watch">Lessons</a>
+  </nav>
+
+  <section id="pulse">
+    <h2>AI Pulse — equities &amp; credit<span class="badge badge-live">Live · daily</span></h2>
+    <p class="section-note">
+      19 instruments: compute, custom silicon, foundry, memory, hyperscalers,
+      cloud compute, applications, power, low-cost Chinese models, one
+      public AI-cloud pure-play, and two broad credit ETFs standing in for
+      the debt side of the buildout. Rule-based: breadth is a moving-average
+      count over the equity subset only, credit ETFs excluded from that
+      stat.
+    </p>
+    <p class="section-note">
+      Why a custom basket rather than just SOXX or IGV: a single ETF hides
+      overlap. GOOGL sits in "Hyperscaler" for capex and cloud revenue, but
+      its TPU programme quietly competes with NVDA in Compute. AMZN's AWS
+      is an AI infrastructure business classified outside tech ETFs by
+      sector. VRT's power and cooling exposure isn't captured by either
+      SOXX or IGV at all. The ETF column below shows the closest proxy per
+      name — not where BK/IQ thinks it "belongs."
+    </p>
+    <p class="section-note">
+      Why credit is here at all: S&amp;P Global Ratings has flagged rising
+      capex/revenue intensity at the largest hyperscalers as a credit
+      question, and Oracle's ~$50bn 2026 debt raise (tied to its OpenAI
+      cloud commitment — see circular deals below) is a direct example.
+      LQD and HYG are broad proxies, not issuer-specific instruments; a
+      widening in HY relative to IG while AI capex commentary intensifies
+      is the kind of divergence worth noticing, not a precise attribution.
+    </p>
+    <p class="section-note">
+      Why VRT is here: there are currently ~90 US data centers over 100MW
+      in operation — the highest count on record — with that figure
+      projected to roughly triple to ~280 by 2030 if planned projects
+      complete, alongside an estimated ~$7tn in data-center spend over the
+      same window (The Kobeissi Letter, citing industry tracking data,
+      Sep 2026). Power and cooling capacity is the physical constraint
+      behind every capex number elsewhere on this page.
+    </p>
+
+    <div class="pulse-meta">
+      <span id="asOf">loading…</span>
+      <span><a href="data/ai_pulse.json" id="rawLink">raw data →</a></span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-value" id="breadthVal">—</div>
+        <div class="stat-label">% of basket above 50-day MA</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="volVal">—</div>
+        <div class="stat-label">Basket vol, 21D annualised</div>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th><th>Layer</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th>
+        </tr>
+      </thead>
+      <tbody id="pulseBody">
+        <tr><td colspan="9"><div class="empty-state">Waiting on first data refresh.</div></td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="section-note" style="margin-top:10px;">
+      Vol and 90D drawdown are each name's own risk figures, not the basket
+      aggregate. Swipe the table sideways on mobile to see all columns.
+    </p>
+  </section>
+
+  <section id="privates">
+    <h2>Privates <span class="badge badge-static">Manual · as of Sep 2026</span></h2>
+    <p class="section-note">
+      No live pricing exists for these — valuations are last-round
+      post-money marks, not tradable quotes, and move in discrete jumps
+      rather than daily. Updated by hand when a new round or filing lands.
+    </p>
+
+    <table class="circle-table">
+      <thead>
+        <tr><th>Company</th><th>Last valuation</th><th>Note</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anthropic</td>
+          <td class="amt">~$965bn</td>
+          <td>Series H, May 2026, ~$47bn ARR reported. Filed for IPO in early June 2026 — not yet listed.</td>
+        </tr>
+        <tr>
+          <td>OpenAI</td>
+          <td class="amt">~$852bn</td>
+          <td>$122bn round, Mar 2026, ~$25bn ARR reported. Filed for IPO June 8, 2026, reportedly targeting ~$1tn at listing — not yet listed.</td>
+        </tr>
+        <tr>
+          <td>xAI</td>
+          <td class="amt">~$230bn</td>
+          <td>Series E, Jan 2026. Since merged with SpaceX; combined-entity figures vary by source and are harder to isolate.</td>
+        </tr>
+        <tr>
+          <td>Databricks</td>
+          <td class="amt">~$188bn</td>
+          <td>Coatue-led round, Jul 2026, ~$5bn ARR reported.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="caveat">
+      Figures compiled from press reporting (CNBC, TechCrunch, Bloomberg and
+      others), not primary disclosure, and different outlets show mild
+      variance in timing and exact size. The more important fact than any
+      single number: two of the four largest private AI companies have now
+      filed to go public. If either lists, it moves from this table into
+      the live equities section above — worth revisiting this table on that
+      news rather than treating it as fixed.
+    </p>
+  </section>
+
+  <section id="circular">
+    <h2>The circular deals <span class="badge badge-static">Manual · as of Sep 2026</span></h2>
+    <p class="section-note">
+      A recurring 2026 pattern: a chip or cloud vendor invests in an AI lab,
+      the lab commits to buying compute from cloud providers, and those
+      providers use the revenue to buy chips from the same vendor. Reported
+      commitments across the network are estimated by various analysts at
+      well over $800 billion in aggregate.
+    </p>
+
+    <table class="circle-table">
+      <thead>
+        <tr><th>Counterparty</th><th>Reported commitment</th><th>Role in the loop</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Oracle</td>
+          <td class="amt">~$300bn</td>
+          <td>Five-year cloud deal with OpenAI; Oracle in turn buys Nvidia chips to build the capacity it owes.</td>
+        </tr>
+        <tr>
+          <td>Nvidia → OpenAI</td>
+          <td class="amt">~$100bn</td>
+          <td>Planned Nvidia investment into OpenAI, which is also Nvidia's largest disclosed AI-lab customer.</td>
+        </tr>
+        <tr>
+          <td>Microsoft</td>
+          <td class="amt">~$250bn</td>
+          <td>Azure compute commitment from OpenAI; Microsoft is also an OpenAI investor and leases back Nvidia capacity via CoreWeave.</td>
+        </tr>
+        <tr>
+          <td>CoreWeave</td>
+          <td class="amt">~$22bn</td>
+          <td>OpenAI cloud commitments; Nvidia holds a large equity stake in CoreWeave and is also its primary chip supplier.</td>
+        </tr>
+        <tr>
+          <td>AMD</td>
+          <td class="amt">~$90bn</td>
+          <td>Multi-year compute deal with OpenAI structured with equity-like warrants tied to deployment milestones.</td>
+        </tr>
+        <tr>
+          <td>Broadcom</td>
+          <td class="amt">~$10bn+</td>
+          <td>Custom AI silicon commitment, one piece of OpenAI's broader stacked infrastructure spend.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="caveat">
+      These figures are press- and analyst-reported, not uniformly confirmed
+      by audited disclosure, and several are explicitly conditional or
+      staged. OpenAI's 2026 revenue was reported near $20bn against a
+      committed spend stack analysts put near $1.4tn over the contract
+      lives — the gap those two numbers describe is the thing worth
+      tracking, not any single deal in isolation. Vendor financing is
+      common in capital-intensive industries and isn't inherently improper;
+      the distinction is whether compute gets used by paying end-customers
+      or mainly sustains the loop itself.
+    </p>
+  </section>
+
+  <section id="watch">
+    <h2>Lessons for AI investors: what to watch, and why <span class="badge badge-static">Narrative</span></h2>
+    <p class="section-note">
+      Recurring patterns in how AI-related results get reported and read —
+      not specific to any one company or newsletter.
+    </p>
+
+    <div class="lesson">
+      <p class="lesson-watch">Vendor-defined metrics aren't audited revenue.</p>
+      <p class="lesson-why">Figures like "agentic work units" or "% of new bookings driven by AI" are company-defined, not standardised or reconcilable to a GAAP line. They can move independently of what actually shows up in revenue.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Backlog growth is a demand signal, not cash.</p>
+      <p class="lesson-why">Remaining performance obligations and bookings show intent to pay, not payment. Financing terms and contract structure can separate booked demand from realised cash flow for several quarters.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Watch the support ratio, not just the growth rate.</p>
+      <p class="lesson-why">If supply commitments, receivables, or vendor financing are growing faster than the revenue they sit behind, growth may be increasingly financed rather than organically funded. Compare the two rates, not just the headline number.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Efficiency gains can shrink demand even as usage grows.</p>
+      <p class="lesson-why">Cheaper inference means the same workload can run on less hardware. Rising application revenue doesn't mechanically imply proportionally rising compute demand upstream — the two can decouple.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">One company's print is not a sector's proof.</p>
+      <p class="lesson-why">A single strong or weak result is often used to confirm a whole thematic layer. Small samples and concentrated customer bases make individual names weak proxies for broad claims.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">A rebound can be starting-valuation, not new information.</p>
+      <p class="lesson-why">A stock recovering after being deeply out of favour can reflect how low expectations had fallen, rather than a genuine shift in fundamentals. Check the prior drawdown before reading a rally as a regime change.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Unverified trade-press claims shouldn't move position sizing.</p>
+      <p class="lesson-why">Reports of new chip designs, spec changes, or roadmap shifts often precede or substitute for primary company disclosure. Treat a single sourced claim as a hypothesis to track, not a confirmed input.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">The same names sit on multiple sides of the trade.</p>
+      <p class="lesson-why">A handful of hyperscalers are simultaneously the largest customers, largest capital spenders, and — via investment stakes — financiers of the same suppliers. Exposure that looks diversified across "layers" can share one underlying counterparty. See the circular deals map above for named examples.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Rising capital intensity is a credit question, not just an equity one.</p>
+      <p class="lesson-why">Rating agencies read hyperscaler capex differently than equity investors do. S&amp;P Global Ratings has flagged capex/revenue for the largest hyperscalers rising sharply through 2026–2027, funded partly by debt — a trend that pressures credit headroom regardless of how the equity story is framed.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Falling token prices can erode the assumptions behind today's guidance.</p>
+      <p class="lesson-why">Inference pricing has been declining as competition and efficiency both increase. Revenue models built on current cost-per-token or price-per-query levels may not hold if those unit economics keep compressing faster than volume grows to offset them.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Model quality is a moving target, not a fixed moat.</p>
+      <p class="lesson-why">Gaps between frontier models narrow with each release cycle, and open-weight alternatives close in faster than pricing power usually adjusts. A competitive advantage stated in terms of "our model is better" is harder to underwrite than one stated in terms of data, distribution, or workflow lock-in.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Low-cost Chinese models test whether Western pricing power holds.</p>
+      <p class="lesson-why">Chinese developers have shipped models claiming frontier-comparable benchmark results at a fraction of reported training and inference cost. Whether or not the cost claims fully hold up, the credible threat of much cheaper substitutes changes the pricing and margin assumptions embedded in Western AI application and model valuations — a competitive input, not just a geopolitical one.</p>
+    </div>
+
+    <div class="lesson">
+      <p class="lesson-watch">Physical build-out timelines are the real constraint, not capital availability.</p>
+      <p class="lesson-why">Committed spend can be announced faster than power, cooling and grid capacity can be built. With roughly 90 large US data centers in operation today needing to triple to around 280 by 2030 to match planned projects, the binding constraint on how fast committed capex actually converts to usable compute may be construction and permitting timelines, not the money itself.</p>
+    </div>
+
+  </section>
+
+  <footer>
+    <p>Part of <a href="/">BK/IQ</a> — personal research notes. Not investment advice, not a recommendation, not an offer.</p>
+    <p>AI Pulse basket and methodology are fixed and disclosed above; changes will be logged when made.</p>
+  </footer>
+
+</div>
+
+<script>
+async function loadPulse() {
+  try {
+    const res = await fetch('data/ai_pulse.json', { cache: 'no-store' });
+    const data = await res.json();
+
+    document.getElementById('asOf').textContent = 'As of ' + data.as_of;
+
+    document.getElementById('breadthVal').textContent =
+      data.basket_breadth_above_50dma_pct != null ? data.basket_breadth_above_50dma_pct + '%' : '—';
+    document.getElementById('volVal').textContent =
+      data.basket_avg_ann_vol_21d_pct != null ? data.basket_avg_ann_vol_21d_pct + '%' : '—';
+
+    const body = document.getElementById('pulseBody');
+    if (!data.constituents || data.constituents.length === 0) {
+      body.innerHTML = '<tr><td colspan="9"><div class="empty-state">Waiting on first data refresh.</div></td></tr>';
+      return;
+    }
+
+    body.innerHTML = data.constituents.map(row => {
+      const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
+      const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+      const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
+      return `<tr>
+        <td>${row.ticker}</td>
+        <td>${row.layer}</td>
+        <td>${row.etf || '—'}</td>
+        <td>${row.last != null ? row.last.toFixed(2) : '—'}</td>
+        <td class="${cls(row.chg_1d)}">${fmt(row.chg_1d)}</td>
+        <td class="${cls(row.chg_1m)}">${fmt(row.chg_1m)}</td>
+        <td class="${cls(row.chg_3m)}">${fmt(row.chg_3m)}</td>
+        <td>${fmtPlain(row.vol_21d_ann)}</td>
+        <td class="${cls(row.drawdown_90d)}">${fmt(row.drawdown_90d)}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('asOf').textContent = 'Data unavailable';
+  }
+}
+loadPulse();
+</script>
+
+</body>
+</html>
