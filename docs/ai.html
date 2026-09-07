@@ -116,6 +116,36 @@
   }
   .badge-live{background:rgba(111,162,135,0.15);color:var(--up);}
   .badge-static{background:rgba(201,161,92,0.15);color:var(--amber);}
+  .badge-ai{background:rgba(94,141,201,0.15);color:#8fb4e3;}
+
+  /* Synthesis card */
+  .synthesis-card{
+    background:var(--panel);border:1px solid var(--line);border-radius:8px;
+    padding:16px 18px;margin-bottom:24px;
+  }
+  .synthesis-head{
+    display:flex;align-items:center;margin-bottom:10px;font-size:12px;
+    color:var(--ink-faint);font-family:var(--font-mono);text-transform:uppercase;
+    letter-spacing:0.03em;
+  }
+  .synthesis-text{font-size:14px;color:var(--ink);line-height:1.7;margin:0;}
+  .synthesis-disclaimer{
+    font-size:11px;color:var(--ink-faint);margin:10px 0 0;font-style:italic;
+  }
+
+  /* Layer groups */
+  .layer-group{margin-bottom:22px;}
+  .layer-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    flex-wrap:wrap;gap:6px 16px;margin-bottom:6px;
+  }
+  .layer-name{font-size:14px;font-weight:600;color:var(--ink);}
+  .layer-mini-stats{
+    font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);
+    white-space:nowrap;
+  }
+  .layer-blurb{font-size:13px;color:var(--ink-dim);margin:0 0 8px;max-width:62ch;}
+  .layer-group table{min-width:560px;}
 </style>
 </head>
 <body>
@@ -190,21 +220,20 @@
       </div>
     </div>
 
-    <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th>Ticker</th><th>Layer</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th>
-        </tr>
-      </thead>
-      <tbody id="pulseBody">
-        <tr><td colspan="9"><div class="empty-state">Waiting on first data refresh.</div></td></tr>
-      </tbody>
-    </table>
+    <div class="synthesis-card">
+      <div class="synthesis-head"><span id="synthBadge">Synthesis</span></div>
+      <p class="synthesis-text" id="synthText">Loading…</p>
+      <p class="synthesis-disclaimer" id="synthDisclaimer"></p>
+    </div>
+
+    <div id="layerGroups">
+      <div class="empty-state">Waiting on first data refresh.</div>
     </div>
     <p class="section-note" style="margin-top:10px;">
-      Vol and 90D drawdown are each name's own risk figures, not the basket
-      aggregate. Swipe the table sideways on mobile to see all columns.
+      Each layer's line above its table is a plain mean/breadth count across
+      that layer's own names — not the LLM. Vol and 90D drawdown in the
+      tables are each name's own risk figures, not the basket aggregate.
+      Swipe a table sideways on mobile to see all columns.
     </p>
   </section>
 
@@ -410,19 +439,35 @@ async function loadPulse() {
     document.getElementById('volVal').textContent =
       data.basket_avg_ann_vol_21d_pct != null ? data.basket_avg_ann_vol_21d_pct + '%' : '—';
 
-    const body = document.getElementById('pulseBody');
-    if (!data.constituents || data.constituents.length === 0) {
-      body.innerHTML = '<tr><td colspan="9"><div class="empty-state">Waiting on first data refresh.</div></td></tr>';
+    // Synthesis card (LLM-generated paragraph, or a labelled fallback line
+    // when the LLM step wasn't configured/failed that run — see
+    // scripts/fetch_ai_pulse.py's build_synthesis()).
+    const commentary = data.commentary || {};
+    const genByLlm = commentary.generated_by === 'llm';
+    document.getElementById('synthBadge').innerHTML =
+      genByLlm ? 'AI-generated synthesis &middot; daily' : 'Synthesis unavailable this run';
+    document.getElementById('synthText').textContent =
+      commentary.synthesis || 'No synthesis available for this run.';
+    document.getElementById('synthDisclaimer').textContent = genByLlm
+      ? (commentary.disclaimer || '')
+      : '';
+
+    const groupsEl = document.getElementById('layerGroups');
+    if (!data.layers || data.layers.length === 0) {
+      groupsEl.innerHTML = '<div class="empty-state">Waiting on first data refresh.</div>';
       return;
     }
 
-    body.innerHTML = data.constituents.map(row => {
-      const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
-      const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-      const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
-      return `<tr>
+    const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
+    const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+    const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
+    const byTicker = {};
+    (data.constituents || []).forEach(r => { byTicker[r.ticker] = r; });
+
+    groupsEl.innerHTML = data.layers.map(layer => {
+      const rows = layer.tickers.map(t => byTicker[t]).filter(Boolean);
+      const rowsHtml = rows.map(row => `<tr>
         <td>${row.ticker}</td>
-        <td>${row.layer}</td>
         <td>${row.etf || '—'}</td>
         <td>${row.last != null ? row.last.toFixed(2) : '—'}</td>
         <td class="${cls(row.chg_1d)}">${fmt(row.chg_1d)}</td>
@@ -430,7 +475,29 @@ async function loadPulse() {
         <td class="${cls(row.chg_3m)}">${fmt(row.chg_3m)}</td>
         <td>${fmtPlain(row.vol_21d_ann)}</td>
         <td class="${cls(row.drawdown_90d)}">${fmt(row.drawdown_90d)}</td>
-      </tr>`;
+      </tr>`).join('');
+
+      const miniStats = [
+        layer.breadth_above_50dma_pct != null ? layer.breadth_above_50dma_pct + '% > 50dma' : null,
+        layer.avg_chg_1m != null ? '1M avg ' + fmt(layer.avg_chg_1m) : null,
+        layer.avg_vol_21d_ann != null ? 'vol ' + fmtPlain(layer.avg_vol_21d_ann) : null,
+      ].filter(Boolean).join(' · ');
+
+      return `<div class="layer-group">
+        <div class="layer-head">
+          <span class="layer-name">${layer.name}</span>
+          <span class="layer-mini-stats">${miniStats}</span>
+        </div>
+        <p class="layer-blurb">${layer.blurb || ''}</p>
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        </div>
+      </div>`;
     }).join('');
   } catch (e) {
     document.getElementById('asOf').textContent = 'Data unavailable';
