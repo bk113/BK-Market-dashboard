@@ -1,0 +1,35 @@
+name: Update AI Pulse data
+
+on:
+  schedule:
+    # 07:10 SGT daily (23:10 UTC previous day) — just after your existing
+    # 07:00 SGT dashboard refresh, so both stay in sync.
+    - cron: "10 23 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install yfinance numpy
+
+      - name: Fetch AI basket data
+        run: python scripts/fetch_ai_pulse.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "bkiq-bot"
+          git config user.email "actions@github.com"
+          git add docs/data/ai_pulse.json
+          git diff --quiet --cached || git commit -m "Auto-refresh AI Pulse data"
+          git push
