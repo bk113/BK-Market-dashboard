@@ -21,9 +21,12 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install yfinance numpy
+        run: pip install yfinance numpy requests
 
       - name: Fetch AI basket data
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: ${{ vars.ANTHROPIC_MODEL }}
         run: python scripts/fetch_ai_pulse.py
 
       - name: Commit updated data
