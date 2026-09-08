@@ -1,7 +1,7 @@
 {
-  "as_of": "2026-09-08 02:53 UTC",
+  "as_of": "2026-09-08 03:00 UTC",
   "basket_breadth_above_50dma_pct": 68.0,
-  "basket_avg_ann_vol_21d_pct": 55.46,
+  "basket_avg_ann_vol_21d_pct": 55.47,
   "basket_median_pe_ttm": 29.2,
   "basket_median_beta": 1.34,
   "basket_concentration_top3_pct": 50.1,
@@ -15,8 +15,8 @@
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": 1.58,
-      "chg_1m": 5.03,
+      "chg_1d": 1.59,
+      "chg_1m": 5.04,
       "chg_3m": 4.52,
       "vol_21d_ann": 51.62
     },
@@ -50,9 +50,9 @@
   "history": [
     {
       "date": "2026-09-08",
-      "as_of": "2026-09-08 02:53 UTC",
+      "as_of": "2026-09-08 03:00 UTC",
       "basket_breadth_above_50dma_pct": 68.0,
-      "basket_avg_ann_vol_21d_pct": 55.46
+      "basket_avg_ann_vol_21d_pct": 55.47
     }
   ],
   "layers": [
@@ -105,12 +105,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": 4.29,
-      "avg_chg_1m": 21.97,
-      "avg_chg_3m": -4.1,
-      "avg_vol_21d_ann": 66.59,
+      "avg_chg_1d": 4.36,
+      "avg_chg_1m": 22.05,
+      "avg_chg_3m": -4.05,
+      "avg_vol_21d_ann": 66.62,
       "breadth_above_50dma_pct": 100.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +22.0% over 1M, 100.0% above their 50-day average."
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +22.1% over 1M, 100.0% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -241,7 +241,7 @@
     }
   ],
   "commentary": {
-    "synthesis": "68.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 55.46% annualised. The largest single-day move was MRVL (Custom Silicon), up 7.0%. Layer performance diverged over the trailing month: Memory led at +22.0%, while China AI / Low-Cost Models lagged at -8.8%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in China AI / Low-Cost Models (0.0%).",
+    "synthesis": "68.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 55.47% annualised. The largest single-day move was MRVL (Custom Silicon), up 7.0%. Layer performance diverged over the trailing month: Memory led at +22.1%, while China AI / Low-Cost Models lagged at -8.8%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in China AI / Low-Cost Models (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -652,18 +652,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 277250.0,
-      "chg_1d": 2.69,
-      "chg_1m": 20.02,
-      "chg_3m": -13.8,
-      "vol_21d_ann": 70.85,
+      "last": 277500.0,
+      "chg_1d": 2.78,
+      "chg_1m": 20.13,
+      "chg_3m": -13.72,
+      "vol_21d_ann": 70.87,
       "above_50dma": true,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
       "pe_fwd": 4.0,
       "ev_ebitda": 7.1,
       "beta": 1.54,
-      "market_cap": 1822221345488896.0
+      "market_cap": 1818937977208832.0
     },
     {
       "ticker": "000660.KS",
@@ -671,18 +671,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1856000.0,
-      "chg_1d": 4.09,
-      "chg_1m": 30.55,
-      "chg_3m": -16.19,
-      "vol_21d_ann": 76.07,
+      "last": 1858000.0,
+      "chg_1d": 4.21,
+      "chg_1m": 30.69,
+      "chg_3m": -16.1,
+      "vol_21d_ann": 76.12,
       "above_50dma": true,
       "drawdown_90d": -54.71,
       "pe_ttm": null,
       "pe_fwd": 3.9,
       "ev_ebitda": 1.1,
       "beta": 2.39,
-      "market_cap": 1317490747506688.0
+      "market_cap": 1318910368415744.0
     },
     {
       "ticker": "ANET",
