@@ -439,18 +439,17 @@ async function loadPulse() {
     document.getElementById('volVal').textContent =
       data.basket_avg_ann_vol_21d_pct != null ? data.basket_avg_ann_vol_21d_pct + '%' : '—';
 
-    // Synthesis card (LLM-generated paragraph, or a labelled fallback line
-    // when the LLM step wasn't configured/failed that run — see
-    // scripts/fetch_ai_pulse.py's build_synthesis()).
+    // Synthesis card: an LLM-generated paragraph when configured, otherwise
+    // a rule-based templated reflection computed straight from the numbers
+    // on this page (see scripts/fetch_ai_pulse.py's _template_synthesis()) —
+    // either way it's a real statement, just labelled by which it is.
     const commentary = data.commentary || {};
     const genByLlm = commentary.generated_by === 'llm';
     document.getElementById('synthBadge').innerHTML =
-      genByLlm ? 'AI-generated synthesis &middot; daily' : 'Synthesis unavailable this run';
+      genByLlm ? 'AI-generated synthesis &middot; daily' : 'Synthesis &middot; daily (rule-based)';
     document.getElementById('synthText').textContent =
       commentary.synthesis || 'No synthesis available for this run.';
-    document.getElementById('synthDisclaimer').textContent = genByLlm
-      ? (commentary.disclaimer || '')
-      : '';
+    document.getElementById('synthDisclaimer').textContent = commentary.disclaimer || '';
 
     const groupsEl = document.getElementById('layerGroups');
     if (!data.layers || data.layers.length === 0) {

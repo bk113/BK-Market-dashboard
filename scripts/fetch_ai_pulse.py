@@ -23,9 +23,13 @@ prompt below enforces the same constraint: descriptive only, no calls, no
 recommendations, no predictions.
 
 If ANTHROPIC_API_KEY / ANTHROPIC_MODEL aren't set, or the call fails for any
-reason, this falls back to a deterministic templated synthesis sentence --
-the daily job never hard-fails over the LLM step, and the page always shows
-something, clearly labelled either way.
+reason, this falls back to `_template_synthesis()` -- a deterministic,
+templated reflection computed directly from the numbers already on the page
+(the day's largest single-name move, the widest cross-layer 1M divergence,
+the breadth spread between the strongest and weakest layer). Not equivalent
+to the LLM's synthesis, but a real, auditable statement rather than a
+placeholder apology -- the daily job never hard-fails over the LLM step, and
+the page always shows something substantive, clearly labelled either way.
 """
 
 import json
@@ -54,6 +58,8 @@ BASKET = {
     "CRWD": ("AI Application", "IGV"),
     "WDAY": ("AI Application", "IGV"),
     "VRT": ("Power / Infra", "XLI"),
+    "CEG": ("Power / Infra", "XLU"),
+    "GEV": ("Power / Infra", "XLI"),
     "ORCL": ("Cloud Compute", "XLK"),
     "CRWV": ("AI Cloud Infra (public)", "—"),
     "LQD": ("Credit — IG", "—"),
@@ -137,6 +143,59 @@ def _template_layer_blurb(layer, members, breadth):
     return f"{len(members)} name{'s' if len(members) != 1 else ''} ({names}), {direction} {avg1m_txt} over 1M{breadth_txt}."
 
 
+def _template_synthesis(basket_breadth, basket_vol, layers, movers):
+    """Deterministic, template-based synthesis used whenever the LLM path
+    isn't configured or fails. Every sentence is computed directly from
+    numbers already on the page -- no invented facts, no forecasts, no
+    recommendations -- so the fallback still says something rather than
+    just apologising for the LLM being off."""
+    parts = []
+
+    if basket_breadth is not None and basket_vol is not None:
+        parts.append(
+            f"{basket_breadth}% of the AI-equity basket trades above its "
+            f"50-day average, with basket volatility running at "
+            f"{basket_vol}% annualised."
+        )
+
+    if movers:
+        top = movers[0]
+        if top.get("chg_1d") is not None:
+            direction = "up" if top["chg_1d"] >= 0 else "down"
+            parts.append(
+                f"The largest single-day move was {top['ticker']} "
+                f"({top['layer']}), {direction} {abs(top['chg_1d']):.1f}%."
+            )
+
+    layers_with_1m = [l for l in layers if l.get("avg_chg_1m") is not None]
+    if len(layers_with_1m) >= 2:
+        best = max(layers_with_1m, key=lambda l: l["avg_chg_1m"])
+        worst = min(layers_with_1m, key=lambda l: l["avg_chg_1m"])
+        if best["name"] != worst["name"]:
+            parts.append(
+                f"Layer performance diverged over the trailing month: "
+                f"{best['name']} led at {best['avg_chg_1m']:+.1f}%, while "
+                f"{worst['name']} lagged at {worst['avg_chg_1m']:+.1f}%."
+            )
+
+    layers_with_breadth = [l for l in layers if l.get("breadth_above_50dma_pct") is not None]
+    if len(layers_with_breadth) >= 2:
+        b_hi = max(layers_with_breadth, key=lambda l: l["breadth_above_50dma_pct"])
+        b_lo = min(layers_with_breadth, key=lambda l: l["breadth_above_50dma_pct"])
+        if b_hi["name"] != b_lo["name"]:
+            parts.append(
+                f"Breadth was strongest in {b_hi['name']} "
+                f"({b_hi['breadth_above_50dma_pct']}% of names above their "
+                f"50-day average) and weakest in {b_lo['name']} "
+                f"({b_lo['breadth_above_50dma_pct']}%)."
+            )
+
+    if not parts:
+        return "Not enough data this run to compute a synthesis."
+
+    return " ".join(parts)
+
+
 def build_synthesis(basket_breadth, basket_vol, layers, rows):
     """Returns (text, generated_by) -- generated_by is 'llm' or 'fallback'."""
     movers = sorted(
@@ -145,12 +204,7 @@ def build_synthesis(basket_breadth, basket_vol, layers, rows):
     )[:3]
 
     if not ANTHROPIC_API_KEY or not ANTHROPIC_MODEL:
-        return (
-            "AI-generated synthesis is not configured for this run "
-            "(ANTHROPIC_API_KEY / ANTHROPIC_MODEL not set) -- showing raw "
-            "figures only below.",
-            "fallback",
-        )
+        return _template_synthesis(basket_breadth, basket_vol, layers, movers), "fallback"
 
     payload = {
         "basket_breadth_above_50dma_pct": basket_breadth,
@@ -198,11 +252,7 @@ def build_synthesis(basket_breadth, basket_vol, layers, rows):
     except Exception as e:
         print(f"WARNING: LLM synthesis call failed, using fallback: {e}")
 
-    return (
-        "AI-generated synthesis unavailable this run (API call failed) -- "
-        "showing raw figures only below.",
-        "fallback",
-    )
+    return _template_synthesis(basket_breadth, basket_vol, layers, movers), "fallback"
 
 
 def main():
@@ -282,6 +332,10 @@ def main():
             "disclaimer": (
                 "AI-generated summary of the numbers on this page only. "
                 "Descriptive, not a forecast, recommendation, or investment advice."
+                if generated_by == "llm" else
+                "Rule-based summary computed directly from the figures on this "
+                "page (no model involved). Descriptive, not a forecast, "
+                "recommendation, or investment advice."
             ),
         },
         "constituents": sorted(rows, key=lambda r: r["layer"]),
