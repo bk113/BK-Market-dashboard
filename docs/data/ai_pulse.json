@@ -1,7 +1,7 @@
 {
-  "as_of": "2026-09-07 16:13 UTC",
-  "basket_breadth_above_50dma_pct": 64.7,
-  "basket_avg_ann_vol_21d_pct": 57.13,
+  "as_of": "2026-09-08 01:01 UTC",
+  "basket_breadth_above_50dma_pct": 63.2,
+  "basket_avg_ann_vol_21d_pct": 55.3,
   "layers": [
     {
       "name": "AI Compute",
@@ -84,14 +84,16 @@
     {
       "name": "Power / Infra",
       "tickers": [
-        "VRT"
+        "VRT",
+        "CEG",
+        "GEV"
       ],
-      "avg_chg_1d": 4.35,
-      "avg_chg_1m": 1.95,
-      "avg_chg_3m": -6.63,
-      "avg_vol_21d_ann": 48.09,
-      "breadth_above_50dma_pct": 0.0,
-      "blurb": "1 name (VRT), up +1.9% over 1M, 0.0% above their 50-day average."
+      "avg_chg_1d": 3.08,
+      "avg_chg_1m": 3.6,
+      "avg_chg_3m": 3.94,
+      "avg_vol_21d_ann": 40.14,
+      "breadth_above_50dma_pct": 33.3,
+      "blurb": "3 names (VRT, CEG, GEV), up +3.6% over 1M, 33.3% above their 50-day average."
     },
     {
       "name": "Cloud Compute",
@@ -156,10 +158,10 @@
     }
   ],
   "commentary": {
-    "synthesis": "AI-generated synthesis is not configured for this run (ANTHROPIC_API_KEY / ANTHROPIC_MODEL not set) -- showing raw figures only below.",
+    "synthesis": "63.2% of the AI-equity basket trades above its 50-day average, with basket volatility running at 55.3% annualised. The largest single-day move was MRVL (Custom Silicon), up 7.0%. Layer performance diverged over the trailing month: AI Application led at +18.9%, while China AI / Low-Cost Models lagged at -9.9%. Breadth was strongest in Custom Silicon (100.0% of names above their 50-day average) and weakest in China AI / Low-Cost Models (0.0%).",
     "generated_by": "fallback",
     "model": null,
-    "disclaimer": "AI-generated summary of the numbers on this page only. Descriptive, not a forecast, recommendation, or investment advice."
+    "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
   },
   "constituents": [
     {
@@ -389,6 +391,30 @@
       "vol_21d_ann": 48.09,
       "above_50dma": false,
       "drawdown_90d": -40.7
+    },
+    {
+      "ticker": "CEG",
+      "layer": "Power / Infra",
+      "etf": "XLU",
+      "last": 298.96,
+      "chg_1d": 4.88,
+      "chg_1m": 14.68,
+      "chg_3m": 17.5,
+      "vol_21d_ann": 33.66,
+      "above_50dma": true,
+      "drawdown_90d": -26.62
+    },
+    {
+      "ticker": "GEV",
+      "layer": "Power / Infra",
+      "etf": "XLI",
+      "last": 941.95,
+      "chg_1d": 0.01,
+      "chg_1m": -5.83,
+      "chg_3m": 0.94,
+      "vol_21d_ann": 38.68,
+      "above_50dma": false,
+      "drawdown_90d": -23.52
     }
   ],
   "methodology": "1M/3M returns are trailing 21/63 trading-day price changes. Vol (per name) = annualised stdev of that name's own trailing 21-day daily returns. Basket vol = same calculation pooled across the equity subset. Breadth = % of equity subset trading above its own 50-day moving average. Drawdown = max peak-to-trough over trailing 90 sessions per name. Layer aggregates are simple means across that layer's names. Only the synthesis paragraph above is LLM-generated; every other figure on this page is direct arithmetic. Descriptive only; not a signal or recommendation."
