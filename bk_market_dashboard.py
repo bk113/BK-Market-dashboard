@@ -5154,6 +5154,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<button class='tb' onclick=\"sw('edge',this)\">Edge</button>"
         "<button class='tb' onclick=\"sw('about',this)\">About</button>"
         "<button class='tb' onclick=\"sw('future',this)\">Research</button>"
+        "<a class='tb' href='ai.html' style='text-decoration:none;display:inline-flex;align-items:center;'>AI Pulse &rarr;</a>"
         "</div>"
         f"<div id='t-intel' class='tab on'>{summary_tab}</div>"
         f"<div id='t-perf' class='tab'>{perf}</div>"
