@@ -764,16 +764,65 @@ def download(lookback_days: int = 2520) -> tuple:
 def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     today = prices.index[-1]
 
+    # BUG FIX (08 Sep 2026): the "latest" row (today) is frequently mostly
+    # NaN when this runs intraday -- Yahoo hasn't posted closes for most
+    # tickers yet (confirmed: 99/112 columns NaN on a same-day run). Every
+    # point-in-time ratio below (_ret, ytd, max_dd) used prices.iloc[-1]
+    # directly, so a sparse "today" row silently produced NaN for almost
+    # every instrument's 1W/1M/3M/YTD -- rendered as "--" on the Performance
+    # tab -- AND fed max_dd=NaN into _rag(), which *defaults missing data to
+    # AMBER by design* ("every instrument has a signal"). The combination
+    # meant the RED/AMBER/GREEN signal column was silently defaulting to
+    # AMBER for the majority of instruments on affected runs, not genuinely
+    # reflecting drawdown. Fixed the same way as the fragility pillar fix:
+    # read each column's last KNOWN-VALID price (bounded ffill, not
+    # unlimited, so a genuinely stale/delisted ticker still shows as missing
+    # rather than being silently carried forward indefinitely) instead of
+    # the literal last row. Rolling-window stats below (vol/Sharpe, which
+    # use .pct_change() over a window) are left on raw `prices` -- pandas'
+    # std() already skips an isolated NaN correctly there, same reasoning
+    # as the fragility engine's window-tolerant pillars vs point-in-time
+    # ratio pillars.
+    #
+    # Limit chosen as 5, not 3: verified directly against the real
+    # 08 Sep 2026 cache that a 3-day gap (Sat/Sun/Mon-holiday, e.g. US Labor
+    # Day) plus an intraday "today" row is a normal 4-consecutive-NaN
+    # sequence for US equity tickers -- a limit of 3 would still leave
+    # "today" unfilled in that exact, common case. 5 comfortably bridges a
+    # long weekend + a not-yet-closed today, while still capping a
+    # genuinely stale/delisted ticker rather than carrying it forward
+    # indefinitely -- same bound already used for the FRED level series fix.
+    prices_lv = prices.ffill(limit=5)
+    _stale_today = prices.iloc[-1].isna() & prices_lv.iloc[-1].notna()
+    if _stale_today.any():
+        print(f"[Data Sanity] {_stale_today.sum()}/{len(_stale_today)} tickers had no "
+              f"price for {today.date()} yet -- using last known close (<=5 days back) "
+              f"for 1W/1M/3M/YTD/drawdown instead of showing a false gap")
+
     def _ret(n: int) -> pd.Series:
         if len(prices) <= n:
             return pd.Series(np.nan, index=prices.columns)
-        return prices.iloc[-1] / prices.iloc[-1 - n] - 1
+        if n == 1:
+            # 1D return needs an actual fresh close to mean anything -- if
+            # we ffilled a stale price forward, numerator == denominator and
+            # this would silently report a fake "+0.0%" instead of honestly
+            # showing no data yet. Keep this one strict (unfilled).
+            return prices.iloc[-1] / prices.iloc[-1 - n] - 1
+        return prices_lv.iloc[-1] / prices.iloc[-1 - n] - 1
 
-    # YTD vs first trading day of current calendar year
+    # YTD vs first trading day of current calendar year.
+    # SECOND BUG FIX (08 Sep 2026, found while verifying the fix above): this
+    # took ytd_slice.iloc[0] literally, i.e. whatever calendar row is first
+    # in the year -- almost always 1 January, a market holiday with no real
+    # close for ~all tickers (confirmed: 112/115 NaN). bfill() within the
+    # year slice finds each column's actual first real trading print instead
+    # (typically 1-3 days later); unrelated to the sparse-"today" issue
+    # above, a separate pre-existing bug in the YTD denominator itself.
     ytd_slice = prices[prices.index.year == today.year]
+    ytd_base = ytd_slice.bfill().iloc[0] if len(ytd_slice) > 1 else None
     ytd = (
-        prices.iloc[-1] / ytd_slice.iloc[0] - 1
-        if len(ytd_slice) > 1
+        prices_lv.iloc[-1] / ytd_base - 1
+        if ytd_base is not None
         else pd.Series(np.nan, index=prices.columns)
     )
 
@@ -838,10 +887,16 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     vol_1y_adj   = vol_1y.clip(lower=0.005)
     sharpe       = ((ann_ret_1y - RISK_FREE_RATE) / vol_1y_adj.replace(0, np.nan)).clip(-5, 5)
 
-    # Max drawdown from 252-day rolling peak
+    # Max drawdown from 252-day rolling peak.
+    # THIRD BUG FIX (08 Sep 2026, found while verifying the fix above):
+    # cummax() does NOT backfill a NaN input position -- peak.iloc[-1] was
+    # itself NaN for every ticker whose "today" row was NaN (confirmed:
+    # 101/115), independent of the numerator fix above. Compute the rolling
+    # peak on the ffilled series so the running max at the last position
+    # reflects the true peak through the last known-valid close.
     window  = min(252, len(prices))
-    peak    = prices.tail(window).cummax()
-    max_dd  = prices.iloc[-1] / peak.iloc[-1] - 1
+    peak    = prices_lv.tail(window).cummax()
+    max_dd  = prices_lv.iloc[-1] / peak.iloc[-1] - 1
 
     # Sparkline data: last 20 trading days, normalised to first value
     spark_window = min(20, len(prices))
@@ -2012,6 +2067,18 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
     scores = {}
     details = {}
 
+    # Same bounded-ffill fix as compute_metrics() (see the detailed comment
+    # there, 08 Sep 2026): "today" is frequently a mostly-NaN row intraday,
+    # and several point-in-time comparisons below (Breadth, Strength) used
+    # prices.iloc[-1] directly -- NaN > x and NaN/x >= 0.95 both evaluate
+    # False, so affected tickers were silently excluded from the numerator
+    # while still counted in the denominator, understating both sub-scores
+    # (and Safe Haven / Junk Bonds' pct_change(20) would return NaN at
+    # "today" for the same reason, silently defaulting those to a neutral
+    # 50 via _pct_rank's NaN guard rather than reflecting the last real
+    # reading). Same 5-day bound as compute_metrics, for the same reason.
+    prices_lv = prices.ffill(limit=5)
+
     def _pct_rank(series, val):
         """Where does val sit in historical distribution? 0-100."""
         clean = series.dropna()
@@ -2041,7 +2108,7 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 
     # ── 3. Market Breadth: % instruments above their 50D MA ──────────────────
     ma50_all = prices.rolling(50, min_periods=20).mean()
-    above = (prices.iloc[-1] > ma50_all.iloc[-1]).sum()
+    above = (prices_lv.iloc[-1] > ma50_all.iloc[-1]).sum()
     total_avail = prices.shape[1]
     breadth_pct = above / total_avail * 100 if total_avail > 0 else 50
     scores["Breadth"] = float(breadth_pct)
@@ -2049,8 +2116,8 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 
     # ── 4. Safe Haven Demand: TLT outperformance vs SPY (20D) ────────────────
     if "TLT" in prices.columns and "SPY" in prices.columns:
-        tlt_ret = prices["TLT"].pct_change(20)
-        spy_ret = prices["SPY"].pct_change(20)
+        tlt_ret = prices_lv["TLT"].pct_change(20)
+        spy_ret = prices_lv["SPY"].pct_change(20)
         spread  = tlt_ret - spy_ret  # positive = bonds beating equities = fear
         cur     = float(spread.iloc[-1]) if not spread.dropna().empty else 0
         raw     = _pct_rank(spread.dropna(), cur)
@@ -2060,8 +2127,8 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 
     # ── 5. Junk Bond Demand: HYG vs IEF (credit risk appetite) ──────────────
     if "HYG" in prices.columns and "IEF" in prices.columns:
-        hyg_ret = prices["HYG"].pct_change(20)
-        ief_ret = prices["IEF"].pct_change(20)
+        hyg_ret = prices_lv["HYG"].pct_change(20)
+        ief_ret = prices_lv["IEF"].pct_change(20)
         spread  = hyg_ret - ief_ret  # positive = junk beating govt = greed
         cur     = float(spread.iloc[-1]) if not spread.dropna().empty else 0
         raw     = _pct_rank(spread.dropna(), cur)
@@ -2070,7 +2137,7 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 
     # ── 6. Market Strength: % instruments within 5% of 52W high ─────────────
     hi52 = prices.rolling(252, min_periods=100).max()
-    near_high = ((prices.iloc[-1] / hi52.iloc[-1]) >= 0.95).sum()
+    near_high = ((prices_lv.iloc[-1] / hi52.iloc[-1]) >= 0.95).sum()
     strength_pct = near_high / total_avail * 100 if total_avail > 0 else 50
     scores["Strength"] = float(strength_pct)
     details["Strength"] = {"value": f"{near_high}/{total_avail} within 5% of 52W high", "score": scores["Strength"]}
