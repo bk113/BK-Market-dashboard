@@ -59,6 +59,27 @@
   .stat-value{font-family:var(--font-mono);font-size:22px;color:var(--ink);}
   .stat-label{font-size:12px;color:var(--ink-faint);margin-top:2px;}
 
+  .trend-row{display:flex;gap:36px;flex-wrap:wrap;margin-bottom:24px;}
+  .trend-block{min-width:220px;}
+  .trend-label{font-size:12px;color:var(--ink-faint);margin-bottom:6px;}
+  .trend-range{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:4px;}
+  .trend-empty{font-size:12px;color:var(--ink-faint);}
+  .session-flag{color:var(--ink-faint);font-size:11px;vertical-align:super;}
+
+  .bench-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}
+  .bench-table th{
+    text-align:right;font-weight:400;color:var(--ink-faint);
+    font-size:12px;padding:0 0 8px;border-bottom:1px solid var(--line);
+  }
+  .bench-table th:first-child{text-align:left;}
+  .bench-table td{
+    padding:8px 0;border-bottom:1px solid var(--line);
+    font-family:var(--font-mono);text-align:right;white-space:nowrap;
+  }
+  .bench-table td:first-child{text-align:left;font-family:var(--font-body);color:var(--ink-dim);}
+  .bench-table tr.bench-basket td:first-child{color:var(--amber);font-weight:600;}
+  .bench-table tr.bench-basket td{color:var(--ink);}
+
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px;}
   thead th{
@@ -145,7 +166,7 @@
     white-space:nowrap;
   }
   .layer-blurb{font-size:13px;color:var(--ink-dim);margin:0 0 8px;max-width:62ch;}
-  .layer-group table{min-width:560px;}
+  .layer-group table{min-width:720px;}
 </style>
 </head>
 <body>
@@ -169,10 +190,12 @@
   <section id="pulse">
     <h2>AI Pulse — equities &amp; credit<span class="badge badge-live">Live · daily</span></h2>
     <p class="section-note">
-      19 instruments: compute, custom silicon, foundry, memory, hyperscalers,
-      cloud compute, applications, power, low-cost Chinese models, one
-      public AI-cloud pure-play, and two broad credit ETFs standing in for
-      the debt side of the buildout. Rule-based: breadth is a moving-average
+      27 instruments across 13 layers: AI compute, custom silicon, foundry,
+      memory (Micron plus Korea's two HBM co-leaders, Samsung and SK
+      Hynix), hyperscalers, networking, AI applications, power and grid
+      infrastructure, cloud compute, one public AI-cloud pure-play, China's
+      low-cost-model layer, and two broad credit ETFs standing in for the
+      debt side of the buildout. Rule-based: breadth is a moving-average
       count over the equity subset only, credit ETFs excluded from that
       stat.
     </p>
@@ -195,13 +218,11 @@
       is the kind of divergence worth noticing, not a precise attribution.
     </p>
     <p class="section-note">
-      Why VRT is here: there are currently ~90 US data centers over 100MW
-      in operation — the highest count on record — with that figure
-      projected to roughly triple to ~280 by 2030 if planned projects
-      complete, alongside an estimated ~$7tn in data-center spend over the
-      same window (The Kobeissi Letter, citing industry tracking data,
-      Sep 2026). Power and cooling capacity is the physical constraint
-      behind every capex number elsewhere on this page.
+      Why VRT is here: US data-center grid-power demand rose roughly 22% in
+      2025 alone (+11.3 GW, to ~61.8 GW) and is projected to reach ~134.4 GW
+      by 2030 — more than double today's draw (S&amp;P Global Commodity
+      Insights, Oct 2025). Power and cooling capacity is the physical
+      constraint behind every capex number elsewhere on this page.
     </p>
 
     <div class="pulse-meta">
@@ -218,7 +239,49 @@
         <div class="stat-value" id="volVal">—</div>
         <div class="stat-label">Basket vol, 21D annualised</div>
       </div>
+      <div class="stat">
+        <div class="stat-value" id="peVal">—</div>
+        <div class="stat-label">Median P/E (ttm), equity subset</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="betaVal">—</div>
+        <div class="stat-label">Median beta, equity subset</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="concVal">—</div>
+        <div class="stat-label" id="concLabel">Top-3 concentration (USD names)</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="corrVal">—</div>
+        <div class="stat-label" id="corrLabel">Avg pairwise correlation</div>
+      </div>
     </div>
+
+    <div class="trend-row" id="trendRow">
+      <div class="trend-block">
+        <div class="trend-label">Breadth, trailing <span id="trendDaysB">—</span> sessions</div>
+        <div id="sparkBreadth"></div>
+        <div class="trend-range" id="rangeBreadth"></div>
+      </div>
+      <div class="trend-block">
+        <div class="trend-label">Basket vol, trailing <span id="trendDaysV">—</span> sessions</div>
+        <div id="sparkVol"></div>
+        <div class="trend-range" id="rangeVol"></div>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="bench-table" id="benchTable">
+        <thead><tr><th>vs. off-the-shelf ETFs</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th></tr></thead>
+        <tbody><tr><td colspan="5" class="empty-state">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="section-note" style="margin-top:-6px;">
+      Same calculation applied to the basket's equal-weighted average and to
+      SOXX/IGV/QQQ — any gap is the basket's different membership, not a
+      different formula. Answers "does a custom basket actually diverge
+      from just buying the sector ETF."
+    </p>
 
     <div class="synthesis-card">
       <div class="synthesis-head"><span id="synthBadge">Synthesis</span></div>
@@ -232,7 +295,14 @@
     <p class="section-note" style="margin-top:10px;">
       Each layer's line above its table is a plain mean/breadth count across
       that layer's own names — not the LLM. Vol and 90D drawdown in the
-      tables are each name's own risk figures, not the basket aggregate.
+      tables are each name's own risk figures, not the basket aggregate. P/E
+      and beta are per-name fields from Yahoo Finance directly (not
+      BK/IQ-computed) — a "—" means the field wasn't reported for that name
+      this run, the company is loss-making (P/E specifically), or it's LQD
+      /HYG, where these fields aren't meaningful. The basket-wide P/E and
+      beta stats above are medians, not averages, so one extreme name (a
+      near-breakeven name can print a P/E in the thousands) can't distort
+      the headline number — the per-name table still shows its real figure.
       Swipe a table sideways on mobile to see all columns.
     </p>
   </section>
@@ -427,6 +497,29 @@
 </div>
 
 <script>
+// Minimal dependency-free sparkline: one polyline + a dot on the latest
+// point. Returns '' if there isn't enough history yet to draw a line.
+function sparklineSVG(values, color) {
+  const w = 220, h = 40, pad = 3;
+  const pts = values.map((v, i) => ({ v, i })).filter(d => d.v != null);
+  if (pts.length < 2) return '';
+  const vs = pts.map(d => d.v);
+  const min = Math.min(...vs), max = Math.max(...vs);
+  const range = (max - min) || 1;
+  const stepX = (w - pad * 2) / ((values.length - 1) || 1);
+  const coords = pts.map(d => {
+    const x = pad + d.i * stepX;
+    const y = pad + (1 - (d.v - min) / range) * (h - pad * 2);
+    return { x, y };
+  });
+  const lineStr = coords.map(c => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const last = coords[coords.length - 1];
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;">
+    <polyline points="${lineStr}" fill="none" stroke="${color}" stroke-width="1.5"/>
+    <circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="2.5" fill="${color}"/>
+  </svg>`;
+}
+
 async function loadPulse() {
   try {
     const res = await fetch('data/ai_pulse.json', { cache: 'no-store' });
@@ -438,6 +531,74 @@ async function loadPulse() {
       data.basket_breadth_above_50dma_pct != null ? data.basket_breadth_above_50dma_pct + '%' : '—';
     document.getElementById('volVal').textContent =
       data.basket_avg_ann_vol_21d_pct != null ? data.basket_avg_ann_vol_21d_pct + '%' : '—';
+    document.getElementById('peVal').textContent =
+      data.basket_median_pe_ttm != null ? data.basket_median_pe_ttm.toFixed(1) + '×' : '—';
+    document.getElementById('betaVal').textContent =
+      data.basket_median_beta != null ? data.basket_median_beta.toFixed(2) : '—';
+    document.getElementById('concVal').textContent =
+      data.basket_concentration_top3_pct != null ? data.basket_concentration_top3_pct + '%' : '—';
+    document.getElementById('concLabel').textContent =
+      (data.basket_concentration_top3_names && data.basket_concentration_top3_names.length)
+        ? 'Top-3 concentration (' + data.basket_concentration_top3_names.join('/') + ')'
+        : 'Top-3 concentration (USD names)';
+    document.getElementById('corrVal').textContent =
+      data.basket_avg_pairwise_corr != null ? data.basket_avg_pairwise_corr.toFixed(2) : '—';
+    document.getElementById('corrLabel').textContent =
+      'Avg pairwise corr., trailing ' + (data.basket_avg_pairwise_corr_window_days || '—') + 'D';
+
+    // Trend: up to 60 trailing days of basket breadth/vol, stored inside
+    // this same JSON's "history" array (see fetch_ai_pulse.py's
+    // build_history()). Sparse-history-safe: shows a plain message instead
+    // of a broken chart until there are at least 2 days to draw a line.
+    const hist = data.history || [];
+    document.getElementById('trendDaysB').textContent = hist.length || '—';
+    document.getElementById('trendDaysV').textContent = hist.length || '—';
+    if (hist.length >= 2) {
+      const bVals = hist.map(h => h.basket_breadth_above_50dma_pct);
+      const vVals = hist.map(h => h.basket_avg_ann_vol_21d_pct);
+      const bValid = bVals.filter(v => v != null);
+      const vValid = vVals.filter(v => v != null);
+      document.getElementById('sparkBreadth').innerHTML =
+        sparklineSVG(bVals, 'var(--amber)') || '<span class="trend-empty">Not enough history yet.</span>';
+      document.getElementById('sparkVol').innerHTML =
+        sparklineSVG(vVals, '#8fb4e3') || '<span class="trend-empty">Not enough history yet.</span>';
+      if (bValid.length) document.getElementById('rangeBreadth').textContent =
+        `${hist[0].date} → ${hist[hist.length - 1].date} · range ${Math.min(...bValid).toFixed(1)}%–${Math.max(...bValid).toFixed(1)}%`;
+      if (vValid.length) document.getElementById('rangeVol').textContent =
+        `${hist[0].date} → ${hist[hist.length - 1].date} · range ${Math.min(...vValid).toFixed(1)}%–${Math.max(...vValid).toFixed(1)}%`;
+    } else {
+      const msg = '<span class="trend-empty">History builds day by day — check back after a few more runs.</span>';
+      document.getElementById('sparkBreadth').innerHTML = msg;
+      document.getElementById('sparkVol').innerHTML = msg;
+    }
+
+    // Shared formatters -- declared here (rather than down by the per-name
+    // table code below) because the benchmark block right after this also
+    // needs them.
+    const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
+    const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+    const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
+
+    // Basket vs. off-the-shelf ETFs: same compute_return_metrics() function
+    // applied to the basket's own equal-weighted average and to SOXX/IGV/QQQ
+    // (see fetch_ai_pulse.py's fetch_benchmarks()) -- a sanity check that
+    // the custom basket actually differs from buying the sector ETF.
+    const bench = data.benchmarks || {};
+    const benchRows = [];
+    if (bench.basket_avg) {
+      benchRows.push({ ...bench.basket_avg, isBasket: true });
+    }
+    (bench.etfs || []).forEach(e => benchRows.push({ label: `${e.ticker} — ${e.name}`, ...e }));
+    const benchTbody = benchRows.length
+      ? benchRows.map(r => `<tr class="${r.isBasket ? 'bench-basket' : ''}">
+          <td>${r.label}</td>
+          <td class="${cls(r.chg_1d)}">${fmt(r.chg_1d)}</td>
+          <td class="${cls(r.chg_1m)}">${fmt(r.chg_1m)}</td>
+          <td class="${cls(r.chg_3m)}">${fmt(r.chg_3m)}</td>
+          <td>${fmtPlain(r.vol_21d_ann)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="5" class="empty-state">Benchmark data unavailable this run.</td></tr>';
+    document.querySelector('#benchTable tbody').innerHTML = benchTbody;
 
     // Synthesis card: an LLM-generated paragraph when configured, otherwise
     // a rule-based templated reflection computed straight from the numbers
@@ -457,23 +618,35 @@ async function loadPulse() {
       return;
     }
 
-    const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
-    const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-    const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
+    // Non-USD tickers (currently the two Korea Exchange memory names) get
+    // their currency shown explicitly rather than a bare number that would
+    // otherwise look like a USD price next to everything else in the table.
+    const fmtLast = row => {
+      if (row.last == null) return '—';
+      if (row.currency && row.currency !== 'USD') {
+        return row.currency + ' ' + Math.round(row.last).toLocaleString();
+      }
+      return row.last.toFixed(2);
+    };
+    const fmtPE = v => v == null ? '—' : v.toFixed(1) + '×';
+    const fmtBeta = v => v == null ? '—' : v.toFixed(2);
     const byTicker = {};
     (data.constituents || []).forEach(r => { byTicker[r.ticker] = r; });
+    const anyNonUsSession = (data.constituents || []).some(r => r.non_us_session);
 
     groupsEl.innerHTML = data.layers.map(layer => {
       const rows = layer.tickers.map(t => byTicker[t]).filter(Boolean);
       const rowsHtml = rows.map(row => `<tr>
-        <td>${row.ticker}</td>
+        <td>${row.ticker}${row.non_us_session ? '<span class="session-flag" title="Korea Exchange session — not synchronized with the US close">&dagger;</span>' : ''}</td>
         <td>${row.etf || '—'}</td>
-        <td>${row.last != null ? row.last.toFixed(2) : '—'}</td>
+        <td>${fmtLast(row)}</td>
         <td class="${cls(row.chg_1d)}">${fmt(row.chg_1d)}</td>
         <td class="${cls(row.chg_1m)}">${fmt(row.chg_1m)}</td>
         <td class="${cls(row.chg_3m)}">${fmt(row.chg_3m)}</td>
         <td>${fmtPlain(row.vol_21d_ann)}</td>
         <td class="${cls(row.drawdown_90d)}">${fmt(row.drawdown_90d)}</td>
+        <td>${fmtPE(row.pe_ttm)}</td>
+        <td>${fmtBeta(row.beta)}</td>
       </tr>`).join('');
 
       const miniStats = [
@@ -491,13 +664,21 @@ async function loadPulse() {
         <div class="table-scroll">
         <table>
           <thead><tr>
-            <th>Ticker</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th>
+            <th>Ticker</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th><th>P/E (ttm)</th><th>Beta</th>
           </tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
         </div>
       </div>`;
     }).join('');
+
+    if (anyNonUsSession) {
+      groupsEl.innerHTML += `<p class="section-note" style="margin-top:10px;">
+        <span class="session-flag">&dagger;</span> Korea Exchange listing — this
+        market closes hours before the US session opens, so its 1-day change
+        reflects a different clock than the rest of the table, not a data error.
+      </p>`;
+    }
   } catch (e) {
     document.getElementById('asOf').textContent = 'Data unavailable';
   }
