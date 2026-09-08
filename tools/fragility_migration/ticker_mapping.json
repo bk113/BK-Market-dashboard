@@ -1,0 +1,1150 @@
+{
+  "mapped": [
+    {
+      "category": "EQ_US",
+      "ticker": "QQQ",
+      "bkiq_name": "Nasdaq 100",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | US (Nasdaq 100)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_US",
+      "ticker": "IWM",
+      "bkiq_name": "Russell 2000",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | US (Russell 2000)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_US",
+      "ticker": "SPY",
+      "bkiq_name": "S&P 500",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | US (S&P 500)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_US",
+      "ticker": "ACWI",
+      "bkiq_name": "World (ACWI)",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | World (ACWI)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLE",
+      "bkiq_name": "Energy",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | US Energy Sector",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLF",
+      "bkiq_name": "Financials",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | US Financials Sector",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "VNQ",
+      "bkiq_name": "Real Estate (REITs)",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | Real Estate (REITs)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLU",
+      "bkiq_name": "Utilities",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | Utilities",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLV",
+      "bkiq_name": "Healthcare",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | US Healthcare Sector",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLK",
+      "bkiq_name": "Technology",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | US Tech Sector",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLP",
+      "bkiq_name": "Consumer Staples",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | Consumer Staples",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLY",
+      "bkiq_name": "Consumer Discretionary",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Consumer Discretionary",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLI",
+      "bkiq_name": "Industrials",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Industrials",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLB",
+      "bkiq_name": "Materials",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | Materials",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_SECT",
+      "ticker": "XLC",
+      "bkiq_name": "Communications",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Communications",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EWA",
+      "bkiq_name": "Australia",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Australia",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EFA",
+      "bkiq_name": "Europe Dev (EFA)",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Europe Dev (EAFE)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EZU",
+      "bkiq_name": "Eurozone",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Eurozone",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EWG",
+      "bkiq_name": "Germany",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Germany",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EWJ",
+      "bkiq_name": "Japan",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Japan",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EWS",
+      "bkiq_name": "Singapore",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Singapore",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "EWU",
+      "bkiq_name": "UK",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | UK",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_DM",
+      "ticker": "FLGB",
+      "bkiq_name": "FTSE 100 (UK)",
+      "asset_class": "EQ Defensive",
+      "canonical_name": "EQ | FTSE 100 (UK)",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_IDX",
+      "ticker": "GURU",
+      "bkiq_name": "Global X Guru ETF",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Global X Guru ETF",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_IDX",
+      "ticker": "ARKK",
+      "bkiq_name": "ARK Innovation",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | ARK Innovation",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_IDX",
+      "ticker": "SKYY",
+      "bkiq_name": "Cloud Computing",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Cloud Computing",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_IDX",
+      "ticker": "ICLN",
+      "bkiq_name": "Clean Energy",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Clean Energy",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_IDX",
+      "ticker": "GRID",
+      "bkiq_name": "Smart Grid Infra",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Smart Grid Infra",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EWZ",
+      "bkiq_name": "Brazil",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Brazil",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "FXI",
+      "bkiq_name": "China",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | China",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EEM",
+      "bkiq_name": "EM Broad",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | EM Broad",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "INDA",
+      "bkiq_name": "India",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | India",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EWY",
+      "bkiq_name": "Korea",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Korea",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EZA",
+      "bkiq_name": "South Africa",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | South Africa",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EWT",
+      "bkiq_name": "Taiwan",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Taiwan",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EWW",
+      "bkiq_name": "Mexico",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Mexico",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "EIDO",
+      "bkiq_name": "Indonesia",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Indonesia",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "VNM",
+      "bkiq_name": "Vietnam",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Vietnam",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_EM",
+      "ticker": "KSA",
+      "bkiq_name": "Saudi Arabia",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | Saudi Arabia",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "AAXJ",
+      "bkiq_name": "Asia ex-Japan",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Asia ex-Japan",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "EWH",
+      "bkiq_name": "Hang Seng / HK",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Hong Kong",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "VPL",
+      "bkiq_name": "Asia Pacific",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Asia Pacific",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "CNYA",
+      "bkiq_name": "China A-Shares",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | China A-Shares",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "ASEA",
+      "bkiq_name": "ASEAN",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | ASEAN",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "THD",
+      "bkiq_name": "Thailand",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Thailand",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "EQ_APAC",
+      "ticker": "EPHE",
+      "bkiq_name": "Philippines",
+      "asset_class": "EQ Growth",
+      "canonical_name": "EQ | Philippines",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "DEFENCE",
+      "ticker": "XAR",
+      "bkiq_name": "BAE Aerospace & Defence",
+      "asset_class": "Alts",
+      "canonical_name": "EQ | BAE Aerospace & Defence",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "DEFENCE",
+      "ticker": "ITA",
+      "bkiq_name": "US Aerospace & Defence",
+      "asset_class": "Alts",
+      "canonical_name": "EQ | US Aerospace & Defence",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "BIL",
+      "bkiq_name": "Cash (T-Bills)",
+      "asset_class": "Cash",
+      "canonical_name": "FI | Cash (T-Bills)",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "EMLC",
+      "bkiq_name": "EM Local Currency",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | EM Local Currency",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "EMB",
+      "bkiq_name": "EM USD Sovereign",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | EM USD Sovereigns",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "HYG",
+      "bkiq_name": "HY Credit",
+      "asset_class": "EQ Growth",
+      "canonical_name": "FI | HY Credit",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "LQD",
+      "bkiq_name": "IG Credit",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | IG Credit",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "BKLN",
+      "bkiq_name": "Senior Loans",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Senior Loans",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "SHY",
+      "bkiq_name": "Treasuries 0-3Y",
+      "asset_class": "Cash",
+      "canonical_name": "FI | US Treasuries (1-3y)",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "TLT",
+      "bkiq_name": "Treasuries 20Y+",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | US Treasuries (20+y)",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "IEF",
+      "bkiq_name": "Treasuries 7-10Y",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | US Treasuries (7-10y)",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "AGG",
+      "bkiq_name": "US Aggregate",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | US Aggregate Bond",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "TIP",
+      "bkiq_name": "US TIPS",
+      "asset_class": "Real Assets",
+      "canonical_name": "FI | US TIPS",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI",
+      "ticker": "MUB",
+      "bkiq_name": "Municipal Bonds",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Municipal Bonds",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "CWB",
+      "bkiq_name": "Convertible Bonds",
+      "asset_class": "EQ Growth",
+      "canonical_name": "FI | Convertible Bonds",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "VCSH",
+      "bkiq_name": "ST IG Corporates",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | ST IG Corporates",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "PFF",
+      "bkiq_name": "Preferred Securities",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Preferred Securities",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI",
+      "ticker": "HYD",
+      "bkiq_name": "Municipal HY",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Municipal HY",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI_INTL",
+      "ticker": "BNDW",
+      "bkiq_name": "Global Aggregate",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Global Aggregate",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI_INTL",
+      "ticker": "IHY",
+      "bkiq_name": "Intl High Yield",
+      "asset_class": "EQ Growth",
+      "canonical_name": "FI | Intl High Yield",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI_INTL",
+      "ticker": "IGIB",
+      "bkiq_name": "US IG Credit (Intl)",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | US IG Credit (Intl)",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FI_INTL",
+      "ticker": "BNDX",
+      "bkiq_name": "Intl Bonds",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Global ex-US Aggregate",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "FI_INTL",
+      "ticker": "IGOV",
+      "bkiq_name": "Intl Govt Bonds",
+      "asset_class": "Fixed Income",
+      "canonical_name": "FI | Intl Govt Bonds",
+      "prefix": "FI",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "DBA",
+      "bkiq_name": "Agriculture",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Agriculture Broad",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "DBC",
+      "bkiq_name": "Broad Commodities",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Broad Commodities",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "COPX",
+      "bkiq_name": "Copper Miners",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Copper Miners",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "GLD",
+      "bkiq_name": "Gold",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Gold",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "UNG",
+      "bkiq_name": "Natural Gas",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Natural Gas",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "SLV",
+      "bkiq_name": "Silver",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Silver",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "BNO",
+      "bkiq_name": "WTI Oil (BNO proxy)",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Brent Oil",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CMD",
+      "ticker": "PPLT",
+      "bkiq_name": "Platinum",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Platinum",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "URA",
+      "bkiq_name": "Uranium",
+      "asset_class": "Alts",
+      "canonical_name": "CMD | Uranium",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "WEAT",
+      "bkiq_name": "Wheat",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Wheat",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "LIT",
+      "bkiq_name": "Lithium",
+      "asset_class": "Alts",
+      "canonical_name": "CMD | Lithium",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "VALE",
+      "bkiq_name": "Iron Ore (VALE)",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Iron Ore (VALE)",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "CORN",
+      "bkiq_name": "Corn",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Corn",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "SOYB",
+      "bkiq_name": "Soybeans",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Soybeans",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "PALL",
+      "bkiq_name": "Palladium",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Palladium",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "CMD",
+      "ticker": "CPER",
+      "bkiq_name": "Copper ETF",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Copper",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CRYPTO",
+      "ticker": "BTC-USD",
+      "bkiq_name": "Bitcoin",
+      "asset_class": "Alts",
+      "canonical_name": "CRYPTO | Bitcoin",
+      "prefix": "CRYPTO",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CRYPTO",
+      "ticker": "ETH-USD",
+      "bkiq_name": "Ethereum",
+      "asset_class": "Alts",
+      "canonical_name": "CRYPTO | Ethereum",
+      "prefix": "CRYPTO",
+      "scored": true,
+      "reused_v23_slot": true
+    },
+    {
+      "category": "CRYPTO",
+      "ticker": "SOL-USD",
+      "bkiq_name": "Solana",
+      "asset_class": "Alts",
+      "canonical_name": "CRYPTO | Solana",
+      "prefix": "CRYPTO",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "AUDUSD=X",
+      "bkiq_name": "AUD/USD",
+      "asset_class": "Alts",
+      "canonical_name": "FX | AUD/USD",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "EURUSD=X",
+      "bkiq_name": "EUR/USD",
+      "asset_class": "Alts",
+      "canonical_name": "FX | EUR/USD",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "GBPUSD=X",
+      "bkiq_name": "GBP/USD",
+      "asset_class": "Alts",
+      "canonical_name": "FX | GBP/USD",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "DX-Y.NYB",
+      "bkiq_name": "US Dollar Index",
+      "asset_class": "Cash",
+      "canonical_name": "FX | USD Index (DXY)",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "CHF=X",
+      "bkiq_name": "USD/CHF",
+      "asset_class": "Cash",
+      "canonical_name": "FX | USD/CHF",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "JPY=X",
+      "bkiq_name": "USD/JPY",
+      "asset_class": "Cash",
+      "canonical_name": "FX | USD/JPY",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "SGD=X",
+      "bkiq_name": "USD/SGD",
+      "asset_class": "Alts",
+      "canonical_name": "FX | USD/SGD",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "CAD=X",
+      "bkiq_name": "Canadian Dollar",
+      "asset_class": "Real Assets",
+      "canonical_name": "FX | Canadian Dollar",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "MXN=X",
+      "bkiq_name": "Mexican Peso",
+      "asset_class": "Alts",
+      "canonical_name": "FX | Mexican Peso",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "KRW=X",
+      "bkiq_name": "Korean Won",
+      "asset_class": "Alts",
+      "canonical_name": "FX | Korean Won",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "FX",
+      "ticker": "BRL=X",
+      "bkiq_name": "Brazilian Real",
+      "asset_class": "Alts",
+      "canonical_name": "FX | Brazilian Real",
+      "prefix": "FX",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "^VIX",
+      "bkiq_name": "VIX Index",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | VIX Index",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "^VIX3M",
+      "bkiq_name": "VIX 3-Month Index",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | VIX 3-Month Index",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "VXX",
+      "bkiq_name": "VIX Futures ETN",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | VIX Futures ETN",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "VIXY",
+      "bkiq_name": "ST VIX ETF",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | ST VIX ETF",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "GVZ",
+      "bkiq_name": "Gold Volatility (proxy)",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | Gold Volatility (proxy)",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "VOL",
+      "ticker": "OVX",
+      "bkiq_name": "Oil Volatility (proxy)",
+      "asset_class": "Alts",
+      "canonical_name": "VOL | Oil Volatility (proxy)",
+      "prefix": "VOL",
+      "scored": false,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "IFRA",
+      "bkiq_name": "US Infrastructure",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | US Infrastructure",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "PSP",
+      "bkiq_name": "Listed Private Equity",
+      "asset_class": "Alts",
+      "canonical_name": "EQ | Listed Private Equity",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "AMLP",
+      "bkiq_name": "Energy Infrastructure",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | Energy Infrastructure",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "REET",
+      "bkiq_name": "Global REITs",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | Global REITs",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "BCI",
+      "bkiq_name": "Commodities Index",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Commodities Index",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "PDBC",
+      "bkiq_name": "Diversified Commodity",
+      "asset_class": "Real Assets",
+      "canonical_name": "CMD | Diversified Commodity",
+      "prefix": "CMD",
+      "scored": true,
+      "reused_v23_slot": false
+    },
+    {
+      "category": "ALT",
+      "ticker": "KBWY",
+      "bkiq_name": "High Yield REIT",
+      "asset_class": "Real Assets",
+      "canonical_name": "EQ | High Yield REIT",
+      "prefix": "EQ",
+      "scored": true,
+      "reused_v23_slot": false
+    }
+  ],
+  "excluded": [
+    {
+      "category": "RATES",
+      "ticker": "^TNX",
+      "name": "10Y Treasury Yield",
+      "reason": "yield index, excluded from fragility panel per decision 5"
+    },
+    {
+      "category": "RATES",
+      "ticker": "^IRX",
+      "name": "2Y Treasury Yield",
+      "reason": "yield index, excluded from fragility panel per decision 5"
+    },
+    {
+      "category": "RATES",
+      "ticker": "^FVX",
+      "name": "5Y Treasury Yield",
+      "reason": "yield index, excluded from fragility panel per decision 5"
+    },
+    {
+      "category": "RATES",
+      "ticker": "^TYX",
+      "name": "30Y Treasury Yield",
+      "reason": "yield index, excluded from fragility panel per decision 5"
+    }
+  ]
+}

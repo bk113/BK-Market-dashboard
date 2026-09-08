@@ -1,0 +1,15 @@
+code,name,last_real_date,staleness_days_vs_panel_end,flagged_stale
+T5YIE,Inflation Breakeven 5Y,2026-09-04,4,False
+T10YIE,Inflation Breakeven 10Y,2026-09-04,4,False
+T5YIFR,Inflation 5Y5Y Forward,2026-09-04,4,False
+DGS3MO,US Treasury 3M Yield,2026-09-03,5,False
+DGS2,US Treasury 2Y Yield,2026-09-03,5,False
+DGS5,US Treasury 5Y Yield,2026-09-03,5,False
+DGS10,US Treasury 10Y Yield,2026-09-03,5,False
+DGS30,US Treasury 30Y Yield,2026-09-03,5,False
+VIXCLS,VIX,2026-09-03,5,False
+DFF,Federal Funds Rate,2026-09-03,5,False
+SOFR,Secured Overnight Rate,2026-09-03,5,False
+TEDRATE,TED Spread (legacy),2022-01-21,1691,True
+DTWEXBGS,USD Trade Weighted Broad,2026-08-28,11,False
+BAMLH0A0HYM2,ICE BofA US HY Index OAS,2026-09-03,5,False

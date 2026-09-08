@@ -1,0 +1,113 @@
+column,lower_bound,upper_bound,n_clipped
+EQ | ARK Innovation,-0.107,0.1247,4
+EQ | ASEAN,-0.0837,0.0745,4
+EQ | Asia Pacific,-0.0703,0.0661,4
+EQ | Asia ex-Japan,-0.0754,0.07,4
+EQ | Australia,-0.1221,0.1021,4
+EQ | BAE Aerospace & Defence,-0.1005,0.0988,4
+EQ | Brazil,-0.1574,0.1229,4
+EQ | China,-0.0936,0.0861,4
+EQ | China A-Shares,-0.077,0.0848,4
+EQ | Clean Energy,-0.1143,0.0798,4
+EQ | Cloud Computing,-0.0828,0.0903,4
+EQ | Communications,-0.0734,0.0714,4
+EQ | Consumer Discretionary,-0.074,0.0858,4
+EQ | Consumer Staples,-0.0655,0.0619,4
+EQ | EM Broad,-0.0897,0.0728,4
+EQ | Energy Infrastructure,-0.1563,0.1105,4
+EQ | Europe Dev (EAFE),-0.0837,0.0645,4
+EQ | Eurozone,-0.0979,0.0752,4
+EQ | FTSE 100 (UK),-0.0852,0.0587,4
+EQ | Germany,-0.0939,0.0815,4
+EQ | Global REITs,-0.1058,0.0658,4
+EQ | Global X Guru ETF,-0.0843,0.0835,4
+EQ | High Yield REIT,-0.1689,0.1125,4
+EQ | Hong Kong,-0.0787,0.0584,4
+EQ | India,-0.1155,0.0889,4
+EQ | Indonesia,-0.1107,0.091,4
+EQ | Industrials,-0.0949,0.0807,4
+EQ | Japan,-0.0612,0.0616,4
+EQ | Korea,-0.1269,0.1156,4
+EQ | Listed Private Equity,-0.1087,0.095,4
+EQ | Materials,-0.0942,0.0775,4
+EQ | Mexico,-0.1078,0.0782,4
+EQ | Philippines,-0.1225,0.0755,4
+EQ | Real Estate (REITs),-0.0966,0.0773,4
+EQ | Saudi Arabia,-0.0864,0.0822,4
+EQ | Singapore,-0.0776,0.0615,4
+EQ | Smart Grid Infra,-0.1045,0.0857,4
+EQ | South Africa,-0.1323,0.0921,4
+EQ | Taiwan,-0.0826,0.0659,4
+EQ | Thailand,-0.1089,0.0838,4
+EQ | UK,-0.0957,0.0589,4
+EQ | US (Nasdaq 100),-0.0748,0.0792,4
+EQ | US (Russell 2000),-0.1005,0.0786,4
+EQ | US (S&P 500),-0.0823,0.0867,4
+EQ | US Aerospace & Defence,-0.1023,0.1007,4
+EQ | US Energy Sector,-0.1379,0.115,4
+EQ | US Financials Sector,-0.1075,0.0923,4
+EQ | US Healthcare Sector,-0.0602,0.0671,4
+EQ | US Infrastructure,-0.0973,0.0747,4
+EQ | US Tech Sector,-0.0811,0.106,4
+EQ | Utilities,-0.0845,0.0906,4
+EQ | Vietnam,-0.0947,0.0804,4
+EQ | World (ACWI),-0.0808,0.074,4
+FI | Cash (T-Bills),-0.0027,0.0008,4
+FI | Convertible Bonds,-0.0687,0.052,4
+FI | EM Local Currency,-0.0522,0.0238,4
+FI | EM USD Sovereigns,-0.0569,0.0365,4
+FI | Global Aggregate,-0.0163,0.0166,4
+FI | Global ex-US Aggregate,-0.0166,0.0119,4
+FI | HY Credit,-0.0433,0.0423,4
+FI | IG Credit,-0.0481,0.0472,4
+FI | Intl Govt Bonds,-0.0226,0.0235,4
+FI | Intl High Yield,-0.0317,0.0298,4
+FI | Municipal Bonds,-0.03,0.0254,4
+FI | Municipal HY,-0.0855,0.0787,4
+FI | Preferred Securities,-0.0993,0.0749,4
+FI | ST IG Corporates,-0.0266,0.0176,4
+FI | Senior Loans,-0.0454,0.043,4
+FI | US Aggregate Bond,-0.0288,0.0217,4
+FI | US IG Credit (Intl),-0.0297,0.0286,4
+FI | US TIPS,-0.0239,0.019,4
+FI | US Treasuries (1-3y),-0.0051,0.0057,4
+FI | US Treasuries (20+y),-0.0525,0.0551,4
+FI | US Treasuries (7-10y),-0.0179,0.0232,4
+CMD | Agriculture Broad,-0.0395,0.0297,4
+CMD | Brent Oil,-0.1525,0.1344,4
+CMD | Broad Commodities,-0.0645,0.0426,4
+CMD | Commodities Index,-0.0598,0.0419,4
+CMD | Copper,-0.0728,0.0799,4
+CMD | Copper Miners,-0.1159,0.1174,4
+CMD | Corn,-0.0554,0.0638,4
+CMD | Diversified Commodity,-0.0546,0.0423,4
+CMD | Gold,-0.0562,0.0452,4
+CMD | Iron Ore (VALE),-0.1107,0.1494,4
+CMD | Lithium,-0.1028,0.0895,4
+CMD | Natural Gas,-0.1377,0.1372,4
+CMD | Palladium,-0.1665,0.1053,4
+CMD | Platinum,-0.1464,0.0796,4
+CMD | Silver,-0.1412,0.0875,4
+CMD | Soybeans,-0.0431,0.0503,4
+CMD | Uranium,-0.1028,0.1162,4
+CMD | Wheat,-0.0721,0.1006,4
+CRYPTO | Bitcoin,-0.1662,0.1836,4
+CRYPTO | Ethereum,-0.2725,0.2416,4
+CRYPTO | Solana,-0.3396,0.4823,4
+FX | AUD/USD,-0.0306,0.0271,4
+FX | Brazilian Real,-0.034,0.0378,4
+FX | Canadian Dollar,-0.0171,0.0171,4
+FX | EUR/USD,-0.0175,0.0174,4
+FX | GBP/USD,-0.0224,0.0289,4
+FX | Korean Won,-0.0273,0.0208,4
+FX | Mexican Peso,-0.0309,0.0424,4
+FX | USD Index (DXY),-0.0185,0.016,4
+FX | USD/CHF,-0.0223,0.019,4
+FX | USD/JPY,-0.0254,0.022,4
+FX | USD/SGD,-0.0118,0.011,4
+VOL | Gold Volatility (proxy),-0.4658,0.6605,4
+VOL | Oil Volatility (proxy),-0.4901,1.7238,4
+VOL | ST VIX ETF,-0.1684,0.3491,4
+VOL | VIX 3-Month Index,-0.1784,0.377,4
+VOL | VIX Futures ETN,-0.1656,0.3448,4
+VOL | VIX Index,-0.2484,0.6243,4

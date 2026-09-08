@@ -49,6 +49,46 @@ import yfinance as yf
 warnings.filterwarnings("ignore")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  V2.3 FRAGILITY ENGINE (Phase 3 integration, 08 Sep 2026)
+# ══════════════════════════════════════════════════════════════════════════════
+# fragility_v23.py lives at the repo root, imported unmodified (integration
+# plan decision 3). build_canonical_panel.py lives in
+# tools/fragility_migration/ (not a package -- its directory is added to
+# sys.path directly rather than making it one, to keep this a minimal,
+# reversible change).
+#
+# The import itself is guarded (not just the later compute-time call) because
+# this file also generates the Performance/Risk tabs and several other cards
+# that have nothing to do with fragility -- a hard ImportError here (missing
+# fragility_v23.py, or scipy/scikit-learn/hmmlearn not installed in whatever
+# environment this runs in, e.g. a GitHub Actions runner before its pip
+# install step is updated) must not take down the entire daily dashboard.
+# USE_V23_FRAGILITY is the intended one-line rollback switch; _V23_AVAILABLE
+# is the automatic one for when the switch is left on but the environment
+# genuinely can't run v23 -- both gate the dispatch in compute_fragility()/
+# compute_fragility_trend() below, which fall back to the legacy engine.
+import sys as _sys
+from pathlib import Path as _Path
+
+_V23_IMPORT_ERROR = None
+try:
+    _frag_migration_dir = _Path(__file__).resolve().parent / "tools" / "fragility_migration"
+    if str(_frag_migration_dir) not in _sys.path:
+        _sys.path.insert(0, str(_frag_migration_dir))
+    import fragility_v23 as ifm23
+    import build_canonical_panel as _panel_builder
+    _V23_AVAILABLE = True
+except Exception as _e:
+    _V23_AVAILABLE = False
+    _V23_IMPORT_ERROR = _e
+
+USE_V23_FRAGILITY = True  # Phase 3 rollout flag. Set False to force the legacy
+                          # 6-pillar engine even when v23 imports cleanly. The
+                          # dispatch also auto-falls-back on any v23 exception
+                          # or import failure regardless of this flag's value.
+
+
 DEVELOPMENT_MODE = False  # Set True to skip Claude API calls during development
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1328,10 +1368,12 @@ def _robust_zscore(s: pd.Series, window: int = 504, clip: float = 4.0) -> pd.Ser
         lambda x: np.median(np.abs(x - np.median(x))), raw=True)
     return ((s - med) / (1.4826 * mad.replace(0, 1e-6))).clip(-clip, clip)
 
-def compute_fragility(prices: pd.DataFrame,
+def compute_fragility_legacy(prices: pd.DataFrame,
                       volumes: pd.DataFrame = None) -> pd.DataFrame:
     """
-    Per-instrument fragility scores (0–100) aligned to IFM methodology.
+    LEGACY ENGINE (pre-v23). Kept, not deleted, as the Phase 3 rollback path
+    -- see USE_V23_FRAGILITY near the top of this file. Per-instrument
+    fragility scores (0-100) aligned to IFM methodology.
 
     Methodology (matches institutional_fragility_monitor.py exactly):
     - Six pillars: Drawdown (22%), Tail Risk/CVaR (20%), Transmission (18%),
@@ -2070,10 +2112,12 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
 #  FRAGILITY HISTORICAL TREND ENGINE
 # ══════════════════════════════════════════════════════════════════════════════
 
-def compute_fragility_trend(prices: pd.DataFrame,
+def compute_fragility_trend_legacy(prices: pd.DataFrame,
                             volumes: pd.DataFrame = None) -> dict:
     """
-    System-level fragility score timeseries (last 504 days = 2 years).
+    LEGACY ENGINE (pre-v23). Kept, not deleted, as the Phase 3 rollback path
+    -- see USE_V23_FRAGILITY near the top of this file. System-level
+    fragility score timeseries (last 504 days = 2 years).
     Driven by IFM_43_TICKERS only — consistent with institutional reporting.
     Methodology matches institutional_fragility_monitor.py exactly.
     Returns daily scores + regime for chart rendering.
@@ -2172,6 +2216,242 @@ def compute_fragility_trend(prices: pd.DataFrame,
         "trough_2y": round(float(sys_score.tail(504).min()), 1),
         "avg_2y":    round(float(sys_score.tail(504).mean()), 1),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  V2.3 FRAGILITY ENGINE — ADAPTER  (Phase 3, 08 Sep 2026)
+# ══════════════════════════════════════════════════════════════════════════════
+# Wires institutional_fragility_monitor_v23 (imported unmodified as ifm23,
+# see the guarded import near the top of this file) into the exact frag_df /
+# trend-dict contracts the rest of this file already consumes at ~9 call
+# sites, so nothing downstream of compute_fragility()/compute_fragility_trend()
+# needs to change. Full rationale, the T1/T2/T6 validation findings, and the
+# native-vs-extended-universe comparison that ruled out the universe
+# extension as their cause all live in the project's fragility handoff doc,
+# not repeated here.
+#
+# Ticker <-> canonical "Prefix | Name" lookup comes from
+# tools/fragility_migration/ticker_mapping.json (built by ticker_mapping.py).
+# Categories that used to get a REAL fragility score under the legacy engine
+# but are outside v23's scored universe (EQ | / FI | / CMD | / CRYPTO | only)
+# now correctly show N/A instead: the 4 RATES yield tickers (decision 5 --
+# they stay on Yahoo, unchanged, on Performance/Risk; only fragility SCORING
+# excludes them) and the 11 FX pairs (decision 7 -- system-context only, not
+# scored) and 2 VOL-group products (VXX, VIXY -- outside v23's scored prefixes
+# entirely; GVZ/OVX/^VIX/^VIX3M were already excluded under the legacy engine
+# too, unchanged). This is a real, locked, expected behaviour change, not a
+# bug -- flagged prominently in the Phase 3 dry-run report, not buried here.
+
+_V23_OUTPUT_CACHE: dict = {}  # {panel_dir: full compute_v23() output dict} -- memoised per process so
+                              # compute_fragility_v23() and compute_fragility_trend_v23() (both called
+                              # once per run_once() invocation) don't each separately pay v23's ~90s
+                              # compute cost and a duplicate panel rebuild.
+
+
+def _v23_data_dir() -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+
+
+def _load_ticker_mapping() -> tuple:
+    """Returns (mapped_rows, excluded_rows) from
+    tools/fragility_migration/ticker_mapping.json -- the same file
+    build_canonical_panel.py's load_mapping() reads, loaded independently
+    here since the adapter needs the raw rows (ticker/name/section/
+    canonical_name/scored), not just the panel CSVs built from them."""
+    import json
+    mapping_path = _frag_migration_dir / "ticker_mapping.json"
+    with open(mapping_path) as f:
+        mp = json.load(f)
+    return mp["mapped"], mp["excluded"]
+
+
+def _get_v23_output(panel_dir: str = None) -> dict:
+    """Rebuilds the canonical panel from whatever is currently on disk
+    (prices_cache.csv/volumes_cache.csv just refreshed by download(), plus
+    the manually-downloaded FRED files and the static ticker mapping), then
+    runs compute_v23() against it. Memoised per process -- see
+    _V23_OUTPUT_CACHE above. Raises on any failure; callers (compute_fragility()/
+    compute_fragility_trend() below) catch and fall back to the legacy engine
+    rather than letting a v23 problem take down the whole daily run."""
+    panel_dir = panel_dir or _v23_data_dir()
+    if panel_dir in _V23_OUTPUT_CACHE:
+        return _V23_OUTPUT_CACHE[panel_dir]
+    _panel_builder.build_panel()
+    out = ifm23.compute_v23(panel_dir)
+    _V23_OUTPUT_CACHE[panel_dir] = out
+    return out
+
+
+def _na_reason(ticker: str) -> str:
+    """Accurate 'why is this N/A' text for the Fragility tab's per-row
+    message (line ~3227 in build_web_html) -- the legacy engine only ever
+    had one N/A category (computed proxies / fear indices: GVZ, OVX, VIX),
+    so a single hardcoded message was accurate. v23 introduces two more N/A
+    categories (RATES yield tickers, and real VOL-group products outside
+    v23's scored prefixes) for which that same message would now be
+    actively wrong -- a real instrument, or a real yield, is not a
+    'computed proxy'."""
+    if ticker in YIELD_TICKERS:
+        return "N/A &mdash; yield/rate instrument, not in v23&#39;s scored universe (see Performance &amp; Risk tabs)"
+    if ticker in FRAGILITY_EXCLUSIONS:
+        return "N/A &mdash; computed proxy / fear index (not scored)"
+    return "N/A &mdash; not in v23&#39;s scored universe (EQ / FI / CMD / CRYPTO prefixes only)"
+
+
+def compute_fragility_v23(panel_dir: str = None) -> pd.DataFrame:
+    """V2.3-sourced replacement for compute_fragility_legacy(), reshaped into
+    the exact same frag_df contract every downstream consumer expects."""
+    out = _get_v23_output(panel_dir)
+    score = out["score"]
+    pillars_z = out["pillars_z"]
+    latest_date = score.index[-1]
+
+    # Last-known-VALID value per column, per pillar -- not strictly "today".
+    # Real, confirmed-live finding: the panel's own latest calendar row is
+    # frequently mostly-NaN (99/112 columns on the 2026-09-08 run that
+    # surfaced this) because the same-day fetch often lands before Yahoo has
+    # posted a close for many tickers -- an ordinary, recurring same-day-data
+    # artifact, not a bug. pillar_vol/cvar/corr are rolling-window
+    # aggregates that tolerate one sparse endpoint and were unaffected
+    # (0/95 NaN); pillar_dd/trend/volz are direct today's-value ratios that
+    # are NOT window-tolerant and came back 92-97% NaN on that same date --
+    # even though v23's own composite score (EWMA-smoothed before the
+    # logistic mapping) was fully populated the whole time. Reading pillar
+    # values via .ffill().iloc[-1] instead of .at[latest_date] carries
+    # forward each column's last real reading, matching how the composite
+    # score already behaves, instead of misleadingly showing "0.0
+    # contribution" (indistinguishable from "no stress") on a day when the
+    # true state is simply "data not in yet."
+    pillars_last_valid = {pk: df.ffill().iloc[-1] for pk, df in pillars_z.items()}
+
+    mapped_rows, excluded_rows = _load_ticker_mapping()
+    ticker_to_row = {r["ticker"]: r for r in mapped_rows}
+    for e in excluded_rows:
+        ticker_to_row.setdefault(e["ticker"], {
+            "ticker": e["ticker"], "bkiq_name": e["name"], "category": e["category"],
+            "canonical_name": None, "scored": False,
+        })
+
+    W = ifm23.WEIGHTS  # {"vol":.278,"cvar":.264,"dd":.188,"trend":.118,"corr":.103,"volz":.049}
+    pillar_key_map = {"pillar_dd": "dd", "pillar_vol": "vol", "pillar_cvar": "cvar",
+                       "pillar_trend": "trend", "pillar_corr": "corr", "pillar_volz": "volz"}
+
+    rows = []
+    for sec, ticker, name, _bucket in UNIVERSE:
+        if ticker in DISPLAY_EXCLUSIONS:
+            continue  # matches legacy exactly: never even an N/A row
+
+        r = ticker_to_row.get(ticker)
+        canon = r["canonical_name"] if r else None
+
+        if canon is None or canon not in score.columns:
+            rows.append({
+                "ticker": ticker, "name": name, "section": sec,
+                "fragility": np.nan, "rag": "N/A",
+                "pillar_dd": 0.0, "pillar_vol": 0.0, "pillar_cvar": 0.0,
+                "pillar_trend": 0.0, "pillar_corr": 0.0, "pillar_volz": 0.0,
+            })
+            continue
+
+        v = score.at[latest_date, canon]
+        if pd.isna(v):
+            rows.append({
+                "ticker": ticker, "name": name, "section": sec,
+                "fragility": np.nan, "rag": "N/A",
+                "pillar_dd": 0.0, "pillar_vol": 0.0, "pillar_cvar": 0.0,
+                "pillar_trend": 0.0, "pillar_corr": 0.0, "pillar_volz": 0.0,
+            })
+            continue
+
+        rag = "CRISIS" if v >= 70 else "STRESSED" if v >= 55 else "MODERATE"
+
+        def _p(pkey):
+            z = pillars_last_valid[pkey].get(canon, np.nan)
+            return round(float(W[pkey] * z * 100), 1) if pd.notna(z) else 0.0
+
+        rows.append({
+            "ticker": ticker, "name": name, "section": sec,
+            "fragility": round(float(v), 1), "rag": rag,
+            "pillar_dd":    _p("dd"),
+            "pillar_vol":   _p("vol"),
+            "pillar_cvar":  _p("cvar"),
+            "pillar_trend": _p("trend"),
+            "pillar_corr":  _p("corr"),
+            "pillar_volz":  _p("volz"),
+        })
+
+    fdf = pd.DataFrame(rows).sort_values("fragility", ascending=False).reset_index(drop=True)
+
+    if not fdf.empty:
+        # System score: v23's own native 47-asset score_universe() subset only
+        # (decision 6) -- replaces the legacy engine's IFM_43_TICKERS, 9 of
+        # whose 43 tickers no longer exist under those names.
+        native_cols = [c for c in ifm23.YAHOO_TICKERS.keys() if c in score.columns]
+        native_latest = score.loc[latest_date, native_cols].dropna() if native_cols else pd.Series(dtype=float)
+        ss = float(native_latest.median()) if not native_latest.empty else float(fdf["fragility"].dropna().median())
+        fdf.attrs["system_score"] = round(ss, 1)
+        fdf.attrs["regime"] = "CRISIS" if ss >= 70 else "STRESSED" if ss >= 55 else "MODERATE"
+
+    return fdf
+
+
+def compute_fragility_trend_v23(panel_dir: str = None) -> dict:
+    """V2.3-sourced replacement for compute_fragility_trend_legacy(), same
+    {trend, current, peak_2y, trough_2y, avg_2y} output shape. System score
+    timeseries = median across v23's native 47-asset subset each day
+    (decision 6), sourced from out['score']'s full date history rather than
+    recomputed independently -- one engine, one number, no drift between the
+    headline score and the trend chart."""
+    out = _get_v23_output(panel_dir)
+    score = out["score"]
+    native_cols = [c for c in ifm23.YAHOO_TICKERS.keys() if c in score.columns]
+    sys_score = score[native_cols].median(axis=1) if native_cols else score.median(axis=1)
+
+    trend_raw = sys_score.tail(504).dropna()
+    trend = []
+    for date, val in trend_raw.items():
+        reg = "Crisis" if val >= 70 else "Stressed" if val >= 55 else "Moderate"
+        trend.append({
+            "date":   date.strftime("%Y-%m-%d"),
+            "score":  round(float(val), 1),
+            "regime": reg,
+            "color":  "#f85149" if reg == "Crisis" else "#e3b341" if reg == "Stressed" else "#3fb950",
+        })
+
+    return {
+        "trend":     trend,
+        "current":   round(float(sys_score.iloc[-1]), 1) if not sys_score.empty else 50,
+        "peak_2y":   round(float(sys_score.tail(504).max()), 1),
+        "trough_2y": round(float(sys_score.tail(504).min()), 1),
+        "avg_2y":    round(float(sys_score.tail(504).mean()), 1),
+    }
+
+
+def compute_fragility(prices: pd.DataFrame, volumes: pd.DataFrame = None) -> pd.DataFrame:
+    """Dispatcher: v23 engine when available and enabled, legacy engine
+    otherwise or on any failure. This is the one-line rollback path
+    (USE_V23_FRAGILITY) plus an automatic safety net -- see the guarded
+    import and flag near the top of this file for why both exist."""
+    if USE_V23_FRAGILITY and _V23_AVAILABLE:
+        try:
+            return compute_fragility_v23()
+        except Exception as e:
+            print(f"[Fragility] v23 engine failed ({e!r}) -- falling back to the legacy engine for this run")
+    elif USE_V23_FRAGILITY and not _V23_AVAILABLE:
+        print(f"[Fragility] v23 unavailable ({_V23_IMPORT_ERROR!r}) -- using the legacy engine")
+    return compute_fragility_legacy(prices, volumes)
+
+
+def compute_fragility_trend(prices: pd.DataFrame, volumes: pd.DataFrame = None) -> dict:
+    """Dispatcher -- see compute_fragility() above."""
+    if USE_V23_FRAGILITY and _V23_AVAILABLE:
+        try:
+            return compute_fragility_trend_v23()
+        except Exception as e:
+            print(f"[Fragility] v23 trend engine failed ({e!r}) -- falling back to the legacy engine for this run")
+    elif USE_V23_FRAGILITY and not _V23_AVAILABLE:
+        pass  # already logged once in compute_fragility() above
+    return compute_fragility_trend_legacy(prices, volumes)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3223,10 +3503,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 fr += _srow_acc(_sec, "frag", _sum, _cnt, cs=12, first=_frag_first)
                 _frag_first=False
             if r.get("rag") == "N/A" or pd.isna(r.get("fragility")):
-                # Excluded computed proxies / fear indices — show N/A row
+                # Not scored -- reason varies by category (computed proxy/fear
+                # index under either engine; yield ticker or a real VOL-group
+                # product outside v23's scored prefixes, new since Phase 3).
                 fr += (f'<tr class="bk-accordion-body"><td class="an">{r["name"]}</td><td class="tk">{r["ticker"]}</td>'
                        f'<td class="num gr" colspan="10" style="font-style:italic;">'
-                       f'N/A &mdash; computed proxy / fear index (not scored)</td></tr>')
+                       f'{_na_reason(r["ticker"])}</td></tr>')
                 continue
             fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
             bw=min(100,r["fragility"])
@@ -3271,11 +3553,13 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'<strong style="color:#c8cfe0;">T-Bills (BIL):</strong> Fragility reflects rate '
               f'sensitivity and reinvestment risk, not credit or liquidity risk.<br>'
               f'<strong style="color:#c8cfe0;">FX pairs:</strong> Excluded from this tab — '
-              f'currency pair pillars (Contagion, Trend, Vol Stress) are not meaningful for FX. '
-              f'FX instruments appear on Performance, Risk, and Analysis tabs.'
+              f'FX is used as system-context only (correlation-pillar PC1 fitting), not directly scored. '
+              f'FX instruments appear on Performance, Risk, and Analysis tabs.<br>'
+              f'<strong style="color:#c8cfe0;">Yield tickers (^TNX etc.):</strong> Excluded from this tab — '
+              f'not in the v2.3 engine\'s scored universe. Shown unchanged on Performance and Risk tabs.'
               f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-              f'BK Fragility Framework &#183; Drawdown 22% + CVaR 20% + Contagion 18% + Volatility 15% + Trend 15% + Vol Stress 10% &#183; '
+              f'BK Fragility Framework v2.3 &#183; Volatility 27.8% + CVaR 26.4% + Drawdown 18.8% + Trend 11.8% + Contagion 10.3% + Vol Stress 4.9% (walk-forward IC-derived weights) &#183; '
               f'CRISIS &#8805;70 &#183; STRESSED 55&#8211;69 &#183; MODERATE &lt;55<br>'
               f'Pillar scores are standardised z-scores relative to history (positive = above average stress) &#183; '
               f'Top Driver = highest contributing pillar &#183; '
@@ -4228,8 +4512,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     #
     #    Factor bars on INCREASE cards show *why* an instrument scores high:
     #      Mom (30%) | Frag Inv (25%) | Fit (20%) | Signal (15%) | Vol (10%)
-    #    Pillar bars on RISK cards show *what's driving* the fragility:
-    #      Drawdown (22%) | CVaR (20%) | Contagion (18%) | Vol (15%) | Trend (15%) | Liquidity (10%)
+    #    Pillar bars on RISK cards show *what's driving* the fragility (v2.3 weights):
+    #      Vol (27.8%) | CVaR (26.4%) | Drawdown (18.8%) | Trend (11.8%) | Contagion (10.3%) | Liquidity (4.9%)
     #
     #  ZONE 3 — AI INTELLIGENCE (LLM-generated, contextual)
     #    Market Narrative + Recommended Actions
@@ -4371,26 +4655,28 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # Mirrors the opportunity factor bars for visual consistency.
     # Shows *what's driving the fragility* for each risk instrument.
     #
-    # Pillar key (what each bar means):
-    #   DD (22%)        — drawdown magnitude from rolling 1Y peak (red #f85149)
-    #                     How deep the instrument has fallen. Higher = deeper drawdown.
-    #   CVaR (20%)      — 60-day Conditional Value-at-Risk / expected shortfall (orange #e3734d)
+    # Pillar key (what each bar means) -- v2.3 engine, walk-forward
+    # IC-derived weights (Phase 3, 08 Sep 2026; supersedes the legacy
+    # engine's asserted 22/20/18/15/15/10 split):
+    #   Vol (27.8%)     — 20-day annualised realised volatility (amber #e3b341)
+    #                     Highest-IC pillar, most informative on its own.
+    #   CVaR (26.4%)    — 60-day Conditional Value-at-Risk / expected shortfall (orange #e3734d)
     #                     Average loss in the worst 5% of days. Captures fat-tail risk.
-    #   Contagion (18%) — 60-day rolling correlation to ACWI world proxy (purple #bc8cff)
-    #                     Higher = more coupled to global risk-off. Diversification is gone.
-    #   Vol (15%)       — 20-day annualised realised volatility (amber #e3b341)
-    #                     Current volatility level vs. 2-year history.
-    #   Trend (15%)     — distance below 200-day moving average (blue #58a6ff)
+    #   DD (18.8%)      — drawdown magnitude from rolling 120-day peak (red #f85149)
+    #                     How deep the instrument has fallen. Higher = deeper drawdown.
+    #   Trend (11.8%)   — distance below 200-day moving average (blue #58a6ff)
     #                     How far the asset has broken its long-term trend.
-    #   Liq (10%)       — 60-day volume z-score (cyan #56d4dd)
-    #                     Abnormal volume activity — panic selling or liquidity vacuum.
+    #   Contagion (10.3%) — 60-day correlation to PC1 of the system-wide universe
+    #                     (purple #bc8cff). Higher = more coupled to broad risk-off.
+    #   Liq (4.9%)      — 60-day volume z-score, clipped at zero (cyan #56d4dd)
+    #                     Abnormally HIGH volume only (floor pillar for robustness).
     _PILLAR_META = [
-        ("pillar_dd",    "DD",        "#f85149", "22%"),
-        ("pillar_cvar",  "CVaR",      "#e3734d", "20%"),
-        ("pillar_corr",  "Contagion", "#bc8cff", "18%"),
-        ("pillar_vol",   "Vol",       "#e3b341", "15%"),
-        ("pillar_trend", "Trend",     "#58a6ff", "15%"),
-        ("pillar_volz",  "Liq",       "#56d4dd", "10%"),
+        ("pillar_vol",   "Vol",       "#e3b341", "27.8%"),
+        ("pillar_cvar",  "CVaR",      "#e3734d", "26.4%"),
+        ("pillar_dd",    "DD",        "#f85149", "18.8%"),
+        ("pillar_trend", "Trend",     "#58a6ff", "11.8%"),
+        ("pillar_corr",  "Contagion", "#bc8cff", "10.3%"),
+        ("pillar_volz",  "Liq",       "#56d4dd", "4.9%"),
     ]
 
     def _pillar_bars(row) -> str:

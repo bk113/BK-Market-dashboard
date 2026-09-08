@@ -1,0 +1,131 @@
+name,ticker,asset_class,source,data_type,role,bkiq_category,bkiq_asset_class_label
+EQ | US (Nasdaq 100),QQQ,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_US,EQ Growth
+EQ | US (Russell 2000),IWM,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_US,EQ Growth
+EQ | US (S&P 500),SPY,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_US,EQ Growth
+EQ | World (ACWI),ACWI,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_US,EQ Growth
+EQ | US Energy Sector,XLE,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Defensive
+EQ | US Financials Sector,XLF,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Growth
+EQ | Real Estate (REITs),VNQ,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,Real Assets
+EQ | Utilities,XLU,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Defensive
+EQ | US Healthcare Sector,XLV,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Defensive
+EQ | US Tech Sector,XLK,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Growth
+EQ | Consumer Staples,XLP,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Defensive
+EQ | Consumer Discretionary,XLY,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Growth
+EQ | Industrials,XLI,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Growth
+EQ | Materials,XLB,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,Real Assets
+EQ | Communications,XLC,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_SECT,EQ Growth
+EQ | Australia,EWA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | Europe Dev (EAFE),EFA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | Eurozone,EZU,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | Germany,EWG,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | Japan,EWJ,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | Singapore,EWS,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Growth
+EQ | UK,EWU,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Defensive
+EQ | FTSE 100 (UK),FLGB,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_DM,EQ Defensive
+EQ | Global X Guru ETF,GURU,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_IDX,EQ Growth
+EQ | ARK Innovation,ARKK,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_IDX,EQ Growth
+EQ | Cloud Computing,SKYY,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_IDX,EQ Growth
+EQ | Clean Energy,ICLN,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_IDX,EQ Growth
+EQ | Smart Grid Infra,GRID,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_IDX,EQ Growth
+EQ | Brazil,EWZ,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | China,FXI,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | EM Broad,EEM,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | India,INDA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Korea,EWY,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | South Africa,EZA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Taiwan,EWT,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Mexico,EWW,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Indonesia,EIDO,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Vietnam,VNM,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,EQ Growth
+EQ | Saudi Arabia,KSA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_EM,Real Assets
+EQ | Asia ex-Japan,AAXJ,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | Hong Kong,EWH,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | Asia Pacific,VPL,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | China A-Shares,CNYA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | ASEAN,ASEA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | Thailand,THD,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | Philippines,EPHE,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",EQ_APAC,EQ Growth
+EQ | BAE Aerospace & Defence,XAR,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",DEFENCE,Alts
+EQ | US Aerospace & Defence,ITA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",DEFENCE,Alts
+FI | Cash (T-Bills),BIL,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Cash
+FI | EM Local Currency,EMLC,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | EM USD Sovereigns,EMB,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | HY Credit,HYG,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,EQ Growth
+FI | IG Credit,LQD,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | Senior Loans,BKLN,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | US Treasuries (1-3y),SHY,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Cash
+FI | US Treasuries (20+y),TLT,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | US Treasuries (7-10y),IEF,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | US Aggregate Bond,AGG,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | US TIPS,TIP,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Real Assets
+FI | Municipal Bonds,MUB,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | Convertible Bonds,CWB,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,EQ Growth
+FI | ST IG Corporates,VCSH,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | Preferred Securities,PFF,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | Municipal HY,HYD,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI,Fixed Income
+FI | Global Aggregate,BNDW,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI_INTL,Fixed Income
+FI | Intl High Yield,IHY,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI_INTL,EQ Growth
+FI | US IG Credit (Intl),IGIB,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI_INTL,Fixed Income
+FI | Global ex-US Aggregate,BNDX,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI_INTL,Fixed Income
+FI | Intl Govt Bonds,IGOV,FI,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",FI_INTL,Fixed Income
+CMD | Agriculture Broad,DBA,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Broad Commodities,DBC,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Copper Miners,COPX,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Gold,GLD,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Natural Gas,UNG,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Silver,SLV,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Brent Oil,BNO,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Platinum,PPLT,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Uranium,URA,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Alts
+CMD | Wheat,WEAT,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Lithium,LIT,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Alts
+CMD | Iron Ore (VALE),VALE,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Corn,CORN,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Soybeans,SOYB,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Palladium,PALL,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CMD | Copper,CPER,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CMD,Real Assets
+CRYPTO | Bitcoin,BTC-USD,CRYPTO,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CRYPTO,Alts
+CRYPTO | Ethereum,ETH-USD,CRYPTO,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CRYPTO,Alts
+CRYPTO | Solana,SOL-USD,CRYPTO,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",CRYPTO,Alts
+FX | AUD/USD,AUDUSD=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | EUR/USD,EURUSD=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | GBP/USD,GBPUSD=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | USD Index (DXY),DX-Y.NYB,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Cash
+FX | USD/CHF,CHF=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Cash
+FX | USD/JPY,JPY=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Cash
+FX | USD/SGD,SGD=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | Canadian Dollar,CAD=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Real Assets
+FX | Mexican Peso,MXN=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | Korean Won,KRW=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+FX | Brazilian Real,BRL=X,FX,Yahoo Finance,tradeable,FX system-context (correlation pillar PC1 only),FX,Alts
+VOL | VIX Index,^VIX,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+VOL | VIX 3-Month Index,^VIX3M,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+VOL | VIX Futures ETN,VXX,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+VOL | ST VIX ETF,VIXY,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+VOL | Gold Volatility (proxy),GVZ,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+VOL | Oil Volatility (proxy),OVX,VOL,Yahoo Finance,tradeable,display only (outside fragility scoring),VOL,Alts
+EQ | US Infrastructure,IFRA,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+EQ | Listed Private Equity,PSP,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Alts
+EQ | Energy Infrastructure,AMLP,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+EQ | Global REITs,REET,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+CMD | Commodities Index,BCI,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+CMD | Diversified Commodity,PDBC,CMD,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+EQ | High Yield REIT,KBWY,EQ,Yahoo Finance,tradeable,"fragility composite (vol, dd, cvar, trend, corr, volz pillars)",ALT,Real Assets
+10Y Treasury Yield,^TNX,RATES,Yahoo Finance,excluded,"yield index, excluded from fragility panel per decision 5",RATES,
+2Y Treasury Yield,^IRX,RATES,Yahoo Finance,excluded,"yield index, excluded from fragility panel per decision 5",RATES,
+5Y Treasury Yield,^FVX,RATES,Yahoo Finance,excluded,"yield index, excluded from fragility panel per decision 5",RATES,
+30Y Treasury Yield,^TYX,RATES,Yahoo Finance,excluded,"yield index, excluded from fragility panel per decision 5",RATES,
+Inflation Breakeven 5Y,T5YIE,INFLATION,FRED,level/yield/spread,regime / FSS / governance,,
+Inflation Breakeven 10Y,T10YIE,INFLATION,FRED,level/yield/spread,regime / FSS / governance,,
+Inflation 5Y5Y Forward,T5YIFR,INFLATION,FRED,level/yield/spread,regime / FSS / governance,,
+US Treasury 3M Yield,DGS3MO,RATES,FRED,level/yield/spread,regime / FSS / governance,,
+US Treasury 2Y Yield,DGS2,RATES,FRED,level/yield/spread,regime / FSS / governance,,
+US Treasury 5Y Yield,DGS5,RATES,FRED,level/yield/spread,regime / FSS / governance,,
+US Treasury 10Y Yield,DGS10,RATES,FRED,level/yield/spread,regime / FSS / governance,,
+US Treasury 30Y Yield,DGS30,RATES,FRED,level/yield/spread,regime / FSS / governance,,
+VIX,VIXCLS,VOL,FRED,level/yield/spread,regime / FSS / governance,,
+Federal Funds Rate,DFF,POLICY,FRED,level/yield/spread,regime / FSS / governance,,
+Secured Overnight Rate,SOFR,OTHER,FRED,level/yield/spread,regime / FSS / governance,,
+TED Spread (legacy),TEDRATE,FUNDING,FRED,level/yield/spread,"regime / FSS / governance -- DISCONTINUED/STALE: last real obs 2022-01-21, 1691d stale, held flat only 5bd then NaN",,
+USD Trade Weighted Broad,DTWEXBGS,FX,FRED,level/yield/spread,regime / FSS / governance,,
+ICE BofA US HY Index OAS,BAMLH0A0HYM2,CREDIT,FRED,level/yield/spread,regime / FSS / governance,,
