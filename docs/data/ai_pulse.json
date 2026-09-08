@@ -1,7 +1,166 @@
 {
-  "as_of": "2026-09-07 13:48 UTC",
+  "as_of": "2026-09-07 16:13 UTC",
   "basket_breadth_above_50dma_pct": 64.7,
   "basket_avg_ann_vol_21d_pct": 57.13,
+  "layers": [
+    {
+      "name": "AI Compute",
+      "tickers": [
+        "NVDA",
+        "AVGO",
+        "AMD"
+      ],
+      "avg_chg_1d": 1.91,
+      "avg_chg_1m": -4.03,
+      "avg_chg_3m": 2.55,
+      "avg_vol_21d_ann": 41.95,
+      "breadth_above_50dma_pct": 33.3,
+      "blurb": "3 names (NVDA, AVGO, AMD), down -4.0% over 1M, 33.3% above their 50-day average."
+    },
+    {
+      "name": "Custom Silicon",
+      "tickers": [
+        "MRVL"
+      ],
+      "avg_chg_1d": 7.05,
+      "avg_chg_1m": 6.18,
+      "avg_chg_3m": -15.13,
+      "avg_vol_21d_ann": 79.88,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "1 name (MRVL), up +6.2% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "Foundry",
+      "tickers": [
+        "TSM"
+      ],
+      "avg_chg_1d": 2.85,
+      "avg_chg_1m": 2.56,
+      "avg_chg_3m": 3.55,
+      "avg_vol_21d_ann": 25.29,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "1 name (TSM), up +2.6% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "Memory",
+      "tickers": [
+        "MU"
+      ],
+      "avg_chg_1d": 6.1,
+      "avg_chg_1m": 15.33,
+      "avg_chg_3m": 17.68,
+      "avg_vol_21d_ann": 52.86,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "1 name (MU), up +15.3% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "Hyperscaler",
+      "tickers": [
+        "MSFT",
+        "GOOGL",
+        "AMZN"
+      ],
+      "avg_chg_1d": -1.1,
+      "avg_chg_1m": -3.41,
+      "avg_chg_3m": 5.72,
+      "avg_vol_21d_ann": 23.36,
+      "breadth_above_50dma_pct": 66.7,
+      "blurb": "3 names (MSFT, GOOGL, AMZN), down -3.4% over 1M, 66.7% above their 50-day average."
+    },
+    {
+      "name": "AI Application",
+      "tickers": [
+        "CRM",
+        "CRWD",
+        "WDAY"
+      ],
+      "avg_chg_1d": -2.74,
+      "avg_chg_1m": 18.85,
+      "avg_chg_3m": 34.24,
+      "avg_vol_21d_ann": 85.84,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "3 names (CRM, CRWD, WDAY), up +18.9% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "Power / Infra",
+      "tickers": [
+        "VRT"
+      ],
+      "avg_chg_1d": 4.35,
+      "avg_chg_1m": 1.95,
+      "avg_chg_3m": -6.63,
+      "avg_vol_21d_ann": 48.09,
+      "breadth_above_50dma_pct": 0.0,
+      "blurb": "1 name (VRT), up +1.9% over 1M, 0.0% above their 50-day average."
+    },
+    {
+      "name": "Cloud Compute",
+      "tickers": [
+        "ORCL"
+      ],
+      "avg_chg_1d": 3.08,
+      "avg_chg_1m": 10.67,
+      "avg_chg_3m": -25.43,
+      "avg_vol_21d_ann": 49.63,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "1 name (ORCL), up +10.7% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "AI Cloud Infra (public)",
+      "tickers": [
+        "CRWV"
+      ],
+      "avg_chg_1d": 5.68,
+      "avg_chg_1m": 4.72,
+      "avg_chg_3m": -10.99,
+      "avg_vol_21d_ann": 91.76,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "1 name (CRWV), up +4.7% over 1M, 100.0% above their 50-day average."
+    },
+    {
+      "name": "Credit \u2014 IG",
+      "tickers": [
+        "LQD"
+      ],
+      "avg_chg_1d": -0.02,
+      "avg_chg_1m": -0.41,
+      "avg_chg_3m": -1.31,
+      "avg_vol_21d_ann": 5.61,
+      "breadth_above_50dma_pct": null,
+      "blurb": "1 name (LQD), down -0.4% over 1M."
+    },
+    {
+      "name": "Credit \u2014 HY",
+      "tickers": [
+        "HYG"
+      ],
+      "avg_chg_1d": -0.06,
+      "avg_chg_1m": 0.17,
+      "avg_chg_3m": 1.16,
+      "avg_vol_21d_ann": 2.56,
+      "breadth_above_50dma_pct": null,
+      "blurb": "1 name (HYG), up +0.2% over 1M."
+    },
+    {
+      "name": "China AI / Low-Cost Models",
+      "tickers": [
+        "BABA",
+        "BIDU"
+      ],
+      "avg_chg_1d": 2.68,
+      "avg_chg_1m": -9.86,
+      "avg_chg_3m": -11.92,
+      "avg_vol_21d_ann": 47.93,
+      "breadth_above_50dma_pct": 0.0,
+      "blurb": "2 names (BABA, BIDU), down -9.9% over 1M, 0.0% above their 50-day average."
+    }
+  ],
+  "commentary": {
+    "synthesis": "AI-generated synthesis is not configured for this run (ANTHROPIC_API_KEY / ANTHROPIC_MODEL not set) -- showing raw figures only below.",
+    "generated_by": "fallback",
+    "model": null,
+    "disclaimer": "AI-generated summary of the numbers on this page only. Descriptive, not a forecast, recommendation, or investment advice."
+  },
   "constituents": [
     {
       "ticker": "CRM",
@@ -232,5 +391,5 @@
       "drawdown_90d": -40.7
     }
   ],
-  "methodology": "1M/3M returns are trailing 21/63 trading-day price changes. Vol (per name) = annualised stdev of that name's own trailing 21-day daily returns. Basket vol = same calculation pooled across the equity subset. Breadth = % of equity subset trading above its own 50-day moving average. Drawdown = max peak-to-trough over trailing 90 sessions per name. Descriptive only; not a signal or recommendation."
+  "methodology": "1M/3M returns are trailing 21/63 trading-day price changes. Vol (per name) = annualised stdev of that name's own trailing 21-day daily returns. Basket vol = same calculation pooled across the equity subset. Breadth = % of equity subset trading above its own 50-day moving average. Drawdown = max peak-to-trough over trailing 90 sessions per name. Layer aggregates are simple means across that layer's names. Only the synthesis paragraph above is LLM-generated; every other figure on this page is direct arithmetic. Descriptive only; not a signal or recommendation."
 }
