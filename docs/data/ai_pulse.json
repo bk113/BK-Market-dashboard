@@ -1,7 +1,7 @@
 {
-  "as_of": "2026-09-13 00:54 UTC",
-  "basket_breadth_above_50dma_pct": 72.0,
-  "basket_avg_ann_vol_21d_pct": 54.24,
+  "as_of": "2026-09-14 00:58 UTC",
+  "basket_breadth_above_50dma_pct": 64.0,
+  "basket_avg_ann_vol_21d_pct": 54.16,
   "basket_median_pe_ttm": 27.6,
   "basket_median_beta": 1.34,
   "basket_concentration_top3_pct": 49.4,
@@ -10,15 +10,15 @@
     "GOOGL",
     "MSFT"
   ],
-  "basket_avg_pairwise_corr": 0.2,
-  "basket_avg_pairwise_corr_window_days": 60,
+  "basket_avg_pairwise_corr": 0.19,
+  "basket_avg_pairwise_corr_window_days": 59,
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": 0.89,
-      "chg_1m": -0.28,
-      "chg_3m": 4.58,
-      "vol_21d_ann": 50.89
+      "chg_1d": 0.78,
+      "chg_1m": -1.11,
+      "chg_3m": 3.97,
+      "vol_21d_ann": 50.88
     },
     "etfs": [
       {
@@ -83,6 +83,12 @@
       "as_of": "2026-09-13 00:54 UTC",
       "basket_breadth_above_50dma_pct": 72.0,
       "basket_avg_ann_vol_21d_pct": 54.24
+    },
+    {
+      "date": "2026-09-14",
+      "as_of": "2026-09-14 00:58 UTC",
+      "basket_breadth_above_50dma_pct": 64.0,
+      "basket_avg_ann_vol_21d_pct": 54.16
     }
   ],
   "layers": [
@@ -135,12 +141,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": -1.99,
-      "avg_chg_1m": 9.7,
-      "avg_chg_3m": -12.4,
-      "avg_vol_21d_ann": 65.7,
-      "breadth_above_50dma_pct": 100.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +9.7% over 1M, 100.0% above their 50-day average."
+      "avg_chg_1d": -2.92,
+      "avg_chg_1m": 2.81,
+      "avg_chg_3m": -17.48,
+      "avg_vol_21d_ann": 65.54,
+      "breadth_above_50dma_pct": 33.3,
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +2.8% over 1M, 33.3% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -271,7 +277,7 @@
     }
   ],
   "commentary": {
-    "synthesis": "72.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 54.24% annualised. The largest single-day move was ANET (Networking), up 5.6%. Layer performance diverged over the trailing month: Memory led at +9.7%, while AI Cloud Infra (public) (n=1) lagged at -17.4%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in China AI / Low-Cost Models (0.0%).",
+    "synthesis": "64.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 54.16% annualised. The largest single-day move was ANET (Networking), up 5.6%. Layer performance diverged over the trailing month: Custom Silicon (n=1) led at +8.8%, while AI Cloud Infra (public) (n=1) lagged at -17.4%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in China AI / Low-Cost Models (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -310,7 +316,7 @@
       "above_50dma": true,
       "drawdown_90d": -17.8,
       "pe_ttm": 5168.5,
-      "pe_fwd": 128.8,
+      "pe_fwd": 128.7,
       "ev_ebitda": 1942.1,
       "beta": 1.25,
       "market_cap": 211688292352.0
@@ -501,7 +507,7 @@
       "drawdown_90d": -53.5,
       "pe_ttm": 23.5,
       "pe_fwd": 13.7,
-      "ev_ebitda": 16.5,
+      "ev_ebitda": 17.2,
       "beta": 1.73,
       "market_cap": 432877174784.0
     },
@@ -682,18 +688,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 259500.0,
-      "chg_1d": -3.53,
-      "chg_1m": 1.57,
-      "chg_3m": -19.45,
-      "vol_21d_ann": 67.44,
-      "above_50dma": true,
+      "last": 251500.0,
+      "chg_1d": -3.08,
+      "chg_1m": -6.16,
+      "chg_3m": -25.29,
+      "vol_21d_ann": 66.03,
+      "above_50dma": false,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
-      "pe_fwd": 3.7,
+      "pe_fwd": 3.6,
       "ev_ebitda": 6.8,
       "beta": 1.54,
-      "market_cap": 1704023174414336.0
+      "market_cap": 1648207390048256.0
     },
     {
       "ticker": "000660.KS",
@@ -701,18 +707,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1812000.0,
-      "chg_1d": -2.21,
-      "chg_1m": 20.5,
-      "chg_3m": -15.7,
-      "vol_21d_ann": 75.18,
-      "above_50dma": true,
+      "last": 1713000.0,
+      "chg_1d": -5.46,
+      "chg_1m": 7.56,
+      "chg_3m": -25.11,
+      "vol_21d_ann": 76.13,
+      "above_50dma": false,
       "drawdown_90d": -54.71,
       "pe_ttm": null,
-      "pe_fwd": 3.8,
+      "pe_fwd": 3.6,
       "ev_ebitda": 1.1,
       "beta": 2.39,
-      "market_cap": 1286257074241536.0
+      "market_cap": 1216691354730496.0
     },
     {
       "ticker": "ANET",
