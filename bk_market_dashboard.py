@@ -920,11 +920,16 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
         print(f"[Data Sanity] Data under review: {sorted(data_review_tickers)} "
               f"— suspected unadjusted corporate actions in yfinance source")
 
+    # Vol computations use prices_lv (ffill limit=5) so a sparse intraday "today"
+    # row — the common case when this runs before all closes are posted — does not
+    # create a missing return that silently deflates vol_now or skews vol_20d.
+    # Consistent with how drawdown peak already uses prices_lv.
+    ret_chg  = prices_lv.pct_change()
+
     # Vol as of latest date: 5-day realised vol annualised (captures current regime)
-    vol_now  = prices.pct_change().tail(6).std()  * np.sqrt(252)
+    vol_now  = prices_lv.pct_change().tail(6).std() * np.sqrt(252)
 
     # Vol 1 month ago: 20-day window ending ~21 trading days back
-    ret_chg  = prices.pct_change()
     vol_1m_ago = (
         ret_chg.iloc[-42:-21].std() * np.sqrt(252)
         if len(ret_chg) >= 42
@@ -935,7 +940,7 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     vol_20d = ret_chg.tail(21).std() * np.sqrt(252)
 
     # 1-year annualised vol + Sharpe
-    daily_ret_1y = prices.pct_change().tail(252)
+    daily_ret_1y = prices_lv.pct_change().tail(252)
     vol_1y       = daily_ret_1y.std() * np.sqrt(252)
     ann_ret_1y   = daily_ret_1y.mean() * 252
     # For very low-vol instruments (e.g. T-Bills), cap vol at 0.5% minimum to prevent extreme Sharpe
@@ -3430,14 +3435,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ══ TAB 2: RISK ═══════════════════════════════════════════════════════════
     def _varrow(now_v, ago_v):
         if pd.isna(now_v) or pd.isna(ago_v) or ago_v==0: return "gr","&#8594;","&mdash;"
-        chg = (now_v - ago_v) / ago_v
-        abs_chg = now_v - ago_v  # absolute change in vol (pp)
-        # For low-vol instruments (< 3% annualised), show absolute pp change
-        if ago_v < 0.03:
-            pp = abs_chg * 100
-            pct = f"{pp:+.2f}pp"
-        else:
-            pct = f"{chg*100:+.1f}%"
+        chg = (now_v - ago_v) / ago_v   # relative — used only for arrow tier thresholds
+        pct = f"{(now_v - ago_v)*100:+.1f}pp"  # arithmetic difference in percentage points
         if chg>=0.20:  return "nr","&#11014;&#11014;",pct
         if chg>=0.05:  return "am","&#11014;",pct
         if chg>=-0.05: return "gr","&#8594;",pct
@@ -3454,11 +3453,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
     vsumm=(f'<div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">'
            f'<div class="vc" style="border-color:#f85149;"><div class="vn" style="color:#f85149;">{rising}</div>'
-           f'<div class="vl">VOL RISING &#11014;</div><div class="vs">Change &gt; +5%</div></div>'
+           f'<div class="vl">VOL RISING &#11014;</div><div class="vs">Rel. change &gt; +5%</div></div>'
            f'<div class="vc" style="border-color:#8b949e;"><div class="vn" style="color:#8b949e;">{stable}</div>'
-           f'<div class="vl">VOL STABLE &#8594;</div><div class="vs">&#8722;5% to +5%</div></div>'
+           f'<div class="vl">VOL STABLE &#8594;</div><div class="vs">Rel. change &#8722;5% to +5%</div></div>'
            f'<div class="vc" style="border-color:#3fb950;"><div class="vn" style="color:#3fb950;">{falling}</div>'
-           f'<div class="vl">VOL EASING &#11015;</div><div class="vs">Change &lt; &#8722;5%</div></div>'
+           f'<div class="vl">VOL EASING &#11015;</div><div class="vs">Rel. change &lt; &#8722;5%</div></div>'
            f'</div>')
 
     # Per-section summaries for Risk accordion headers: avg vol, avg DD, avg Sharpe
@@ -3503,11 +3502,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     risk=(vsumm+
           _acc_controls("risk") +
           f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
-          f'<th>Vol 20D</th><th>Vol 1M Ago</th><th>30D Change</th>'
+          f'<th>Vol 20D</th><th>Vol 1M Ago</th><th>30D &Delta; Vol</th>'
           f'<th>Max DD</th><th>Sharpe</th><th>Signal</th></tr></thead>{rr}</tbody></table></div>'
           f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-          f'&#11014;&#11014; Vol rising &ge;+20% &nbsp;&#183;&nbsp; &#11014; +5% to +20% &nbsp;&#183;&nbsp; '
-          f'&#8594; stable &#8722;5% to +5% &nbsp;&#183;&nbsp; &#11015; easing &lt;&#8722;5% &nbsp;&#183;&nbsp; '
+          f'&#11014;&#11014; Vol rising (rel. &ge;+20%) &nbsp;&#183;&nbsp; &#11014; rel. +5%&ndash;20% &nbsp;&#183;&nbsp; '
+          f'&#8594; stable (rel. &pm;5%) &nbsp;&#183;&nbsp; &#11015; easing (rel. &lt;&minus;5%) &nbsp;&#183;&nbsp; '
+          f'30D &Delta; Vol = arithmetic difference in pp (Vol&nbsp;20D&nbsp;&minus;&nbsp;Vol&nbsp;1M&nbsp;Ago) &nbsp;&#183;&nbsp; '
           f'Sharpe = 1Y excess return / vol (rf=4.5%)<br>'
           f'Vol 20D = 20-day daily returns std dev &times; &radic;252 (annualised) &nbsp;&#183;&nbsp; '
           f'Vol 1M Ago = same calculation 21 trading days prior &nbsp;&#183;&nbsp; '
