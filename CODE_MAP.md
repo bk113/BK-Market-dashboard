@@ -2038,3 +2038,4 @@ Raw market data enters at `download()` (line 581) as two DataFrames — prices a
 | Date | Change | Updated by |
 |---|---|---|
 | 2026-04-18 | Initial generation | Claude Code |
+| 2026-09-20 | UNIVERSE: added SOXX (EQ_IDX, line 151) and SMIN (EQ_EM, line 165); FX_CCY_MAP: SMIN→INR (line 398). Added `_UNIVERSAL_AMBER`/`_UNIVERSAL_RED` constants (line 434) and `_historical_dd_percentiles()` (line 438). Modified `_rag()` signature to accept amber/red kwargs (line 467). `compute_metrics()`: added `dd_thresholds` computation (line 833) and per-ticker threshold lookup at _rag() call site (lines 961–962). Regime tab: added id="regime-methodology" to methodology footer div (line 4500); injected model agreement caption with jump-link (lines 4398–4406). | Claude Code |
