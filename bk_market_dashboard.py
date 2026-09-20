@@ -142,14 +142,15 @@ UNIVERSE = [
     ("EQ_DM",    "EWU",      "UK",                      "EQ Defensive"),
     ("EQ_DM",    "FLGB",     "FTSE 100 (UK)",           "EQ Defensive"),
 
-    # ── EQ_IDX — Specialist & Thematic (5) ──────────────────
+    # ── EQ_IDX — Specialist & Thematic (6) ──────────────────
     ("EQ_IDX",   "GURU",     "Global X Guru ETF",       "EQ Growth"),
     ("EQ_IDX",   "ARKK",     "ARK Innovation",          "EQ Growth"),
     ("EQ_IDX",   "SKYY",     "Cloud Computing",         "EQ Growth"),
     ("EQ_IDX",   "ICLN",     "Clean Energy",            "EQ Growth"),
     ("EQ_IDX",   "GRID",     "Smart Grid Infra",        "EQ Growth"),
+    ("EQ_IDX",   "SOXX",     "Semiconductors",          "EQ Growth"),
 
-    # ── EQ_EM — Emerging Markets (11) ────────────────────────
+    # ── EQ_EM — Emerging Markets (12) ────────────────────────
     ("EQ_EM",    "EWZ",      "Brazil",                  "EQ Growth"),
     ("EQ_EM",    "FXI",      "China",                   "EQ Growth"),
     ("EQ_EM",    "EEM",      "EM Broad",                "EQ Growth"),
@@ -161,6 +162,7 @@ UNIVERSE = [
     ("EQ_EM",    "EIDO",     "Indonesia",               "EQ Growth"),
     ("EQ_EM",    "VNM",      "Vietnam",                 "EQ Growth"),
     ("EQ_EM",    "KSA",      "Saudi Arabia",            "Real Assets"),
+    ("EQ_EM",    "SMIN",     "India Small Cap",         "EQ Growth"),
 
     # ── EQ_APAC — Asia Pacific (7) ──────────────────────────
     ("EQ_APAC",  "AAXJ",     "Asia ex-Japan",           "EQ Growth"),
@@ -393,7 +395,7 @@ FX_CCY_MAP = {
     "EWA": "AUD", "EWG": "EUR", "EWJ": "JPY", "EWS": "SGD", "EWU": "GBP",
     "EWZ": "BRL", "FXI": "CNY", "INDA": "INR", "EWY": "KRW",
     "EZA": "ZAR", "EWT": "TWD", "EWW": "MXN", "EIDO": "IDR", "VNM": "VND",
-    "KSA": "SAR", "EWH": "HKD", "FLGB": "GBP",
+    "KSA": "SAR", "EWH": "HKD", "FLGB": "GBP", "SMIN": "INR",
 }
 
 
@@ -429,14 +431,49 @@ def _sharpe_color(v: float) -> str:
     return RED
 
 
-def _rag(dd: float) -> tuple[str, str]:
+_UNIVERSAL_AMBER = -0.07
+_UNIVERSAL_RED   = -0.15
+
+
+def _historical_dd_percentiles(prices_df: pd.DataFrame, min_obs: int = 300) -> dict:
+    """
+    Per-instrument P10/P30 of the rolling-252-day-peak drawdown time series.
+    Returns {ticker: (amber_thresh, red_thresh)} — both negative floats.
+    Falls back to (_UNIVERSAL_AMBER, _UNIVERSAL_RED) when history is thin.
+    Instruments are judged against their own distribution so Fixed Income
+    flags at small absolute drawdowns and Crypto requires larger ones.
+    """
+    result = {}
+    lv = prices_df.ffill(limit=5)
+    for ticker in lv.columns:
+        col = lv[ticker].dropna()
+        if len(col) < min_obs:
+            result[ticker] = (_UNIVERSAL_AMBER, _UNIVERSAL_RED)
+            continue
+        peak      = col.rolling(252, min_periods=1).max()
+        dd_series = (col / peak - 1).dropna()
+        if len(dd_series) < min_obs:
+            result[ticker] = (_UNIVERSAL_AMBER, _UNIVERSAL_RED)
+            continue
+        p30 = float(np.percentile(dd_series, 30))
+        p10 = float(np.percentile(dd_series, 10))
+        if p30 >= 0 or p10 >= p30:
+            result[ticker] = (_UNIVERSAL_AMBER, _UNIVERSAL_RED)
+        else:
+            result[ticker] = (p30, p10)
+    return result
+
+
+def _rag(dd: float, amber: float = _UNIVERSAL_AMBER, red: float = _UNIVERSAL_RED) -> tuple[str, str]:
     """RAG signal based on max drawdown from 52-week high.
+    amber/red default to universal thresholds; pass per-instrument percentiles
+    from _historical_dd_percentiles() for self-relative assessment.
     Missing data falls back to AMBER so every instrument has a signal
     and the RED/AMBER/GREEN counts reconcile with the universe size.
     """
     if pd.isna(dd): return AMBER, "AMBER"
-    if dd < -0.15:  return RED,   " RED "
-    if dd < -0.07:  return AMBER, "AMBER"
+    if dd < red:    return RED,   " RED "
+    if dd < amber:  return AMBER, "AMBER"
     return GREEN, "GREEN"
 
 
@@ -792,8 +829,9 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     # long weekend + a not-yet-closed today, while still capping a
     # genuinely stale/delisted ticker rather than carrying it forward
     # indefinitely -- same bound already used for the FRED level series fix.
-    prices_lv = prices.ffill(limit=5)
-    _stale_today = prices.iloc[-1].isna() & prices_lv.iloc[-1].notna()
+    prices_lv     = prices.ffill(limit=5)
+    dd_thresholds = _historical_dd_percentiles(prices)
+    _stale_today  = prices.iloc[-1].isna() & prices_lv.iloc[-1].notna()
     if _stale_today.any():
         print(f"[Data Sanity] {_stale_today.sum()}/{len(_stale_today)} tickers had no "
               f"price for {today.date()} yet -- using last known close (<=5 days back) "
@@ -920,7 +958,8 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
         # Internal-only tickers (GVZ/OVX proxies) — never surface as rows.
         if ticker in DISPLAY_EXCLUSIONS:
             continue
-        rc, rl = _rag(max_dd.get(ticker, np.nan))
+        _amber, _red = dd_thresholds.get(ticker, (_UNIVERSAL_AMBER, _UNIVERSAL_RED))
+        rc, rl = _rag(max_dd.get(ticker, np.nan), amber=_amber, red=_red)
         # Normalised sparkline series (percent from 20-day-ago base)
         sp = spark_prices[ticker].dropna()
         spark = list((sp / sp.iloc[0] - 1) * 100) if len(sp) > 1 else []
@@ -4355,6 +4394,16 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:11px;color:#e6edf3;line-height:1.5;">'
             f'{"All models aligned" if model_agreement == models_avail else "Partial agreement &mdash; reduced conviction" if model_agreement >= 2 else "Models diverge &mdash; high uncertainty"}'
             f'</div></div>'
+            f'<div style="font-size:9px;color:#8b949e;line-height:1.6;margin-bottom:10px;border-top:1px solid #21262d;padding-top:8px;">'
+            f'Three independent models vote on the current regime. '
+            f'<strong style="color:#c8cfe0;">State Machine</strong> is deterministic (vol + drawdown thresholds &mdash; the headline call). '
+            f'<strong style="color:#c8cfe0;">HMM</strong> and <strong style="color:#c8cfe0;">GMM</strong> are statistical; '
+            f'they cross-validate the deterministic call. '
+            f'Full agreement = high conviction. '
+            f'When models diverge, the most severe call wins (conservative by design) &mdash; '
+            f'treat the divergence itself as a signal worth examining. '
+            f'<a href="#regime-methodology" style="color:#58a6ff;text-decoration:none;">Methodology &darr;</a>'
+            f'</div>'
             f'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
             f'<thead><tr>'
             f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;border-bottom:1px solid #30363d;">Model</th>'
@@ -4448,7 +4497,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
             # ── 6. METHODOLOGY FOOTER ─────────────────────────────────────────
             # Full transparency on how each model works — institutional standard.
-            f'<div style="margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px 16px;">'
+            f'<div id="regime-methodology" style="margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px 16px;">'
             f'<div style="font-size:9px;font-weight:700;letter-spacing:2px;color:#8b949e;margin-bottom:10px;">METHODOLOGY — 3-TIER INSTITUTIONAL REGIME FRAMEWORK</div>'
             f'<div style="font-size:9px;color:#8b949e;font-family:monospace;line-height:2;">'
             f'<strong style="color:#c8cfe0;">Tier 1 &mdash; State Machine (headline):</strong> '
@@ -5014,6 +5063,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     reg_now_e = regime_data.get("regime","Calm") if regime_data else "Calm"
     rc_e = {"Crisis":"#f85149","Stressed":"#e3b341","Calm":"#3fb950"}.get(reg_now_e,"#8b949e")
     rb_e = {"Crisis":"#2d0f0e","Stressed":"#2d2106","Calm":"#0d2318"}.get(reg_now_e,"#161b22")
+    # Display-only rename, same as the Intel tab (see "_disp" above): internal
+    # key "Calm" shown as "Moderate" so this tab doesn't contradict Intel's
+    # regime pill for the same underlying state. Was previously missing here
+    # -- this tab printed the raw internal key ("CALM REGIME") while Intel
+    # correctly showed "MODERATE".
+    reg_now_e_disp = {"Calm": "Moderate"}.get(reg_now_e, reg_now_e)
 
     _df_rankable = df[df["ticker"].apply(is_rankable)]
     top_gain  = _df_rankable.nlargest(1,"ret_1m")["name"].iloc[0] if not _df_rankable.empty else "N/A"
@@ -5116,7 +5171,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         + f'<div style="background:{rb_e};border:2px solid {rc_e};border-radius:10px;padding:18px 24px;margin-bottom:14px;">'
         f'<div style="font-size:9px;color:{rc_e};letter-spacing:3px;font-family:monospace;margin-bottom:6px;">CURRENT REGIME CONTEXT</div>'
         f'<div style="font-size:9px;color:#8b949e;font-family:monospace;margin-bottom:8px;font-style:italic;">Factual state summary &mdash; no model interpretation</div>'
-        f'<div style="font-size:22px;font-weight:700;color:{rc_e};font-family:monospace;">{reg_now_e.upper()} REGIME</div>'
+        f'<div style="font-size:22px;font-weight:700;color:{rc_e};font-family:monospace;">{reg_now_e_disp.upper()} REGIME</div>'
         f'<div style="font-size:11px;color:#e6edf3;margin-top:8px;line-height:1.7;">{commentary}</div>'
         f'</div>'
         # Key signals (3 cards side-by-side) — duplicate "Suggested Portfolio
