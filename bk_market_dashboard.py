@@ -1507,11 +1507,33 @@ def compute_fragility_legacy(prices: pd.DataFrame,
     if volumes is None:
         volumes = pd.DataFrame(0.0, index=prices.index, columns=prices.columns)
 
+    # ── Sanity-clip corrupt tickers before pillar computations ───────────────
+    # PALL/PPLT/SLV/GLD have unadjusted corporate-action price spikes in
+    # yfinance (same root as RETURN_SANITY_MAX in compute_metrics, which clips
+    # only display returns). Clip ±15% daily return here so all six fragility
+    # pillars see clean data, not just the display returns. Reconstruct the
+    # price level from capped returns so price-level pillars (dd, dist200)
+    # are also clean — a single corporate-action spike in the raw price would
+    # otherwise push dd and dist200 permanently high for 252+ trading days.
+    _FRAG_DAILY_CAP = {'PALL': 0.15, 'PPLT': 0.15, 'SLV': 0.15, 'GLD': 0.15}
+    prices_c = prices.copy()
+    for _tk, _cap in _FRAG_DAILY_CAP.items():
+        if _tk not in prices_c.columns:
+            continue
+        _r_raw  = prices_c[_tk].pct_change()
+        _r_cap  = _r_raw.clip(-_cap, _cap)
+        _fi     = prices_c[_tk].first_valid_index()
+        if _fi is None:
+            continue
+        _base   = float(prices_c[_tk].loc[_fi])
+        _cum    = (1 + _r_cap.fillna(0)).cumprod()          # fillna(0) = no-move on gap days
+        prices_c[_tk] = _base * _cum / float(_cum.loc[_fi]) # anchor to first real price
+
     # ── Pillar computations ────────────────────────────────────────────────────
-    rets    = prices.pct_change().replace([np.inf, -np.inf], np.nan)
-    wdd     = min(252, len(prices))
-    peak    = prices.rolling(wdd, min_periods=20).max()
-    dd      = (prices / peak - 1.0).abs()                              # drawdown magnitude
+    rets    = prices_c.pct_change().replace([np.inf, -np.inf], np.nan)
+    wdd     = min(252, len(prices_c))
+    peak    = prices_c.rolling(wdd, min_periods=20).max()
+    dd      = (prices_c / peak - 1.0).abs()                            # drawdown magnitude
     vol20   = rets.rolling(20, min_periods=10).std() * np.sqrt(252)    # annualised vol
 
     def _cvar(x):
@@ -1520,8 +1542,8 @@ def compute_fragility_legacy(prices: pd.DataFrame,
         return abs(np.nanmean(tail)) if len(tail) > 0 else np.nan
 
     cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)  # expected shortfall
-    ma200   = prices.rolling(200, min_periods=50).mean()
-    dist200 = (-(prices / ma200 - 1.0)).clip(lower=0)                   # downside-only trend stress
+    ma200   = prices_c.rolling(200, min_periods=50).mean()
+    dist200 = (-(prices_c / ma200 - 1.0)).clip(lower=0)                 # downside-only trend stress
 
     # Transmission: correlation to world proxy — positive coupling only
     wcol   = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
@@ -1595,7 +1617,7 @@ def compute_fragility_legacy(prices: pd.DataFrame,
         if pd.isna(v):
             continue
 
-        rag     = "CRISIS" if v >= 70 else "STRESSED" if v >= 55 else "MODERATE"
+        rag     = "CRITICAL" if v >= 70 else "ELEVATED" if v >= 55 else "WATCH" if v >= 40 else "LOW"
         sec, name = t2m.get(col, ("", col))
 
         def _p(z, k):
@@ -1620,7 +1642,7 @@ def compute_fragility_legacy(prices: pd.DataFrame,
         ifm_scores = fdf[fdf["ticker"].isin(IFM_43_TICKERS)]["fragility"].dropna()
         ss = float(ifm_scores.median()) if not ifm_scores.empty else float(fdf["fragility"].dropna().median())
         fdf.attrs["system_score"] = round(ss, 1)
-        fdf.attrs["regime"]       = "CRISIS" if ss >= 70 else "STRESSED" if ss >= 55 else "MODERATE"
+        fdf.attrs["regime"]       = "CRITICAL" if ss >= 70 else "ELEVATED" if ss >= 55 else "WATCH" if ss >= 40 else "LOW"
 
     return fdf
 
@@ -2542,7 +2564,7 @@ def compute_fragility_v23(panel_dir: str = None) -> pd.DataFrame:
             })
             continue
 
-        rag = "CRISIS" if v >= 70 else "STRESSED" if v >= 55 else "MODERATE"
+        rag = "CRITICAL" if v >= 70 else "ELEVATED" if v >= 55 else "WATCH" if v >= 40 else "LOW"
 
         def _p(pkey):
             z = pillars_last_valid[pkey].get(canon, np.nan)
@@ -2569,7 +2591,7 @@ def compute_fragility_v23(panel_dir: str = None) -> pd.DataFrame:
         native_latest = score.loc[latest_date, native_cols].dropna() if native_cols else pd.Series(dtype=float)
         ss = float(native_latest.median()) if not native_latest.empty else float(fdf["fragility"].dropna().median())
         fdf.attrs["system_score"] = round(ss, 1)
-        fdf.attrs["regime"] = "CRISIS" if ss >= 70 else "STRESSED" if ss >= 55 else "MODERATE"
+        fdf.attrs["regime"] = "CRITICAL" if ss >= 70 else "ELEVATED" if ss >= 55 else "WATCH" if ss >= 40 else "LOW"
 
     return fdf
 
@@ -3397,7 +3419,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
              f'{_sig(row["rag_label"],row["rag_color"])}</tr>')
 
     perf=(f'<div class="tbar"><div><div class="lbl">MARKET TONE</div>'
-          f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};">{tone}</div></div>'
+          f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};" title="RISK-ON gate: Regime ≥ Neutral (score ≥4), Fragility &lt;55, Rising-risk &lt;40% of instruments — all three must hold">{tone}</div></div>'
           f'<div class="dvdr"></div><div class="rb">'
           f'<div class="ri"><div class="rn" style="color:#f85149;">{nr}</div><div class="rl">RED</div></div>'
           f'<div class="ri"><div class="rn" style="color:#e3b341;">{na}</div><div class="rl">AMBER</div></div>'
@@ -3601,9 +3623,10 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'</div></div>'
             f'{svg_parts}'
             f'<div style="display:flex;gap:16px;margin-top:6px;font-size:9px;color:#8b949e;">'
-            f'<span><span style="color:#f85149;">&#9632;</span> CRISIS &#8805;70</span>'
-            f'<span><span style="color:#e3b341;">&#9632;</span> STRESSED 55&#8211;69</span>'
-            f'<span><span style="color:#3fb950;">&#9632;</span> MODERATE &lt;55</span>'
+            f'<span><span style="color:#f85149;">&#9632;</span> CRITICAL &#8805;70</span>'
+            f'<span><span style="color:#f0883e;">&#9632;</span> ELEVATED 55&#8211;69</span>'
+            f'<span><span style="color:#e3b341;">&#9632;</span> WATCH 40&#8211;54</span>'
+            f'<span><span style="color:#3fb950;">&#9632;</span> LOW &lt;40</span>'
             f'<span style="margin-left:8px;">Dashed lines = regime thresholds</span>'
             f'</div></div>'
         )
@@ -3614,18 +3637,19 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ══ TAB 3: FRAGILITY ══════════════════════════════════════════════════════
     if frag_df is not None and not frag_df.empty:
         ss=frag_df.attrs.get("system_score",float(frag_df["fragility"].median()))
-        reg=frag_df.attrs.get("regime","MODERATE")
-        rc_={"CRISIS":"#f85149","STRESSED":"#e3b341","MODERATE":"#3fb950"}.get(reg,"#8b949e")
-        rb_={"CRISIS":"#2d0f0e","STRESSED":"#2d2106","MODERATE":"#0d2318"}.get(reg,"#161b22")
-        ncr=int((frag_df["rag"]=="CRISIS").sum())
-        nst=int((frag_df["rag"]=="STRESSED").sum())
-        nca=int((frag_df["rag"]=="MODERATE").sum())
+        reg=frag_df.attrs.get("regime","LOW")
+        rc_={"CRITICAL":"#f85149","ELEVATED":"#f0883e","WATCH":"#e3b341","LOW":"#3fb950"}.get(reg,"#8b949e")
+        rb_={"CRITICAL":"#2d0f0e","ELEVATED":"#2d1a0e","WATCH":"#2d2106","LOW":"#0d2318"}.get(reg,"#161b22")
+        ncrit=int((frag_df["rag"]=="CRITICAL").sum())
+        nelev=int((frag_df["rag"]=="ELEVATED").sum())
+        nwat =int((frag_df["rag"]=="WATCH").sum())
+        nlow =int((frag_df["rag"]=="LOW").sum())
 
         def _arc(deg,r=75,cx=100,cy=100):
             rad=math.radians(180-deg)
             return cx+r*math.cos(rad), cy-r*math.sin(rad)
-        ga=max(1,min(179,int(ss/100*180))); gc="#f85149" if ss>=70 else "#e3b341" if ss>=55 else "#3fb950"
-        _frag_label = "CRISIS" if ss>=70 else "STRESSED" if ss>=55 else "MODERATE"
+        ga=max(1,min(179,int(ss/100*180))); gc="#f85149" if ss>=70 else "#f0883e" if ss>=55 else "#e3b341" if ss>=40 else "#3fb950"
+        _frag_label = "CRITICAL" if ss>=70 else "ELEVATED" if ss>=55 else "WATCH" if ss>=40 else "LOW"
         ax,ay=_arc(ga); lg=1 if ga>90 else 0
         gauge=(f'<svg viewBox="0 0 200 130" width="200" height="130">'
                f'<path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#21262d" stroke-width="12" stroke-linecap="round"/>'
@@ -3638,7 +3662,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
 
         t5h=""
         for _,r in frag_df[frag_df["ticker"].apply(is_rankable)].head(5).iterrows():
-            fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
+            fc="#f85149" if r["rag"]=="CRITICAL" else "#f0883e" if r["rag"]=="ELEVATED" else "#e3b341" if r["rag"]=="WATCH" else "#3fb950"
             bw=min(100,r["fragility"])
             t5h+=(f'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #21262d;">'
                   f'<div style="width:150px;font-size:11px;color:#e6edf3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{r["name"]}</div>'
@@ -3692,7 +3716,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                        f'<td class="num gr" colspan="10" style="font-style:italic;">'
                        f'{_na_reason(r["ticker"])}</td></tr>')
                 continue
-            fc="#f85149" if r["rag"]=="CRISIS" else "#e3b341" if r["rag"]=="STRESSED" else "#3fb950"
+            fc="#f85149" if r["rag"]=="CRITICAL" else "#f0883e" if r["rag"]=="ELEVATED" else "#e3b341" if r["rag"]=="WATCH" else "#3fb950"
             bw=min(100,r["fragility"])
             pv={k:r.get(k,0) for k in PL}; top=PL[max(pv,key=pv.get)]
             pc="".join(f'<td class="num {"ps" if r.get(k,0)>1 else "am" if r.get(k,0)>0 else "gr"}">{r.get(k,0):+.1f}</td>' for k in PL)
@@ -3704,18 +3728,21 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                  f'background:{rb_};border:1px solid {fc};border-radius:10px;padding:1px 8px;">{r["rag"]}</span></td>'
                  f'<td class="num gr" style="font-size:10px;">{top}</td>{pc}</tr>')
 
-        frag= frag_trend_html + (f'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;">'
+        frag= frag_trend_html + (f'<div style="display:grid;grid-template-columns:auto 1fr 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;align-items:stretch;">'
               f'<div class="fc" style="text-align:center;"><div class="lbl" style="margin-bottom:8px;">SYSTEM FRAGILITY</div>'
               f'{gauge}<div class="pill" style="background:{rb_};color:{rc_};border:1px solid {rc_};margin-top:6px;">{reg}</div></div>'
-              f'<div class="fc" style="text-align:center;"><div class="lbl">CRISIS</div>'
-              f'<div style="font-size:28px;font-weight:700;color:#f85149;font-family:monospace;">{ncr}</div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">CRITICAL</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#f85149;font-family:monospace;">{ncrit}</div>'
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &#8805; 70</div></div>'
-              f'<div class="fc" style="text-align:center;"><div class="lbl">STRESSED</div>'
-              f'<div style="font-size:28px;font-weight:700;color:#e3b341;font-family:monospace;">{nst}</div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">ELEVATED</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#f0883e;font-family:monospace;">{nelev}</div>'
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score 55&#8211;69</div></div>'
-              f'<div class="fc" style="text-align:center;"><div class="lbl">MODERATE</div>'
-              f'<div style="font-size:28px;font-weight:700;color:#3fb950;font-family:monospace;">{nca}</div>'
-              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 55</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">WATCH</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#e3b341;font-family:monospace;">{nwat}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score 40&#8211;54</div></div>'
+              f'<div class="fc" style="text-align:center;"><div class="lbl">LOW</div>'
+              f'<div style="font-size:28px;font-weight:700;color:#3fb950;font-family:monospace;">{nlow}</div>'
+              f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">Score &lt; 40</div></div>'
               f'<div class="fc" style="text-align:center;"><div class="lbl">TOTAL</div>'
               f'<div style="font-size:28px;font-weight:700;color:#e6edf3;font-family:monospace;">{_n_frag_scored}</div>'
               f'<div style="font-size:9px;color:#8b949e;margin-top:4px;">{_n_frag_scored} of {N_INSTRUMENTS} scored (FX excluded)</div>'
@@ -3742,7 +3769,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
               f'BK Fragility Framework v2.3 &#183; Volatility 27.8% + CVaR 26.4% + Drawdown 18.8% + Trend 11.8% + Contagion 10.3% + Vol Stress 4.9% (walk-forward IC-derived weights) &#183; '
-              f'CRISIS &#8805;70 &#183; STRESSED 55&#8211;69 &#183; MODERATE &lt;55<br>'
+              f'CRITICAL &#8805;70 &#183; ELEVATED 55&#8211;69 &#183; WATCH 40&#8211;54 &#183; LOW &lt;40<br>'
               f'Pillar scores are standardised z-scores relative to history (positive = above average stress) &#183; '
               f'Top Driver = highest contributing pillar &#183; '
               f'Negative scores = below historical stress average (healthy signal)</div>')
@@ -4209,6 +4236,18 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 f'</div>'
             )
 
+        low_pairs_html = ""
+        for v, a, b in sorted(pairs, key=lambda x: abs(x[0]))[:8]:
+            color = "#f85149" if v > 0 else "#58a6ff"
+            sign  = "+" if v > 0 else ""
+            low_pairs_html += (
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'padding:5px 0;border-bottom:1px solid #21262d;">'
+                f'<div style="font-size:11px;color:#e6edf3;">{a} <span style="color:#8b949e;">vs</span> {b}</div>'
+                f'<div style="font-family:monospace;font-size:12px;font-weight:700;color:{color};">{sign}{v:.2f}</div>'
+                f'</div>'
+            )
+
         analysis_tab = (
             # Summary stats
             f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">'
@@ -4230,10 +4269,12 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'{heatmap_svg}'
             f'<div style="margin-top:6px;">{legend_svg}</div>'
             f'</div>'
-            # Top correlated pairs
-            f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+            # Top / bottom correlated pairs + legend
+            f'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">'
             f'<div class="fc"><div class="lbl" style="margin-bottom:10px;">STRONGEST CORRELATIONS</div>'
             f'{top_pairs_html}</div>'
+            f'<div class="fc"><div class="lbl" style="margin-bottom:10px;">LEAST CORRELATED</div>'
+            f'{low_pairs_html}</div>'
             f'<div class="fc"><div class="lbl" style="margin-bottom:10px;">HOW TO READ</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.9;">'
             f'<span style="color:#f85149;">&#9632;</span> Red = move together (+1.0)<br>'
@@ -4377,6 +4418,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         _years_label = f"{_actual_years:.1f}-YEAR HISTORY" if _actual_years else "HISTORY"
 
         vol_pct_color = "#f85149" if drivers.get("vol_pct",0)>90 else "#e3b341" if drivers.get("vol_pct",0)>70 else "#3fb950"
+        _vol_rag_lbl  = "RED" if drivers.get("vol_pct",0)>90 else "AMBER" if drivers.get("vol_pct",0)>70 else "GREEN"
         _dd_now = drivers.get("dd_now", 0)
         dd_pct_color  = "#8b949e" if abs(_dd_now) < 1.0 else "#f85149" if drivers.get("dd_pct",0)<20 else "#e3b341"
 
@@ -4558,7 +4600,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="display:flex;align-items:baseline;gap:10px;margin:8px 0;">'
             f'<div style="font-size:28px;font-weight:700;color:{vol_pct_color};font-family:monospace;">{drivers.get("vol_now",0):.1f}%</div>'
             f'<div style="font-size:12px;color:#8b949e;">annualised vol</div></div>'
-            f'<div style="font-size:11px;color:#e6edf3;">At <span style="color:{vol_pct_color};font-weight:700;">{drivers.get("vol_pct",0):.0f}th percentile</span> of history</div>'
+            f'<div style="font-size:11px;color:#e6edf3;">At <span style="color:{vol_pct_color};font-weight:700;">{drivers.get("vol_pct",0):.0f}th percentile</span> of history'
+            f' &nbsp;<span style="font-size:9px;font-weight:700;letter-spacing:1px;color:{vol_pct_color};">{_vol_rag_lbl}</span></div>'
             f'<div style="background:#21262d;border-radius:4px;height:8px;margin-top:10px;">'
             f'<div style="width:{min(100,drivers.get("vol_pct",0)):.0f}%;background:{vol_pct_color};height:8px;border-radius:4px;"></div></div>'
             f'</div>'
@@ -4889,7 +4932,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         contrarian_items = sorted(contrarian_items, key=lambda x: x[2])[:5]
 
     # ── TOP RISKS ────────────────────────────────────────────────────────────
-    risks_df = (frag_df[frag_df["rag"].isin(["CRISIS","STRESSED"]) & frag_df["ticker"].apply(is_rankable)].head(5)
+    risks_df = (frag_df[frag_df["rag"].isin(["CRITICAL","ELEVATED"]) & frag_df["ticker"].apply(is_rankable)].head(5)
                 if frag_df is not None and not frag_df.empty else pd.DataFrame())
 
     # ── Opportunity factor decomposition bar builder ─────────────────────────
@@ -5020,8 +5063,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ── Build TOP RISKS HTML (with pillar decomposition bars) ────────────────
     risk_cards = ""
     for _, r in risks_df.iterrows():
-        fc = "#f85149" if r["rag"]=="CRISIS" else "#e3b341"
-        rb = "#2d0f0e" if r["rag"]=="CRISIS" else "#2d2106"
+        fc = "#f85149" if r["rag"]=="CRITICAL" else "#f0883e" if r["rag"]=="ELEVATED" else "#e3b341"
+        rb = "#2d0f0e" if r["rag"]=="CRITICAL" else "#2d1a0e" if r["rag"]=="ELEVATED" else "#2d2106"
         risk_cards += (
             f'<div style="background:{rb};border:1px solid {fc};border-radius:6px;padding:10px 12px;margin-bottom:6px;">'
             f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
@@ -5130,7 +5173,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:14px;">'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">MARKET TONE</div>'
-        f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;font-size:13px;">{tone}</div>'
+        f'<div class="pill" style="background:{tb};color:{tc};border:1px solid {tc};margin-top:6px;font-size:13px;" title="RISK-ON gate: Regime ≥ Neutral (score ≥4), Fragility &lt;55, Rising-risk &lt;40% of instruments — all three must hold">{tone}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">REGIME</div>'
@@ -5139,7 +5182,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">FRAGILITY</div>'
         f'<div style="font-size:28px;font-weight:700;color:{rc_};font-family:monospace;margin-top:4px;">{frag_sys:.0f}</div>'
-        f'<div style="font-size:9px;color:#8b949e;">{"CRISIS" if frag_sys>=70 else "STRESSED" if frag_sys>=55 else "MODERATE"}</div>'
+        f'<div style="font-size:9px;color:#8b949e;">{"CRITICAL" if frag_sys>=70 else "ELEVATED" if frag_sys>=55 else "WATCH" if frag_sys>=40 else "LOW"}</div>'
         f'</div>'
         f'<div class="fc" style="text-align:center;">'
         f'<div class="lbl">FEAR &amp; GREED</div>'
@@ -5272,7 +5315,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         # Fragility tab. Previously int() truncated while :.0f rounded, giving
         # 79 here vs 80 on the Fragility tab for the same underlying value.
         highest_risk_score = round(float(top_frag["fragility"]))
-        highest_risk_label = top_frag.get("rag","CRISIS")
+        highest_risk_label = top_frag.get("rag","CRITICAL")
         use_fragility_risk = True
     else:
         worst_asset = _df_rankable.nsmallest(1,"ret_1m")[["name","ret_1m"]].iloc[0]
@@ -5749,7 +5792,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<div class='footer'><div class='fn'>"
         "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>"
         "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
-        "Fragility: CRISIS &#8805;70 &#183; STRESSED 55&#8211;69 &#183; MODERATE &lt;55 &#183; BK Fragility Framework<br>"
+        "Fragility: CRITICAL &#8805;70 &#183; ELEVATED 55&#8211;69 &#183; WATCH 40&#8211;54 &#183; LOW &lt;40 &#183; BK Fragility Framework<br>"
         ""
         f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Updated daily before market open"
         "</div><div style='text-align:right;'>"
@@ -6415,7 +6458,7 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
         _streak     = regime_data.get("days_in_regime",0) if regime_data else 0
         _drivers    = regime_data.get("drivers",{}) if regime_data else {}
         _frag_s     = frag_df.attrs.get("system_score",50) if frag_df is not None and not frag_df.empty else 50
-        _frag_l     = frag_df.attrs.get("regime","MODERATE") if frag_df is not None and not frag_df.empty else "MODERATE"
+        _frag_l     = frag_df.attrs.get("regime","LOW") if frag_df is not None and not frag_df.empty else "LOW"
         _fg_s       = round(fg_data.get("score",50)) if fg_data else 50
         _fg_l       = fg_data.get("label","Neutral") if fg_data else "Neutral"
         _df_ai_rank = df[df["ticker"].apply(is_rankable)]
