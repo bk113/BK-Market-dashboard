@@ -1901,6 +1901,49 @@ def _transition_risk(sm_regime: str, hmm_probs: dict) -> tuple:
         return "Low", "All models confirm crisis conditions"
 
 
+def compute_stress_contributors(prices: pd.DataFrame, top_n: int = 7) -> list:
+    """
+    Rank UNIVERSE instruments by stress using the same vol20 / dd252 inputs
+    as the Tier-1 State Machine — per-instrument self-relative percentiles.
+    Returns top_n dicts sorted by combined stress rank, highest first.
+    Never uses fragility data; vol and drawdown only.
+    """
+    rows = []
+    for sec, ticker, name, _bucket in UNIVERSE:
+        if ticker not in prices.columns or ticker in DISPLAY_EXCLUSIONS:
+            continue
+        col = prices[ticker].ffill(limit=5).dropna()
+        if len(col) < 252:
+            continue
+        rets         = col.pct_change().replace([np.inf, -np.inf], np.nan)
+        vol20_series = rets.rolling(20, min_periods=10).std() * np.sqrt(252)
+        cur_vol      = float(vol20_series.iloc[-1]) if not pd.isna(vol20_series.iloc[-1]) else np.nan
+        if pd.isna(cur_vol):
+            continue
+        peak      = col.rolling(252, min_periods=20).max()
+        dd_series = col / peak - 1.0
+        cur_dd    = float(dd_series.iloc[-1]) if not pd.isna(dd_series.iloc[-1]) else np.nan
+        if pd.isna(cur_dd):
+            continue
+        vol_pct = float((vol20_series.dropna() <= cur_vol).mean() * 100)
+        # dd_pct: fraction of history with smaller (less severe) drawdown
+        dd_pct  = float((dd_series.dropna() >= cur_dd).mean() * 100)
+        stress  = max(vol_pct, dd_pct)
+        rows.append({
+            "ticker":  ticker,
+            "name":    name,
+            "section": sec,
+            "vol_pct": round(vol_pct, 0),
+            "dd_pct":  round(dd_pct, 0),
+            "cur_vol": round(cur_vol * 100, 1),
+            "cur_dd":  round(cur_dd * 100, 1),
+            "stress":  stress,
+            "driver":  "VOL" if vol_pct >= dd_pct else "DD",
+        })
+    rows.sort(key=lambda x: x["stress"], reverse=True)
+    return rows[:top_n]
+
+
 def compute_regime(prices: pd.DataFrame) -> dict:
     """
     Institutional multi-model regime detection engine.
@@ -4202,8 +4245,41 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         consensus       = regime_data.get("consensus", reg)
         model_agreement = regime_data.get("model_agreement", 1)
         models_avail    = regime_data.get("models_available", 1)
-        tr_level        = regime_data.get("transition_risk", "N/A")
-        tr_desc         = regime_data.get("transition_desc", "")
+        tr_level            = regime_data.get("transition_risk", "N/A")
+        tr_desc             = regime_data.get("transition_desc", "")
+        stress_contributors = regime_data.get("stress_contributors", [])
+
+        # Pre-build stress contributor rows
+        _SEC_SHORT = {
+            "EQ_US":"US Eq", "EQ_SECT":"Sector", "EQ_DM":"Dev Mkt",
+            "EQ_IDX":"Thematic", "EQ_APAC":"Asia Pac", "EQ_EM":"EM",
+            "DEFENCE":"Defence", "FI":"Fixed Inc", "FI_INTL":"FI Intl",
+            "RATES":"Rates", "CMD":"Cmd", "CRYPTO":"Crypto",
+            "FX":"FX", "VOL":"Vol", "ALT":"Alts",
+        }
+        _stress_rows = ""
+        for _sc in stress_contributors:
+            _pct   = _sc["stress"]
+            _sc_c  = "#f85149" if _pct >= 90 else "#e3b341" if _pct >= 70 else "#3fb950"
+            _drv   = _sc["driver"]
+            _drv_v = f'{_sc["cur_vol"]:.1f}% ann vol' if _drv == "VOL" else f'{_sc["cur_dd"]:.1f}% from peak'
+            _stress_rows += (
+                f'<tr style="border-bottom:1px solid #21262d;">'
+                f'<td style="padding:5px 10px;font-weight:700;font-family:monospace;color:#e6edf3;">{_sc["ticker"]}</td>'
+                f'<td style="padding:5px 10px;color:#8b949e;font-size:10px;">{_SEC_SHORT.get(_sc["section"],_sc["section"])}</td>'
+                f'<td style="padding:5px 10px;">'
+                f'<span style="font-size:9px;font-weight:700;letter-spacing:1px;color:{_sc_c};">{_drv}</span>'
+                f'<span style="font-size:9px;color:#8b949e;margin-left:5px;">{_drv_v}</span>'
+                f'</td>'
+                f'<td style="padding:5px 10px;text-align:right;">'
+                f'<span style="color:{_sc_c};font-weight:700;font-family:monospace;">{_pct:.0f}th pct</span>'
+                f'</td>'
+                f'<td style="padding:5px 14px;width:80px;">'
+                f'<div style="background:#21262d;border-radius:3px;height:5px;">'
+                f'<div style="width:{min(100,_pct):.0f}%;background:{_sc_c};height:5px;border-radius:3px;"></div>'
+                f'</div></td>'
+                f'</tr>'
+            )
 
         # Display-only rename: internal key "Calm" shown as "Moderate"
         _disp = {"Calm": "Moderate"}
@@ -4466,8 +4542,26 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                if abs(_dd_now) < 1.0 else '')
             + f'</div></div>'
 
+            # ── 3b. TOP STRESS CONTRIBUTORS ───────────────────────────────────
+            + (f'<div class="fc" style="margin-bottom:14px;">'
+               f'<div class="lbl" style="margin-bottom:8px;">TOP STRESS CONTRIBUTORS — VOL &amp; DRAWDOWN (per-instrument, self-relative)</div>'
+               f'<div style="font-size:9px;color:#8b949e;margin-bottom:8px;">'
+               f'Ranked by worst percentile of vol20 or dd252 vs own history &mdash; same inputs as the Tier-1 State Machine, applied per instrument.'
+               f'</div>'
+               f'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+               f'<thead><tr style="border-bottom:1px solid #30363d;">'
+               f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;">Ticker</th>'
+               f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;">Class</th>'
+               f'<th style="text-align:left;padding:4px 10px;font-size:8px;color:#8b949e;">Driver</th>'
+               f'<th style="text-align:right;padding:4px 10px;font-size:8px;color:#8b949e;">Stress pct</th>'
+               f'<th style="padding:4px 14px;font-size:8px;color:#8b949e;"></th>'
+               f'</tr></thead>'
+               f'<tbody>{_stress_rows if _stress_rows else "<tr><td colspan=5 style=padding:8px;color:#8b949e;>Insufficient history for ranking</td></tr>"}</tbody>'
+               f'</table></div>'
+               if stress_contributors else '')
+
             # ── 4. TIMELINE ───────────────────────────────────────────────────
-            f'<div class="fc" style="margin-bottom:14px;">'
+            + f'<div class="fc" style="margin-bottom:14px;">'
             f'<div class="lbl" style="margin-bottom:10px;">REGIME TIMELINE — LAST 2 YEARS</div>'
             f'<div style="display:flex;gap:16px;margin-bottom:8px;">'
             f'<span style="font-size:10px;color:#3fb950;">&#9632; MODERATE</span>'
@@ -6232,6 +6326,7 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
         frag_df     = compute_fragility(prices, volumes)
         print("[HTML]   Computing market regime...")
         regime_data = compute_regime(prices)
+        regime_data["stress_contributors"] = compute_stress_contributors(prices)
         print("[HTML]   Computing Fear & Greed index...")
         fg_data     = compute_fear_greed(prices)
         print("[HTML]   Computing fragility trend...")
