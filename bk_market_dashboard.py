@@ -2,7 +2,7 @@
 BK Market Dashboard — Consolidated
 ====================================
 114-instrument universe · 15 asset classes · Performance, Risk & Fragility.
-Last updated: 2026-04-13
+Last updated: 2026-09-20
 
 Outputs:
   docs/index.html   3-tab web page (GitHub Pages — auto-updated daily)
@@ -4787,6 +4787,46 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     na = int((df["rag_label"].str.strip()=="AMBER").sum())
     ng = int((df["rag_label"].str.strip()=="GREEN").sum())
 
+    # RAG by asset class — one row per SECTION_LABELS entry for the breakdown panel
+    _rag_rows = ""
+    for _sk in SECTION_ORDER:
+        _sl  = SECTION_LABELS.get(_sk, _sk)
+        _sdf = df[df["section"] == _sk]
+        if _sdf.empty:
+            continue
+        _sr = int((_sdf["rag_label"].str.strip() == "RED").sum())
+        _sa = int((_sdf["rag_label"].str.strip() == "AMBER").sum())
+        _sg = int((_sdf["rag_label"].str.strip() == "GREEN").sum())
+        _st = _sr + _sa + _sg
+        if _st == 0:
+            continue
+        _rp = _sr / _st * 100
+        _ap = _sa / _st * 100
+        _gp = _sg / _st * 100
+        _rag_rows += (
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">'
+            f'<div style="font-size:9px;color:#8b949e;width:160px;min-width:160px;">{_sl}</div>'
+            f'<div style="flex:1;background:#21262d;border-radius:3px;height:5px;display:flex;overflow:hidden;">'
+            f'<div style="width:{_rp:.1f}%;background:#f85149;height:5px;"></div>'
+            f'<div style="width:{_ap:.1f}%;background:#e3b341;height:5px;"></div>'
+            f'<div style="width:{_gp:.1f}%;background:#3fb950;height:5px;"></div>'
+            f'</div>'
+            f'<div style="font-size:9px;font-family:monospace;white-space:nowrap;'
+            f'width:70px;min-width:70px;text-align:right;">'
+            f'<span style="color:#f85149;">{_sr}R</span> '
+            f'<span style="color:#e3b341;">{_sa}A</span> '
+            f'<span style="color:#3fb950;">{_sg}G</span>'
+            f'</div>'
+            f'</div>'
+        )
+    rag_class_html = (
+        f'<div class="fc" style="margin-bottom:14px;">'
+        f'<div style="font-size:9px;color:#8b949e;letter-spacing:2px;text-transform:uppercase;'
+        f'margin-bottom:10px;">RAG SIGNALS BY ASSET CLASS</div>'
+        f'{_rag_rows}'
+        f'</div>'
+    ) if _rag_rows else ""
+
     # Tone
     _rising_intel = _count_rising_risk(df)
     tone, tc, tb = calculate_market_tone(reg_now, frag_sys, _rising_intel, len(df))
@@ -5117,6 +5157,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'</div>'
         f'<div style="font-size:9px;color:#8b949e;margin-top:2px;">R &middot; A &middot; G</div>'
         f'</div></div>'
+
+        # ── RAG BY ASSET CLASS ────────────────────────────────────────────────
+        # Full-width panel: one row per SECTION_LABELS entry, proportional
+        # R/A/G stacked bar, counts on right. Mirrors F&G component breakdown.
+        + rag_class_html
 
         # ── ZONE 2: QUANT SIGNALS ────────────────────────────────────────────
         # Two-column layout: defensive actions (left) + opportunities (right)
