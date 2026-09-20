@@ -683,24 +683,41 @@ def download(lookback_days: int = 2520) -> tuple:
             cached = None
 
     new_tickers = []
+    stale_tickers = []
     if cached is not None:
         new_tickers = [t for t in tickers if t not in cached.columns]
         if new_tickers:
             print(f"[Download] New price tickers (full history): {len(new_tickers)} -> "
                   f"{', '.join(new_tickers[:8])}{'...' if len(new_tickers) > 8 else ''}")
+        # Tickers present in the cache but whose last data lags the cache max date by >30 days
+        # have silently lost their refresh window (e.g. a batch failure left NaN rows).
+        # Re-download them with the full lookback so no instrument stays silently stale.
+        cache_max = cached.index.max()
+        for t in tickers:
+            if t in cached.columns:
+                last_valid = cached[t].dropna()
+                if len(last_valid) > 0 and (cache_max - last_valid.index[-1]).days > 30:
+                    stale_tickers.append(t)
+        if stale_tickers:
+            print(f"[Download] Stale price tickers (re-fetching full history): {len(stale_tickers)} -> "
+                  f"{', '.join(stale_tickers[:8])}{'...' if len(stale_tickers) > 8 else ''}")
 
-    if cached is not None and len(cached) >= 756 and not new_tickers:
+    _needs_full = new_tickers + stale_tickers
+    if cached is not None and len(cached) >= 756 and not _needs_full:
         start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
         print(f"[Download] Price cache hit — refreshing last 60 days ...")
         fetch_list = tickers
-    elif cached is not None and new_tickers:
-        start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
-        existing = [t for t in tickers if t in cached.columns]
+    elif cached is not None and _needs_full:
         full_start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
-        new_prices = _yf_download_safe(new_tickers, start=full_start, field="Close")
-        if not new_prices.empty:
-            cached = cached.join(new_prices, how="outer")
-        fetch_list = existing
+        full_prices = _yf_download_safe(_needs_full, start=full_start, field="Close")
+        if not full_prices.empty:
+            # Drop stale columns from cache before joining so fresh full-history data replaces them.
+            cols_to_drop = [t for t in stale_tickers if t in cached.columns]
+            if cols_to_drop:
+                cached = cached.drop(columns=cols_to_drop)
+            cached = cached.join(full_prices, how="outer")
+        start = (pd.Timestamp.today() - pd.Timedelta(days=60)).strftime("%Y-%m-%d")
+        fetch_list = [t for t in tickers if t in cached.columns and t not in _needs_full]
     else:
         start = (pd.Timestamp.today() - pd.Timedelta(days=lookback_days)).strftime("%Y-%m-%d")
         print(f"[Download] No price cache — full {lookback_days}-day download ...")
@@ -1901,6 +1918,14 @@ def _transition_risk(sm_regime: str, hmm_probs: dict) -> tuple:
         return "Low", "All models confirm crisis conditions"
 
 
+# Tickers excluded from stress ranking due to known-corrupted yfinance price data
+# (unadjusted corporate actions produce extreme vol/drawdown readings that are not real).
+# Mirrors the sanity-cap list in compute_metrics() plus additional precious-metals ETFs.
+_STRESS_RANK_EXCLUSIONS = frozenset({
+    'BNO', 'UNG', 'SLV', 'GLD', 'DBC', 'DBA', 'COPX', 'PALL', 'PPLT',
+})
+
+
 def compute_stress_contributors(prices: pd.DataFrame, top_n: int = 7) -> list:
     """
     Rank UNIVERSE instruments by stress using the same vol20 / dd252 inputs
@@ -1910,7 +1935,7 @@ def compute_stress_contributors(prices: pd.DataFrame, top_n: int = 7) -> list:
     """
     rows = []
     for sec, ticker, name, _bucket in UNIVERSE:
-        if ticker not in prices.columns or ticker in DISPLAY_EXCLUSIONS:
+        if ticker not in prices.columns or ticker in DISPLAY_EXCLUSIONS or ticker in _STRESS_RANK_EXCLUSIONS:
             continue
         col = prices[ticker].ffill(limit=5).dropna()
         if len(col) < 252:
@@ -3166,6 +3191,14 @@ def _build_headlines_html(headlines: list) -> str:
     )
 
 
+def _ordinal_suffix(n: float) -> str:
+    """Return the English ordinal suffix (st/nd/rd/th) for integer n."""
+    n = int(n)
+    if 11 <= n % 100 <= 13:
+        return "th"
+    return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+
+
 def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None, ai_commentary: dict = None, backtest_data: dict = None, headlines_data: list = None) -> str:
     import math
     now         = datetime.now(SGT)
@@ -4272,7 +4305,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                 f'<span style="font-size:9px;color:#8b949e;margin-left:5px;">{_drv_v}</span>'
                 f'</td>'
                 f'<td style="padding:5px 10px;text-align:right;">'
-                f'<span style="color:{_sc_c};font-weight:700;font-family:monospace;">{_pct:.0f}th pct</span>'
+                f'<span style="color:{_sc_c};font-weight:700;font-family:monospace;">{_pct:.0f}{_ordinal_suffix(_pct)} pct</span>'
                 f'</td>'
                 f'<td style="padding:5px 14px;width:80px;">'
                 f'<div style="background:#21262d;border-radius:3px;height:5px;">'
@@ -4538,7 +4571,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="background:#21262d;border-radius:4px;height:8px;margin-top:10px;">'
             f'<div style="width:{min(100, max(0, abs(_dd_now) * 5)):.0f}%;background:{dd_pct_color};height:8px;border-radius:4px;"></div></div>'
             + (f'<div style="font-size:9px;color:#8b949e;margin-top:6px;font-style:italic;">'
-               f'Regime triggered by vol signal ({drivers.get("vol_pct",0):.0f}th pct) &mdash; market near 1Y peak</div>'
+               f'Regime triggered by vol signal ({drivers.get("vol_pct",0):.0f}{_ordinal_suffix(drivers.get("vol_pct",0))} pct) &mdash; market near 1Y peak</div>'
                if abs(_dd_now) < 1.0 else '')
             + f'</div></div>'
 
