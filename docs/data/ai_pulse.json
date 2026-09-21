@@ -1,7 +1,7 @@
 {
-  "as_of": "2026-09-20 01:00 UTC",
+  "as_of": "2026-09-21 01:01 UTC",
   "basket_breadth_above_50dma_pct": 64.0,
-  "basket_avg_ann_vol_21d_pct": 50.67,
+  "basket_avg_ann_vol_21d_pct": 50.62,
   "basket_median_pe_ttm": 27.5,
   "basket_median_beta": 1.34,
   "basket_concentration_top3_pct": 49.5,
@@ -11,14 +11,14 @@
     "MSFT"
   ],
   "basket_avg_pairwise_corr": 0.19,
-  "basket_avg_pairwise_corr_window_days": 61,
+  "basket_avg_pairwise_corr_window_days": 60,
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": 0.77,
-      "chg_1m": 2.35,
-      "chg_3m": 1.87,
-      "vol_21d_ann": 47.69
+      "chg_1d": 0.51,
+      "chg_1m": 2.23,
+      "chg_3m": 1.83,
+      "vol_21d_ann": 47.65
     },
     "etfs": [
       {
@@ -125,6 +125,12 @@
       "as_of": "2026-09-20 01:00 UTC",
       "basket_breadth_above_50dma_pct": 64.0,
       "basket_avg_ann_vol_21d_pct": 50.67
+    },
+    {
+      "date": "2026-09-21",
+      "as_of": "2026-09-21 01:01 UTC",
+      "basket_breadth_above_50dma_pct": 64.0,
+      "basket_avg_ann_vol_21d_pct": 50.62
     }
   ],
   "layers": [
@@ -177,12 +183,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": 4.57,
-      "avg_chg_1m": 4.85,
-      "avg_chg_3m": -23.13,
-      "avg_vol_21d_ann": 53.56,
+      "avg_chg_1d": 2.45,
+      "avg_chg_1m": 3.89,
+      "avg_chg_3m": -23.45,
+      "avg_vol_21d_ann": 53.25,
       "breadth_above_50dma_pct": 100.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +4.8% over 1M, 100.0% above their 50-day average."
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +3.9% over 1M, 100.0% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -313,7 +319,7 @@
     }
   ],
   "commentary": {
-    "synthesis": "64.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 50.67% annualised. The largest single-day move was 000660.KS (Memory), up 6.4%. Layer performance diverged over the trailing month: AI Application led at +8.2%, while AI Cloud Infra (public) (n=1) lagged at -10.5%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Power / Infra (0.0%).",
+    "synthesis": "64.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 50.62% annualised. The largest single-day move was BABA (China AI / Low-Cost Models), up 4.3%. Layer performance diverged over the trailing month: AI Application led at +8.2%, while AI Cloud Infra (public) (n=1) lagged at -10.5%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Power / Infra (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -724,18 +730,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 261000.0,
-      "chg_1d": 3.37,
-      "chg_1m": -3.69,
-      "chg_3m": -26.19,
-      "vol_21d_ann": 51.09,
+      "last": 269500.0,
+      "chg_1d": 3.26,
+      "chg_1m": -4.26,
+      "chg_3m": -23.68,
+      "vol_21d_ann": 50.52,
       "above_50dma": true,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
-      "pe_fwd": 3.7,
+      "pe_fwd": 3.8,
       "ev_ebitda": 6.9,
       "beta": 1.54,
-      "market_cap": 1713873010819072.0
+      "market_cap": 1769688795185152.0
     },
     {
       "ticker": "000660.KS",
@@ -743,18 +749,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1857000.0,
-      "chg_1d": 6.42,
-      "chg_1m": 9.84,
-      "chg_3m": -32.8,
-      "vol_21d_ann": 57.14,
+      "last": 1860000.0,
+      "chg_1d": 0.16,
+      "chg_1m": 7.54,
+      "chg_3m": -36.27,
+      "vol_21d_ann": 56.77,
       "above_50dma": true,
       "drawdown_90d": -54.71,
       "pe_ttm": null,
       "pe_fwd": 4.0,
       "ev_ebitda": 8.7,
       "beta": 2.39,
-      "market_cap": 1318200625070080.0
+      "market_cap": 1320330123542528.0
     },
     {
       "ticker": "ANET",
