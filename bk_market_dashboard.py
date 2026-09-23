@@ -393,9 +393,10 @@ FX_CCY_MAP = {
     "DX-Y.NYB": "USD",
     # EQ_DM / EQ_EM display currencies (underlying local market)
     "EWA": "AUD", "EWG": "EUR", "EWJ": "JPY", "EWS": "SGD", "EWU": "GBP",
-    "EWZ": "BRL", "FXI": "CNY", "INDA": "INR", "EWY": "KRW",
+    "EWZ": "BRL", "FXI": "CNY", "EWY": "KRW",
     "EZA": "ZAR", "EWT": "TWD", "EWW": "MXN", "EIDO": "IDR", "VNM": "VND",
-    "KSA": "SAR", "EWH": "HKD", "FLGB": "GBP", "SMIN": "INR",
+    "KSA": "SAR", "EWH": "HKD", "FLGB": "GBP",
+    # INDA and SMIN are NYSE Arca USD-priced ETFs — no override needed (default is USD)
 }
 
 
