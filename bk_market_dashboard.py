@@ -3815,7 +3815,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
               f'BK Fragility Framework v2.3 &#183; Volatility 27.8% + CVaR 26.4% + Drawdown 18.8% + Trend 11.8% + Contagion 10.3% + Vol Stress 4.9% (walk-forward IC-derived weights) &#183; '
-              f'CRITICAL &#8805;70 &#183; ELEVATED 55&#8211;69 &#183; WATCH 40&#8211;54 &#183; LOW &lt;40<br>'
+              f'Thresholds (critical/elevated/watch): EQ 70/55/40 &#183; FI 55/38/25 &#183; CMD 75/58/40 &#183; CRYPTO 80/65/50 &#183; FX/Rates/other 70/55/40 &#183; LOW = below watch<br>'
               f'Pillar scores are standardised z-scores relative to history (positive = above average stress) &#183; '
               f'Top Driver = highest contributing pillar &#183; '
               f'Negative scores = below historical stress average (healthy signal)</div>')
