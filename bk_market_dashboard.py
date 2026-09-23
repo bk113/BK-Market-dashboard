@@ -1553,7 +1553,12 @@ def compute_fragility_legacy(prices: pd.DataFrame,
 
     cvar60  = rets.rolling(60, min_periods=20).apply(_cvar, raw=False)  # expected shortfall
     ma200   = prices_c.rolling(200, min_periods=50).mean()
-    dist200 = (-(prices_c / ma200 - 1.0)).clip(lower=0)                 # downside-only trend stress
+    # Two-sided distance from MA200: positive = below MA200 (stress), negative = above (no stress).
+    # clip(lower=0) was removed because a one-sided distribution (always ≥0) collapses the
+    # robust z-score: the rolling median is 0 for instruments mostly above MA200, MAD ≈ 0,
+    # and any below-MA200 event clips to ±4 → 89% of scores were +60.0 or 0.0 (near-binary).
+    # The two-sided version gives a continuous, meaningful z-score across the full universe.
+    dist200 = -(prices_c / ma200 - 1.0)
 
     # Transmission: correlation to world proxy — positive coupling only
     wcol   = "ACWI" if "ACWI" in rets.columns else rets.columns[0]
