@@ -964,9 +964,26 @@ def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
     # 101/115), independent of the numerator fix above. Compute the rolling
     # peak on the ffilled series so the running max at the last position
     # reflects the true peak through the last known-valid close.
+    #
+    # Apply the same ±15% daily-return cap as compute_fragility_legacy for
+    # PALL/PPLT/SLV/GLD — same corporate-action spike corruption, only
+    # half-fixed before (fragility pillars were clean; Risk tab DD was not).
+    _DD_DAILY_CAP = {'PALL': 0.15, 'PPLT': 0.15, 'SLV': 0.15, 'GLD': 0.15}
+    prices_lv_dd = prices_lv.copy()
+    for _tk, _cap in _DD_DAILY_CAP.items():
+        if _tk not in prices_lv_dd.columns:
+            continue
+        _r_raw = prices_lv_dd[_tk].pct_change()
+        _r_cap = _r_raw.clip(-_cap, _cap)
+        _fi    = prices_lv_dd[_tk].first_valid_index()
+        if _fi is None:
+            continue
+        _base  = float(prices_lv_dd[_tk].loc[_fi])
+        _cum   = (1 + _r_cap.fillna(0)).cumprod()
+        prices_lv_dd[_tk] = _base * _cum / float(_cum.loc[_fi])
     window  = min(252, len(prices))
-    peak    = prices_lv.tail(window).cummax()
-    max_dd  = prices_lv.iloc[-1] / peak.iloc[-1] - 1
+    peak    = prices_lv_dd.tail(window).cummax()
+    max_dd  = prices_lv_dd.iloc[-1] / peak.iloc[-1] - 1
 
     # Sparkline data: last 20 trading days, normalised to first value
     spark_window = min(20, len(prices))
