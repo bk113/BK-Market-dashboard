@@ -439,3 +439,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Alias expected by bk_market_dashboard.py (_panel_builder.build_panel()).
+build_panel = main
