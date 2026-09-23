@@ -729,8 +729,17 @@ def download(lookback_days: int = 2520) -> tuple:
         raise RuntimeError("No price data returned from Yahoo Finance.")
 
     if not prices_new.empty:
-        prices = pd.concat([cached, prices_new]) if cached is not None else prices_new
-        prices = prices[~prices.index.duplicated(keep="last")].sort_index()
+        if cached is not None:
+            # Use update() rather than concat+dedup: concat with keep="last" would overwrite
+            # freshly-joined stale-ticker data (e.g. SOXX/SMIN) with NaN rows from prices_new,
+            # because prices_new excludes those tickers. update() only writes non-NaN values
+            # from prices_new, leaving stale-ticker columns in cached untouched.
+            all_idx = cached.index.union(prices_new.index)
+            prices = cached.reindex(all_idx).copy()
+            prices.update(prices_new, overwrite=True)
+            prices = prices.sort_index()
+        else:
+            prices = prices_new
     else:
         prices = cached
 
