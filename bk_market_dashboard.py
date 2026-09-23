@@ -3489,29 +3489,29 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ══ TAB 2: RISK ═══════════════════════════════════════════════════════════
     def _varrow(now_v, ago_v):
         if pd.isna(now_v) or pd.isna(ago_v) or ago_v==0: return "gr","&#8594;","&mdash;"
-        chg = (now_v - ago_v) / ago_v   # relative — used only for arrow tier thresholds
-        pct = f"{(now_v - ago_v)*100:+.1f}pp"  # arithmetic difference in percentage points
-        if chg>=0.20:  return "nr","&#11014;&#11014;",pct
-        if chg>=0.05:  return "am","&#11014;",pct
-        if chg>=-0.05: return "gr","&#8594;",pct
+        pp  = (now_v - ago_v) * 100     # arithmetic pp difference — same unit as displayed number
+        pct = f"{pp:+.1f}pp"
+        if pp >= 3.0:  return "nr","&#11014;&#11014;",pct
+        if pp >= 1.0:  return "am","&#11014;",pct
+        if pp >= -1.0: return "gr","&#8594;",pct
         return "ps","&#11015;",pct
 
     rising=stable=falling=0
     for _,row in df.iterrows():
         nv=row.get("vol_now",float("nan")); av=row.get("vol_1m_ago",float("nan"))
         if pd.isna(nv) or pd.isna(av) or av==0: continue
-        chg=(nv-av)/av
-        if chg>=0.05: rising+=1
-        elif chg<=-0.05: falling+=1
+        pp=(nv-av)*100
+        if pp>=1.0: rising+=1
+        elif pp<=-1.0: falling+=1
         else: stable+=1
 
     vsumm=(f'<div style="display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap;">'
            f'<div class="vc" style="border-color:#f85149;"><div class="vn" style="color:#f85149;">{rising}</div>'
-           f'<div class="vl">VOL RISING &#11014;</div><div class="vs">Rel. change &gt; +5%</div></div>'
+           f'<div class="vl">VOL RISING &#11014;</div><div class="vs">+1pp or more</div></div>'
            f'<div class="vc" style="border-color:#8b949e;"><div class="vn" style="color:#8b949e;">{stable}</div>'
-           f'<div class="vl">VOL STABLE &#8594;</div><div class="vs">Rel. change &#8722;5% to +5%</div></div>'
+           f'<div class="vl">VOL STABLE &#8594;</div><div class="vs">&#8722;1pp to +1pp</div></div>'
            f'<div class="vc" style="border-color:#3fb950;"><div class="vn" style="color:#3fb950;">{falling}</div>'
-           f'<div class="vl">VOL EASING &#11015;</div><div class="vs">Rel. change &lt; &#8722;5%</div></div>'
+           f'<div class="vl">VOL EASING &#11015;</div><div class="vs">&#8722;1pp or more</div></div>'
            f'</div>')
 
     # Per-section summaries for Risk accordion headers: avg vol, avg DD, avg Sharpe
@@ -3559,8 +3559,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
           f'<th>Vol 20D</th><th>Vol 1M Ago</th><th>30D &Delta; Vol</th>'
           f'<th>Max DD</th><th>Sharpe</th><th>Signal</th></tr></thead>{rr}</tbody></table></div>'
           f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-          f'&#11014;&#11014; Vol rising (rel. &ge;+20%) &nbsp;&#183;&nbsp; &#11014; rel. +5%&ndash;20% &nbsp;&#183;&nbsp; '
-          f'&#8594; stable (rel. &pm;5%) &nbsp;&#183;&nbsp; &#11015; easing (rel. &lt;&minus;5%) &nbsp;&#183;&nbsp; '
+          f'&#11014;&#11014; Vol rising (&ge;+3pp) &nbsp;&#183;&nbsp; &#11014; +1pp&ndash;+3pp &nbsp;&#183;&nbsp; '
+          f'&#8594; stable (&pm;1pp) &nbsp;&#183;&nbsp; &#11015; easing (&le;&minus;1pp) &nbsp;&#183;&nbsp; '
           f'30D &Delta; Vol = arithmetic difference in pp (Vol&nbsp;20D&nbsp;&minus;&nbsp;Vol&nbsp;1M&nbsp;Ago) &nbsp;&#183;&nbsp; '
           f'Sharpe = 1Y excess return / vol (rf=4.5%)<br>'
           f'Vol 20D = 20-day daily returns std dev &times; &radic;252 (annualised) &nbsp;&#183;&nbsp; '
