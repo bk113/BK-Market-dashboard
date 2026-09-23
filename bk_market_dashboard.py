@@ -83,7 +83,7 @@ except Exception as _e:
     _V23_AVAILABLE = False
     _V23_IMPORT_ERROR = _e
 
-USE_V23_FRAGILITY = True  # Phase 3 rollout flag. Set False to force the legacy
+USE_V23_FRAGILITY = False  # Phase 3 rollout flag. Set False to force the legacy
                           # 6-pillar engine even when v23 imports cleanly. The
                           # dispatch also auto-falls-back on any v23 exception
                           # or import failure regardless of this flag's value.

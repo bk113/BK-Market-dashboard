@@ -126,6 +126,6 @@ US Treasury 30Y Yield,DGS30,RATES,FRED,level/yield/spread,regime / FSS / governa
 VIX,VIXCLS,VOL,FRED,level/yield/spread,regime / FSS / governance,,
 Federal Funds Rate,DFF,POLICY,FRED,level/yield/spread,regime / FSS / governance,,
 Secured Overnight Rate,SOFR,OTHER,FRED,level/yield/spread,regime / FSS / governance,,
-TED Spread (legacy),TEDRATE,FUNDING,FRED,level/yield/spread,"regime / FSS / governance -- DISCONTINUED/STALE: last real obs 2022-01-21, 1691d stale, held flat only 5bd then NaN",,
+TED Spread (legacy),TEDRATE,FUNDING,FRED,level/yield/spread,"regime / FSS / governance -- DISCONTINUED/STALE: last real obs 2022-01-21, 1706d stale, held flat only 5bd then NaN",,
 USD Trade Weighted Broad,DTWEXBGS,FX,FRED,level/yield/spread,regime / FSS / governance,,
 ICE BofA US HY Index OAS,BAMLH0A0HYM2,CREDIT,FRED,level/yield/spread,regime / FSS / governance,,

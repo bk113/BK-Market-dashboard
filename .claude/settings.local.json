@@ -1,7 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "Bash(C:/Users/bhave/AppData/Local/Programs/Python/Python311/python.exe -m pip install schedule pytz -q)"
+      "Bash(C:/Users/bhave/AppData/Local/Programs/Python/Python311/python.exe -m pip install schedule pytz -q)",
+      "Bash(python)",
+      "Bash(python -c ':*)",
+      "Bash(gh api:*)",
+      "Bash(curl -sI https://bkiqmarkets.com)",
+      "Bash(curl -s https://bkiqmarkets.com)",
+      "Bash(curl -sI \"https://raw.githubusercontent.com/bk113/BK-Market-dashboard/main/docs/index.html\")",
+      "Bash(curl -sI \"https://bk113.github.io/BK-Market-dashboard/\")",
+      "Bash(curl -s \"https://bk113.github.io/BK-Market-dashboard/\")",
+      "Bash(curl -sI \"https://dashboard.bkiqmarkets.com/\")",
+      "Bash(curl -s \"https://dashboard.bkiqmarkets.com/\")",
+      "Bash(where gh:*)",
+      "PowerShell(python \"C:\\\\Users\\\\bhave\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-bhave-Python-trial-market-dashboard\\\\aea31d90-6858-455c-958e-4c470a9caea9\\\\scratchpad\\\\check_stress.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\bhave\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-bhave-Python-trial-market-dashboard\\\\aea31d90-6858-455c-958e-4c470a9caea9\\\\scratchpad\\\\check_stress2.py\")"
     ]
   }
 }
