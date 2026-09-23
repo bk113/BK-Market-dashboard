@@ -435,6 +435,18 @@ def _sharpe_color(v: float) -> str:
 _UNIVERSAL_AMBER = -0.07
 _UNIVERSAL_RED   = -0.15
 
+# Per-asset-class fragility RAG thresholds (watch, elevated, critical).
+# v1 placeholder values pending re-calibration once the v2.3 engine is wired
+# up (build_canonical_panel.build_panel() rename — see §1.2 of handoff doc).
+# Sections not listed here (FX, RATES, VOL, ALT, DEFENCE) fall back to the
+# universal (40, 55, 70) defaults.
+_CLASS_RAG_THRESHOLDS = {
+    "EQ":     (40, 55, 70),
+    "FI":     (25, 38, 55),
+    "CMD":    (40, 58, 75),
+    "CRYPTO": (50, 65, 80),
+}
+
 
 def _historical_dd_percentiles(prices_df: pd.DataFrame, min_obs: int = 300) -> dict:
     """
@@ -1649,8 +1661,9 @@ def compute_fragility_legacy(prices: pd.DataFrame,
         if pd.isna(v):
             continue
 
-        rag     = "CRITICAL" if v >= 70 else "ELEVATED" if v >= 55 else "WATCH" if v >= 40 else "LOW"
         sec, name = t2m.get(col, ("", col))
+        _w, _e, _c = _CLASS_RAG_THRESHOLDS.get(sec.split("_")[0], (40, 55, 70))
+        rag     = "CRITICAL" if v >= _c else "ELEVATED" if v >= _e else "WATCH" if v >= _w else "LOW"
 
         def _p(z, k):
             val = z.iloc[-1] if not z.empty else np.nan
@@ -2596,7 +2609,8 @@ def compute_fragility_v23(panel_dir: str = None) -> pd.DataFrame:
             })
             continue
 
-        rag = "CRITICAL" if v >= 70 else "ELEVATED" if v >= 55 else "WATCH" if v >= 40 else "LOW"
+        _w, _e, _c = _CLASS_RAG_THRESHOLDS.get(sec.split("_")[0], (40, 55, 70))
+        rag = "CRITICAL" if v >= _c else "ELEVATED" if v >= _e else "WATCH" if v >= _w else "LOW"
 
         def _p(pkey):
             z = pillars_last_valid[pkey].get(canon, np.nan)
