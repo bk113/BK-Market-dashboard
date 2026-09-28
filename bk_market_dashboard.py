@@ -1657,7 +1657,7 @@ def compute_fragility_legacy(prices: pd.DataFrame,
 
         # IFM logistic — no scaling factor
         sc = 100.0 * _frag_logistic(latent_adj.ewm(span=10, adjust=False).mean())
-        v  = float(sc.iloc[-1]) if not sc.empty else np.nan
+        v  = float(sc.ffill().iloc[-1]) if not sc.empty else np.nan
         if pd.isna(v):
             continue
 
