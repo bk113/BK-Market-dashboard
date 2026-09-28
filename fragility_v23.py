@@ -413,9 +413,23 @@ def load_panel(panel_dir: str | Path) -> dict:
 
 
 def score_universe(returns: pd.DataFrame) -> list[str]:
-    """Return the 47-asset score universe (EQ + FI + CMD + Crypto, FX excluded)."""
+    """Return the scored universe -- v2.3's native 47 assets ONLY (EQ + FI +
+    CMD + Crypto, FX excluded), the exact set its IC-derived pillar weights
+    were fitted and validated (T1-T7 + crash backtest) on.
+
+    28 Sep 2026: deliberately scoped back down from the ~95-instrument set
+    BKIQ's extended canonical panel makes column-available (prefix-matching
+    alone would pick up every BKIQ instrument mapped into this naming
+    convention, not just the 47 v2.3 was fit on). Scoring un-fitted
+    instruments with these weights was never validated -- BK's explicit
+    direction is native-47 only until the full architecture rebuild revisits
+    coverage. BKIQ's other instruments keep their existing legacy fragility
+    score via compute_fragility_hybrid() in bk_market_dashboard.py; nothing
+    regresses to blank/N/A for them.
+    """
+    native = set(YAHOO_TICKERS.keys())
     return [c for c in returns.columns
-            if c.startswith(("EQ |", "FI |", "CMD |", "CRYPTO |"))]
+            if c.startswith(("EQ |", "FI |", "CMD |", "CRYPTO |")) and c in native]
 
 
 # ============================================================================
@@ -889,9 +903,23 @@ def pillar_cvar(returns: pd.DataFrame, win: int = CVAR_WINDOW,
 
 
 def pillar_trend(prices: pd.DataFrame, win: int = TREND_WINDOW) -> pd.DataFrame:
-    """Trend deviation: -(price/MA - 1). Positive = below MA = trend stress."""
+    """Trend deviation: -(price/MA - 1). Positive = below MA = trend stress,
+    negative = above MA = no stress.
+
+    28 Sep 2026 fix: previously lower-clipped at 0.0 (stress-only, one-sided).
+    For any instrument that spends most of its trailing 252d window above its
+    200d MA (most equities, most of the time), the raw series sat at exactly
+    0.0 over half the window -- so its 252d rolling MAD collapsed to 0, and
+    robust_z()'s MAD-floor fallback (1% of expanding std) is such a small
+    denominator that ANY below-MA reading instantly saturated to the +/-4
+    sigma clip ceiling. Confirmed against live panel data: 45% of the scored
+    universe pinned at exactly +47.2 (11.8% weight x 4.0 sigma x 100) or 0.0.
+    Removing the floor (two-sided) mirrors legacy's compute_fragility_legacy
+    dist200 fix from 23 Sep -- same root cause, same remedy -- and drops
+    clip saturation to ~1%.
+    """
     ma = prices.rolling(win, min_periods=win // 2).mean()
-    return (-(prices / ma - 1.0)).clip(lower=0.0)
+    return -(prices / ma - 1.0)
 
 
 def pillar_corr(returns: pd.DataFrame, win: int = CORR_WINDOW) -> pd.DataFrame:
@@ -962,10 +990,18 @@ def pillar_corr(returns: pd.DataFrame, win: int = CORR_WINDOW) -> pd.DataFrame:
 
 
 def pillar_volz(volumes: pd.DataFrame, win: int = VOLZ_WINDOW) -> pd.DataFrame:
-    """Volume z vs trailing window. NaN for series without volume (FX, levels)."""
+    """Volume z vs trailing window (magnitude of dislocation, either direction).
+    NaN for series without volume (FX, levels).
+
+    28 Sep 2026 fix: previously lower-clipped at 0.0 (spikes only). Same
+    degenerate-MAD mechanism as pillar_trend -- confirmed against live panel
+    data, this produced a dead pillar (98% of non-crypto instruments' display
+    value rounding to exactly 0.0). Using magnitude instead of a one-sided
+    clip (matching legacy's volz, which already uses .abs()) drops that to ~1%.
+    """
     mu = volumes.rolling(win, min_periods=win // 2).mean()
     sd = volumes.rolling(win, min_periods=win // 2).std()
-    return ((volumes - mu) / sd).clip(lower=0.0)
+    return ((volumes - mu) / sd).abs()
 
 
 # ============================================================================

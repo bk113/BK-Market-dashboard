@@ -2674,16 +2674,56 @@ def compute_fragility_trend_v23(panel_dir: str = None) -> dict:
     }
 
 
+def compute_fragility_hybrid(prices: pd.DataFrame, volumes: pd.DataFrame = None) -> pd.DataFrame:
+    """28 Sep 2026: v2.3 for its native 47-asset universe (IC-derived weights,
+    validated T1-T7 + crash backtest -- the only instruments those weights
+    were ever fit on), legacy for every other BKIQ instrument. Replaces the
+    old all-or-nothing dispatcher (which, once fragility_v23.py's
+    score_universe() was scoped back to native-47, would otherwise blank out
+    fragility for the ~65+ instruments outside the native set). Nothing
+    regresses versus the pre-v23 baseline: every instrument that had a
+    legacy score before still gets one; the native 47 simply get the
+    better-validated engine's number instead.
+    """
+    legacy_df = compute_fragility_legacy(prices, volumes)
+    try:
+        v23_df = compute_fragility_v23()
+    except Exception as e:
+        print(f"[Fragility] hybrid: v23 engine failed ({e!r}) -- legacy only for this run")
+        return legacy_df
+
+    v23_valid = v23_df[v23_df["fragility"].notna()].set_index("ticker")
+    merged_rows = []
+    for _, row in legacy_df.iterrows():
+        ticker = row["ticker"]
+        if ticker in v23_valid.index:
+            r = v23_valid.loc[ticker].to_dict()
+            r["ticker"] = ticker
+        else:
+            r = row.to_dict()
+        merged_rows.append(r)
+
+    fdf = pd.DataFrame(merged_rows).sort_values("fragility", ascending=False).reset_index(drop=True)
+    if "system_score" in v23_df.attrs:
+        fdf.attrs["system_score"] = v23_df.attrs["system_score"]
+        fdf.attrs["regime"] = v23_df.attrs["regime"]
+    else:
+        fdf.attrs["system_score"] = legacy_df.attrs.get("system_score")
+        fdf.attrs["regime"] = legacy_df.attrs.get("regime")
+    return fdf
+
+
 def compute_fragility(prices: pd.DataFrame, volumes: pd.DataFrame = None) -> pd.DataFrame:
-    """Dispatcher: v23 engine when available and enabled, legacy engine
-    otherwise or on any failure. This is the one-line rollback path
-    (USE_V23_FRAGILITY) plus an automatic safety net -- see the guarded
-    import and flag near the top of this file for why both exist."""
+    """Dispatcher: hybrid engine (v23 native-47 + legacy for the rest) when
+    v23 is available and enabled, legacy-only engine otherwise or on any
+    failure. This is the one-line rollback path (USE_V23_FRAGILITY) plus an
+    automatic safety net -- see the guarded import and flag near the top of
+    this file for why both exist."""
     if USE_V23_FRAGILITY and _V23_AVAILABLE:
         try:
-            return compute_fragility_v23()
+            return compute_fragility_hybrid(prices, volumes)
         except Exception as e:
-            print(f"[Fragility] v23 engine failed ({e!r}) -- falling back to the legacy engine for this run")
+            print(f"[Fragility] hybrid engine failed ({e!r}) -- falling back to the legacy engine for this run")
     elif USE_V23_FRAGILITY and not _V23_AVAILABLE:
         print(f"[Fragility] v23 unavailable ({_V23_IMPORT_ERROR!r}) -- using the legacy engine")
     return compute_fragility_legacy(prices, volumes)
