@@ -1520,7 +1520,7 @@ def _robust_zscore(s: pd.Series, window: int = 504, clip: float = 4.0) -> pd.Ser
     min_p = max(60, window // 3)
     med   = s.rolling(window, min_periods=min_p).median()
     mad   = s.rolling(window, min_periods=min_p).apply(
-        lambda x: np.median(np.abs(x - np.median(x))), raw=True)
+        lambda x: np.nanmedian(np.abs(x - np.nanmedian(x))), raw=True)
     return ((s - med) / (1.4826 * mad.replace(0, 1e-6))).clip(-clip, clip)
 
 def compute_fragility_legacy(prices: pd.DataFrame,
