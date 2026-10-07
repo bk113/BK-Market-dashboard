@@ -1,8 +1,8 @@
 column,lower_bound,upper_bound,n_clipped
 EQ | ARK Innovation,-0.1065,0.1242,4
-EQ | ASEAN,-0.0833,0.0745,4
-EQ | Asia Pacific,-0.0698,0.0658,4
-EQ | Asia ex-Japan,-0.0751,0.0699,4
+EQ | ASEAN,-0.0832,0.0745,4
+EQ | Asia Pacific,-0.0697,0.0658,4
+EQ | Asia ex-Japan,-0.075,0.0699,4
 EQ | Australia,-0.1218,0.1016,4
 EQ | BAE Aerospace & Defence,-0.1001,0.0988,4
 EQ | Brazil,-0.1572,0.1265,4
@@ -15,12 +15,12 @@ EQ | Consumer Discretionary,-0.0733,0.0856,4
 EQ | Consumer Staples,-0.0654,0.0613,4
 EQ | EM Broad,-0.0894,0.0728,4
 EQ | Energy Infrastructure,-0.1558,0.1101,4
-EQ | Europe Dev (EAFE),-0.0833,0.0642,4
-EQ | Eurozone,-0.0974,0.0749,4
-EQ | FTSE 100 (UK),-0.085,0.0585,4
-EQ | Germany,-0.0934,0.0813,4
+EQ | Europe Dev (EAFE),-0.0832,0.0642,4
+EQ | Eurozone,-0.0974,0.0748,4
+EQ | FTSE 100 (UK),-0.0849,0.0585,4
+EQ | Germany,-0.0933,0.0813,4
 EQ | Global REITs,-0.1057,0.0658,4
-EQ | Global X Guru ETF,-0.0841,0.0833,4
+EQ | Global X Guru ETF,-0.084,0.0833,4
 EQ | High Yield REIT,-0.1688,0.1125,4
 EQ | Hong Kong,-0.0786,0.0582,4
 EQ | India,-0.1153,0.0887,4
@@ -31,19 +31,19 @@ EQ | Korea,-0.1266,0.1155,4
 EQ | Listed Private Equity,-0.1083,0.0947,4
 EQ | Materials,-0.0942,0.0773,4
 EQ | Mexico,-0.1078,0.0782,4
-EQ | Philippines,-0.1208,0.0754,4
+EQ | Philippines,-0.1207,0.0754,4
 EQ | Real Estate (REITs),-0.0965,0.077,4
 EQ | Saudi Arabia,-0.0862,0.0813,4
 EQ | Singapore,-0.0774,0.0611,4
 EQ | Smart Grid Infra,-0.1041,0.0854,4
 EQ | South Africa,-0.1322,0.0921,4
 EQ | Taiwan,-0.0822,0.0659,4
-EQ | Thailand,-0.1085,0.0828,4
+EQ | Thailand,-0.1085,0.0827,4
 EQ | UK,-0.0956,0.0588,4
-EQ | US (Nasdaq 100),-0.0744,0.0791,4
-EQ | US (Russell 2000),-0.1002,0.0785,4
+EQ | US (Nasdaq 100),-0.0744,0.079,4
+EQ | US (Russell 2000),-0.1002,0.0784,4
 EQ | US (S&P 500),-0.082,0.0866,4
-EQ | US Aerospace & Defence,-0.1021,0.1007,4
+EQ | US Aerospace & Defence,-0.1021,0.1006,4
 EQ | US Energy Sector,-0.1377,0.1143,4
 EQ | US Financials Sector,-0.1074,0.0915,4
 EQ | US Healthcare Sector,-0.0598,0.0671,4
@@ -53,7 +53,7 @@ EQ | Utilities,-0.0841,0.0902,4
 EQ | Vietnam,-0.0945,0.0804,4
 EQ | World (ACWI),-0.0804,0.0738,4
 FI | Cash (T-Bills),-0.0028,0.0008,4
-FI | Convertible Bonds,-0.0683,0.052,4
+FI | Convertible Bonds,-0.0682,0.052,4
 FI | EM Local Currency,-0.0521,0.0238,4
 FI | EM USD Sovereigns,-0.0563,0.0364,4
 FI | Global Aggregate,-0.0163,0.0166,4
@@ -62,8 +62,8 @@ FI | HY Credit,-0.0433,0.0422,4
 FI | IG Credit,-0.0481,0.0472,4
 FI | Intl Govt Bonds,-0.0226,0.0235,4
 FI | Intl High Yield,-0.0317,0.0298,4
-FI | Municipal Bonds,-0.0295,0.0252,4
-FI | Municipal HY,-0.0837,0.0785,4
+FI | Municipal Bonds,-0.0295,0.0251,4
+FI | Municipal HY,-0.0837,0.0784,4
 FI | Preferred Securities,-0.0993,0.0748,4
 FI | ST IG Corporates,-0.0264,0.0175,4
 FI | Senior Loans,-0.0453,0.0429,4
@@ -82,32 +82,32 @@ CMD | Copper Miners,-0.1156,0.1174,4
 CMD | Corn,-0.0554,0.0637,4
 CMD | Diversified Commodity,-0.054,0.0423,4
 CMD | Gold,-0.056,0.0451,4
-CMD | Iron Ore (VALE),-0.1095,0.1486,4
+CMD | Iron Ore (VALE),-0.1094,0.1486,4
 CMD | Lithium,-0.1027,0.0892,4
 CMD | Natural Gas,-0.1371,0.137,4
-CMD | Palladium,-0.1658,0.1049,4
+CMD | Palladium,-0.1657,0.1048,4
 CMD | Platinum,-0.1454,0.0795,4
-CMD | Silver,-0.1408,0.0874,4
+CMD | Silver,-0.1407,0.0874,4
 CMD | Soybeans,-0.0431,0.0502,4
 CMD | Uranium,-0.1028,0.1162,4
-CMD | Wheat,-0.0718,0.0998,4
-CRYPTO | Bitcoin,-0.1647,0.1832,4
+CMD | Wheat,-0.0718,0.0997,4
+CRYPTO | Bitcoin,-0.1646,0.1832,4
 CRYPTO | Ethereum,-0.2724,0.2406,4
-CRYPTO | Solana,-0.3385,0.4817,4
+CRYPTO | Solana,-0.3385,0.4816,4
 FX | AUD/USD,-0.0305,0.027,4
-FX | Brazilian Real,-0.0432,0.0378,4
+FX | Brazilian Real,-0.0436,0.0378,4
 FX | Canadian Dollar,-0.017,0.0171,4
 FX | EUR/USD,-0.0175,0.0173,4
-FX | GBP/USD,-0.022,0.0289,4
+FX | GBP/USD,-0.0219,0.0289,4
 FX | Korean Won,-0.0273,0.0208,4
 FX | Mexican Peso,-0.0308,0.0424,4
 FX | USD Index (DXY),-0.0185,0.016,4
 FX | USD/CHF,-0.0222,0.0189,4
 FX | USD/JPY,-0.0253,0.0219,4
 FX | USD/SGD,-0.0118,0.011,4
-VOL | Gold Volatility (proxy),-0.4658,0.6605,4
-VOL | Oil Volatility (proxy),-0.4901,1.7238,4
-VOL | ST VIX ETF,-0.1675,0.3481,4
-VOL | VIX 3-Month Index,-0.1765,0.3753,4
+VOL | Gold Volatility (proxy),-0.4653,0.6587,4
+VOL | Oil Volatility (proxy),-0.4883,1.6995,4
+VOL | ST VIX ETF,-0.1674,0.348,4
+VOL | VIX 3-Month Index,-0.1764,0.3752,4
 VOL | VIX Futures ETN,-0.1649,0.3442,4
 VOL | VIX Index,-0.2475,0.6236,4
