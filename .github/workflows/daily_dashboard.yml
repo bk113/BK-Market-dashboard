@@ -37,4 +37,5 @@ jobs:
           git add data/panel_v22_prices.csv data/panel_v22_returns.csv data/panel_v22_volumes.csv data/panel_v22_levels.csv data/panel_v22_metadata.csv || true
           git add data/fred_staleness_report.csv data/winsorization_report.csv || true
           git diff --staged --quiet || git commit -m "chore: daily update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git pull --rebase origin main
           git push
