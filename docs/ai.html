@@ -628,7 +628,11 @@ async function loadPulse() {
       }
       return row.last.toFixed(2);
     };
-    const fmtPE = v => v == null ? '—' : v.toFixed(1) + '×';
+    const fmtPE = v => {
+      if (v == null) return '—';
+      if (v > 200) return `<span title="P/E not meaningful — near-zero trailing earnings" style="color:#e3b341;cursor:help;">${v.toFixed(0)}× ⚠</span>`;
+      return v.toFixed(1) + '×';
+    };
     const fmtBeta = v => v == null ? '—' : v.toFixed(2);
     const byTicker = {};
     (data.constituents || []).forEach(r => { byTicker[r.ticker] = r; });

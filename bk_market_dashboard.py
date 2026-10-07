@@ -3759,7 +3759,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
                   f'background:{rb_};border:1px solid {fc};border-radius:10px;padding:1px 6px;">{r["rag"]}</div></div>')
 
         PL={"pillar_dd":"Drawdown","pillar_vol":"Volatility","pillar_cvar":"Tail Risk",
-            "pillar_trend":"Trend","pillar_corr":"Contagion","pillar_volz":"Vol Stress"}
+            "pillar_trend":"Trend","pillar_corr":"Contagion","pillar_volz":"Liquidity"}
 
         # Group frag_df by section (preserve fragility ordering within section)
         _frag_sorted = frag_df.copy()
@@ -3769,7 +3769,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             ["_sec_order", "fragility"], ascending=[True, False])
 
         # FX excluded from Fragility tab: currency pair pillars (Contagion, Trend,
-        # Vol Stress) return 0.0 or meaningless values for FX pairs.
+        # Liquidity) return 0.0 or meaningless values for FX pairs.
         _frag_display = _frag_sorted[_frag_sorted["section"] != "FX"]
         _n_fx_excl    = len([t for sec, t, _, _ in UNIVERSE if sec == "FX" and t not in DISPLAY_EXCLUSIONS])
         _n_frag_scored = N_INSTRUMENTS - _n_fx_excl
@@ -3839,7 +3839,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               + _acc_controls("frag") +
               f'<div class="tw"><table><thead><tr><th style="text-align:left;">Asset</th><th>Ticker</th>'
               f'<th>Score</th><th>Bar</th><th>Status</th><th>Top Driver</th>'
-              f'<th>Drawdown</th><th>Volatility</th><th>Tail Risk</th><th>Trend</th><th>Contagion</th><th>Vol Stress</th>'
+              f'<th>Drawdown</th><th>Volatility</th><th>Tail Risk</th><th>Trend</th><th>Contagion</th><th>Liquidity</th>'
               f'</tr></thead>{fr}</tbody></table></div>'
               f'<div style="margin-top:14px;padding:12px 14px;background:#0d1117;border-left:3px solid #58a6ff;font-size:10px;color:#9aa3b8;line-height:1.7;">'
               f'<strong style="color:#c8cfe0;">What fragility measures:</strong> Fragility tracks '
@@ -3854,7 +3854,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
               f'not in the v2.3 engine\'s scored universe. Shown unchanged on Performance and Risk tabs.'
               f'</div>'
               f'<div style="margin-top:10px;font-size:9px;color:#8b949e;font-family:monospace;line-height:1.8;">'
-              f'BK Fragility Framework v2.3 &#183; Volatility 27.8% + CVaR 26.4% + Drawdown 18.8% + Trend 11.8% + Contagion 10.3% + Vol Stress 4.9% (walk-forward IC-derived weights) &#183; '
+              f'BK Fragility Framework v2.3 &#183; Volatility 27.8% + CVaR 26.4% + Drawdown 18.8% + Trend 11.8% + Contagion 10.3% + Liquidity 4.9% (walk-forward IC-derived weights) &#183; '
               f'Thresholds (critical/elevated/watch): EQ 70/55/40 &#183; FI 55/38/25 &#183; CMD 75/58/40 &#183; CRYPTO 80/65/50 &#183; FX/Rates/other 70/55/40 &#183; LOW = below watch<br>'
               f'Pillar scores are standardised z-scores relative to history (positive = above average stress) &#183; '
               f'Top Driver = highest contributing pillar &#183; '
@@ -4135,7 +4135,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         '<div style="font-size:12px;color:#8b949e;line-height:1.8;max-width:600px;margin:0 auto;">'
         'PCA reveals hidden risk factors driving cross-asset moves &mdash; '
         'identifying which latent factors explain the majority of portfolio variance.<br>'
-        'Replacing RSR in Q2 2026.</div>'
+        'On the roadmap, sequenced after the Layer 1/2 data architecture work (see Research tab).</div>'
         '<div style="font-size:9px;color:#6a7485;margin-top:12px;font-family:monospace;">'
         'Factor decomposition &#183; Eigenvalue spectrum &#183; Variance explained &#183; Coming soon</div>'
         '</div>'
@@ -5167,7 +5167,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     # ── Build FRAMEWORK OBSERVATIONS (deterministic — top 4 by |MoM|) ─────────
     _pillar_label_map = {
         "pillar_dd": "Drawdown", "pillar_cvar": "CVaR", "pillar_corr": "Contagion",
-        "pillar_vol": "Vol Stress", "pillar_trend": "Trend", "pillar_volz": "Liquidity",
+        "pillar_vol": "Volatility", "pillar_trend": "Trend", "pillar_volz": "Liquidity",
     }
     _frag_idx = (frag_df.set_index("ticker") if frag_df is not None and not frag_df.empty else pd.DataFrame())
     _obs_rows = []
@@ -5577,7 +5577,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             f'<div style="font-size:10px;font-weight:700;color:#58a6ff;margin-bottom:4px;">{title}</div>'
             f'<div style="font-size:11px;color:#8b949e;line-height:1.6;">{desc}</div></div>'
             for title, desc in [
-                ("Does 12-1 momentum persist within the BK universe?", "Cross-sectional momentum ranking across 113 instruments. Research question: does the signal decay faster in high-fragility regimes?"),
+                ("Does 12-1 momentum persist within the BK universe?", f"Cross-sectional momentum ranking across {N_INSTRUMENTS} instruments. Research question: does the signal decay faster in high-fragility regimes?"),
                 ("Do cointegrated pairs offer regime-independent return?", "Exploring EWJ/EFA, GLD/SLV and similar pairs. Hypothesis: spread mean-reversion weakens during Crisis regime."),
                 ("Does RSI divergence from price predict reversal at the asset-class level?", "Mean-reversion screening. Quantifying false positive rate across regime states."),
                 ("How much of the BK GREEN signal decays within 5 trading days?", "Signal half-life analysis. Measuring whether composite scores lead or lag price by regime."),
@@ -5629,7 +5629,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             for title, desc in [
                 ("Does a high fragility score predict subsequent drawdown within 30 days?", "Core validation question. Measuring hit rate on score &gt; 70 → max drawdown &gt; 10% within 21 trading days."),
                 ("Which fragility pillars are most predictive of drawdown vs volatility?", "Factor attribution: decomposing which of the 5 pillar components explains most of subsequent loss."),
-                ("Is the equal-weighting of fragility pillars optimal?", "Research question: do value/momentum/quality/low-vol weights derived from factor regressions outperform equal weights?"),
+                ("Is the current IC-derived pillar weighting optimal?", "Research question: does periodically re-deriving the walk-forward IC weights (vs. the current fixed 27.8/26.4/18.8/11.8/10.3/4.9% split) improve out-of-sample predictive power?"),
                 ("Does fragility dispersion across asset classes predict regime transition?", "Hypothesis: rising cross-asset fragility dispersion (not just mean) is a leading regime indicator."),
                 ("How does the fragility score behave for FX instruments excluded from display?", "FX is excluded from the fragility tab. Research question: does including it change the system-level fragility reading?"),
                 ("Can the fragility score be extended to individual equities?", "Current model is ETF/index-based. Exploring whether pillar methodology transfers to single-stock screening."),
