@@ -4916,8 +4916,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     na = int((df["rag_label"].str.strip()=="AMBER").sum())
     ng = int((df["rag_label"].str.strip()=="GREEN").sum())
 
-    # RAG by asset class — one row per SECTION_LABELS entry for the breakdown panel
-    _rag_rows = ""
+    # RAG by asset class — sorted by stress (%Red+Amber) descending so the
+    # worst-hit classes lead; the old "{R}R {A}A {G}G" counts were redundant
+    # with the bar itself and caused right-edge crowding — replaced with one
+    # "% stressed" figure.
+    _rag_class_data = []
     for _sk in SECTION_ORDER:
         _sl  = SECTION_LABELS.get(_sk, _sk)
         _sdf = df[df["section"] == _sk]
@@ -4929,22 +4932,27 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         _st = _sr + _sa + _sg
         if _st == 0:
             continue
+        _stress_pct = (_sr + _sa) / _st * 100
+        _rag_class_data.append((_sl, _sr, _sa, _sg, _st, _stress_pct))
+    _rag_class_data.sort(key=lambda x: x[5], reverse=True)
+
+    _rag_rows = ""
+    for _sl, _sr, _sa, _sg, _st, _stress_pct in _rag_class_data:
         _rp = _sr / _st * 100
         _ap = _sa / _st * 100
         _gp = _sg / _st * 100
+        _stress_color = "#f85149" if _stress_pct >= 50 else "#e3b341" if _stress_pct >= 25 else "#3fb950"
         _rag_rows += (
-            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">'
-            f'<div style="font-size:9px;color:#8b949e;width:160px;min-width:160px;">{_sl}</div>'
-            f'<div style="flex:1;background:#21262d;border-radius:3px;height:5px;display:flex;overflow:hidden;">'
-            f'<div style="width:{_rp:.1f}%;background:#f85149;height:5px;"></div>'
-            f'<div style="width:{_ap:.1f}%;background:#e3b341;height:5px;"></div>'
-            f'<div style="width:{_gp:.1f}%;background:#3fb950;height:5px;"></div>'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+            f'<div style="font-size:9px;color:#8b949e;width:190px;min-width:190px;">{_sl} <span style="color:#6a7485;">({_st})</span></div>'
+            f'<div style="flex:1;background:#21262d;border-radius:3px;height:6px;display:flex;overflow:hidden;">'
+            f'<div style="width:{_rp:.1f}%;background:#f85149;height:6px;"></div>'
+            f'<div style="width:{_ap:.1f}%;background:#e3b341;height:6px;"></div>'
+            f'<div style="width:{_gp:.1f}%;background:#3fb950;height:6px;"></div>'
             f'</div>'
             f'<div style="font-size:9px;font-family:monospace;white-space:nowrap;'
-            f'width:70px;min-width:70px;text-align:right;">'
-            f'<span style="color:#f85149;">{_sr}R</span> '
-            f'<span style="color:#e3b341;">{_sa}A</span> '
-            f'<span style="color:#3fb950;">{_sg}G</span>'
+            f'width:65px;min-width:65px;text-align:right;color:{_stress_color};">'
+            f'{_stress_pct:.0f}% stressed'
             f'</div>'
             f'</div>'
         )
@@ -5054,11 +5062,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         for fkey, flabel, fcolor, fweight in _FACTOR_META:
             val = fdata.get(fkey, 0)
             bars += (
-                f'<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">'
-                f'<div style="width:50px;font-size:7px;color:#8b949e;font-family:monospace;text-align:right;">{flabel} <span style="color:#6a7485;">{fweight}</span></div>'
-                f'<div style="flex:1;background:#21262d;border-radius:2px;height:5px;">'
-                f'<div style="width:{min(100, val):.0f}%;background:{fcolor};height:5px;border-radius:2px;"></div></div>'
-                f'<div style="width:22px;font-size:7px;color:{fcolor};font-family:monospace;text-align:right;">{val:.0f}</div>'
+                f'<div style="display:flex;align-items:center;gap:4px;margin-top:3px;">'
+                f'<div style="width:50px;font-size:9px;color:#8b949e;font-family:monospace;text-align:right;">{flabel}</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:2px;height:6px;">'
+                f'<div style="width:{min(100, val):.0f}%;background:{fcolor};height:6px;border-radius:2px;"></div></div>'
+                f'<div style="width:22px;font-size:9px;color:{fcolor};font-family:monospace;text-align:right;">{val:.0f}</div>'
                 f'</div>'
             )
         return f'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d;">{bars}</div>'
@@ -5103,11 +5111,11 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
             # Bar width: proportion of total fragility score, capped at 100%
             bar_pct = min(100, max(0, val / frag_total * 100)) if frag_total > 0 else 0
             bars += (
-                f'<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">'
-                f'<div style="width:58px;font-size:7px;color:#8b949e;font-family:monospace;text-align:right;">{plabel} <span style="color:#6a7485;">{pweight}</span></div>'
-                f'<div style="flex:1;background:#21262d;border-radius:2px;height:5px;">'
-                f'<div style="width:{bar_pct:.0f}%;background:{pcolor};height:5px;border-radius:2px;"></div></div>'
-                f'<div style="width:26px;font-size:7px;color:{pcolor};font-family:monospace;text-align:right;">{val:.1f}</div>'
+                f'<div style="display:flex;align-items:center;gap:4px;margin-top:3px;">'
+                f'<div style="width:58px;font-size:9px;color:#8b949e;font-family:monospace;text-align:right;">{plabel}</div>'
+                f'<div style="flex:1;background:#21262d;border-radius:2px;height:6px;">'
+                f'<div style="width:{bar_pct:.0f}%;background:{pcolor};height:6px;border-radius:2px;"></div></div>'
+                f'<div style="width:26px;font-size:9px;color:{pcolor};font-family:monospace;text-align:right;">{val:.1f}</div>'
                 f'</div>'
             )
         return f'<div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d;">{bars}</div>'
