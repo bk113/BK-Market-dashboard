@@ -59,23 +59,25 @@ _DATA_DIR  = _REPO_ROOT / "data"
 
 @dataclass(frozen=True)
 class InstrumentMeta:
-    ticker:            str
-    section:           str            # EQ_US / FI / CMD / ...
-    display_name:      str            # shown in UI
-    bucket:            str            # regime-fit allocation bucket
-    currency:          str            # display currency
-    canonical_name:    str            # v2.3 "Prefix | Name" — "" if unscored
-    v23_prefix:        str            # "EQ" / "FI" / "CMD" / "CRYPTO" / "FX" / "VOL" / ""
-    fragility_scored:  bool           # v2.3 engine produces a score
-    display:           bool           # shown in all UI tabs
-    rankable:          bool           # eligible for Top 5 / RSR rankings
-    sharpe_meaningful: bool           # Sharpe ratio makes sense
-    vol_display:       bool           # vol metric makes sense
-    yield_scale:       bool           # yfinance returns ×10 — divide by 10
-    synthetic_source:  Optional[str]  # "GLD" for GVZ, "BNO" for OVX; None otherwise
-    has_volume:        bool           # volume data available and meaningful
-    return_caps:       Optional[Tuple[float, float, float]]  # (ytd, 1m, 3m) hard caps
-                                                              # None = use self-relative only
+    ticker:               str
+    section:              str            # EQ_US / FI / CMD / ...
+    display_name:         str            # shown in UI
+    bucket:               str            # regime-fit allocation bucket
+    currency:             str            # display currency
+    canonical_name:       str            # v2.3 "Prefix | Name" — "" if unscored
+    v23_prefix:           str            # "EQ" / "FI" / "CMD" / "CRYPTO" / "FX" / "VOL" / ""
+    fragility_scored:     bool           # v2.3 engine produces a score (any engine)
+    display:              bool           # shown in all UI tabs
+    rankable:             bool           # eligible for Top 5 / RSR rankings
+    sharpe_meaningful:    bool           # Sharpe ratio makes sense
+    vol_display:          bool           # vol metric makes sense
+    yield_scale:          bool           # yfinance returns ×10 — divide by 10
+    synthetic_source:     Optional[str]  # "GLD" for GVZ, "BNO" for OVX; None otherwise
+    has_volume:           bool           # volume data available and meaningful
+    return_caps:          Optional[Tuple[float, float, float]]  # (ytd, 1m, 3m) hard caps
+                                                                 # None = use self-relative only
+    fragility_v23_scored: bool = False   # in v2.3's native 47-asset scored universe
+                                         # (IC-derived weights validated on this exact set)
 
 
 # ── Master list ──────────────────────────────────────────────────────────────
@@ -238,6 +240,26 @@ _REGISTRY_ROWS: list[tuple] = [
     ("ALT", "KBWY",      "High Yield REIT",         "Real Assets",  "USD", "EQ | High Yield REIT",         "EQ",  True,  True,  True,  True,  True,  False, None,    True,  None),
 ]
 
+# v2.3's native 47-asset scored universe (the exact instruments its IC-derived
+# weights were fitted and validated on). 3 of the 47 (EWQ/France, BND/Total Bond,
+# USO/WTI) are not in BKIQ's universe and therefore absent from prices_cache.csv
+# — they score as missing, not as errors. CNY=X and CEW (FX system-context) are
+# also outside BKIQ's universe; BKIQ's FX pairs carry the PC1 context column load.
+_V23_NATIVE_SCORED_TICKERS: frozenset[str] = frozenset({
+    # Equity (22 broad + 4 US sectors = 26)
+    "EWA", "EWZ", "FXI", "EEM", "EFA", "EZU", "EWG", "EWH",
+    "INDA", "EWJ", "EWY", "EWW", "VNQ", "EWS", "EZA", "EWT",
+    "EWU", "QQQ", "IWM", "SPY", "ACWI",
+    "XLE", "XLF", "XLV", "XLK",
+    # Fixed Income (11)
+    "EMLC", "EMB", "BNDX", "HYG", "LQD", "AGG", "TIP",
+    "SHY", "TLT", "IEF",
+    # Commodities (8 — BNO is BKIQ's Brent proxy; USO is not in BKIQ's universe)
+    "DBA", "BNO", "DBC", "CPER", "GLD", "UNG", "SLV",
+    # Crypto (2)
+    "BTC-USD", "ETH-USD",
+})
+
 # Build the registry dict
 INSTRUMENT_REGISTRY: dict[str, InstrumentMeta] = {}
 for _row in _REGISTRY_ROWS:
@@ -249,6 +271,7 @@ for _row in _REGISTRY_ROWS:
         fragility_scored=_scored, display=_disp, rankable=_rank,
         sharpe_meaningful=_sharpe, vol_display=_vol_d, yield_scale=_yield,
         synthetic_source=_synth, has_volume=_hasvol, return_caps=_caps,
+        fragility_v23_scored=(_tk in _V23_NATIVE_SCORED_TICKERS),
     )
 
 
@@ -317,6 +340,14 @@ TICKER_TO_CANONICAL: dict[str, str] = {
 }
 
 N_INSTRUMENTS = len([t for t, m in INSTRUMENT_REGISTRY.items() if m.display])
+
+# v2.3 native scored instruments available in BKIQ's cache — {ticker: canonical_name}
+# Use this to filter the panel down to the exact columns compute_v23() scores.
+FRAGILITY_V23_SCORED: dict[str, str] = {
+    t: m.canonical_name
+    for t, m in INSTRUMENT_REGISTRY.items()
+    if m.fragility_v23_scored and m.canonical_name
+}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -642,6 +673,178 @@ def get_clean_returns(
         out[f"{ticker}__1m"]  = tc.get("1m")
         out[f"{ticker}__3m"]  = tc.get("3m")
     return out
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  6.  FRAGILITY PANEL BUILDER  (wire-up for fragility_v23.py)
+# ══════════════════════════════════════════════════════════════════════════════
+# Replaces build_canonical_panel.py's build_prices_and_returns() + build_volumes()
+# with a single call through Layer 1's clean data path. The FRED levels pipeline
+# (build_levels_from_fred_manual / build_levels_stub in build_canonical_panel.py)
+# is NOT touched here — it uses a separate source and stays the caller's concern.
+
+def build_panel_from_layer1(
+    prices_cache_path: Optional[str] = None,
+    volumes_cache_path: Optional[str] = None,
+    apply_winsor: bool = True,
+    clip_log: Optional[ClipLog] = None,
+) -> dict:
+    """Build the fragility engine canonical panel from Layer 1 clean data.
+
+    Replaces build_canonical_panel.py's independent ffill/clip pipeline.
+    Returns a dict:
+        "prices":       pd.DataFrame — canonical names, weekday-only index, Layer-1 clean
+        "returns":      pd.DataFrame — pct_change() after daily-return winsorization
+        "volumes":      pd.DataFrame — canonical names, same index
+        "winsor_report":pd.DataFrame — empty (bounds come from stored winsorization_report.csv)
+
+    Column names use the v2.3 canonical naming convention ("EQ | World (ACWI)", etc.)
+    so score_universe() in fragility_v23.py works without changes.
+
+    The canonical panel includes ALL instruments in INSTRUMENT_REGISTRY that have a
+    canonical_name — not just the native-47 scored ones. score_universe() downstream
+    filters to the native-47 itself; the extra columns go into the PC1 corr pillar.
+
+    Note on winsorization bootstrap: if winsorization_report.csv doesn't exist yet,
+    clip_daily_returns() silently skips clipping and prints a warning. On first-ever
+    run, generate the bounds file by calling refresh_winsor_bounds() below first.
+    """
+    prices_path  = Path(prices_cache_path)  if prices_cache_path  else _DATA_DIR / "prices_cache.csv"
+    volumes_path = Path(volumes_cache_path) if volumes_cache_path else _DATA_DIR / "volumes_cache.csv"
+
+    if not prices_path.exists():
+        raise FileNotFoundError(f"prices_cache.csv not found at {prices_path}")
+
+    # ── Load raw prices ───────────────────────────────────────────────────────
+    raw = pd.read_csv(prices_path, index_col=0, parse_dates=True)
+
+    # Weekday-only filter (mirrors build_canonical_panel.py and fetch_panel()).
+    # Critical: crypto/FX trade weekends, which creates NaN-heavy weekend rows
+    # that pollute rolling windows for everything else.
+    n_before = len(raw)
+    raw = raw[raw.index.dayofweek < 5]
+    dropped = n_before - len(raw)
+    if dropped:
+        print(f"[Layer1] Weekday filter: {n_before} -> {len(raw)} rows ({dropped} weekend rows removed)")
+
+    # ── Apply Layer 1 clean path (yield correction, synthetics, winsorization) ──
+    prices_clean, _prices_pit = get_clean_prices(
+        raw, apply_daily_winsorization=apply_winsor, clip_log=clip_log
+    )
+
+    # ── Rename tickers → canonical names ────────────────────────────────────
+    # Include every instrument that has a canonical name in the registry.
+    # Instruments not in TICKER_TO_CANONICAL are silently dropped (they have
+    # no canonical name and are not part of the v2.3 panel format).
+    rename_map = {
+        tk: cn
+        for tk, cn in TICKER_TO_CANONICAL.items()
+        if tk in prices_clean.columns
+    }
+    unmapped = [c for c in prices_clean.columns if c not in rename_map and c not in DISPLAY_EXCLUSIONS]
+    if unmapped:
+        print(f"[Layer1] {len(unmapped)} columns in prices_cache.csv have no canonical name "
+              f"and are dropped from the fragility panel: {unmapped[:8]}"
+              f"{'...' if len(unmapped) > 8 else ''}")
+
+    prices = prices_clean[list(rename_map.keys())].rename(columns=rename_map)
+
+    # Canonical column order: scored first (EQ/FI/CMD/CRYPTO), then FX, then VOL/other
+    _order = {"EQ": 0, "FI": 1, "CMD": 2, "CRYPTO": 3, "FX": 4, "VOL": 5}
+    def _col_key(c: str) -> tuple:
+        prefix = c.split(" | ")[0] if " | " in c else ""
+        return (_order.get(prefix, 9), c)
+    prices = prices[sorted(prices.columns, key=_col_key)]
+
+    # ── Compute returns from clean prices (winsorization already applied) ────
+    returns = prices.pct_change()
+
+    # ── Load volumes ─────────────────────────────────────────────────────────
+    volumes: pd.DataFrame
+    if volumes_path.exists():
+        vol_raw = pd.read_csv(volumes_path, index_col=0, parse_dates=True)
+        vol_raw = vol_raw[vol_raw.index.dayofweek < 5]
+        vol_rename = {tk: cn for tk, cn in rename_map.items() if tk in vol_raw.columns}
+        vol_missing_cnames = [cn for cn in prices.columns if cn not in vol_rename.values()]
+        volumes = vol_raw[list(vol_rename.keys())].rename(columns=vol_rename)
+        volumes = volumes.reindex(prices.index)
+        # Fill in NaN columns for instruments that have no volume (FX pairs, etc.)
+        for cn in vol_missing_cnames:
+            volumes[cn] = np.nan
+        volumes = volumes[prices.columns]  # align column order
+    else:
+        warnings.warn(f"[Layer1] volumes_cache.csv not found at {volumes_path} — "
+                      "volumes panel will be all-NaN (volz pillar will be missing).")
+        volumes = pd.DataFrame(np.nan, index=prices.index, columns=prices.columns)
+
+    print(f"[Layer1] Panel built: {prices.shape[1]} columns x {prices.shape[0]} rows "
+          f"({prices.index.min().date()} -> {prices.index.max().date()})")
+    scored_cols = [c for c in prices.columns
+                   if any(c.startswith(f"{p} |") for p in ("EQ", "FI", "CMD", "CRYPTO"))
+                   and c in set(FRAGILITY_V23_SCORED.values())]
+    print(f"[Layer1] v2.3 native-scored columns present: {len(scored_cols)} / {len(_V23_NATIVE_SCORED_TICKERS)}")
+
+    return {
+        "prices":        prices,
+        "returns":       returns,
+        "volumes":       volumes,
+        "winsor_report": pd.DataFrame(),  # bounds come from stored winsorization_report.csv
+    }
+
+
+def refresh_winsor_bounds(
+    prices_cache_path: Optional[str] = None,
+    out_path: Optional[str] = None,
+) -> pd.DataFrame:
+    """Recompute per-instrument winsorization bounds from the current prices cache.
+
+    Writes winsorization_report.csv so clip_daily_returns() picks up fresh bounds
+    on the next run. Call this:
+      - After a major cache update (new instruments, extended history)
+      - Whenever Layer 1's self-test reports that no bounds are loaded
+
+    Uses whole-sample 0.1%/99.9% quantile (matching build_canonical_panel.py's
+    winsorize_returns() exactly) so scores are consistent whether this function
+    or build_canonical_panel.py generated the bounds file.
+    """
+    from pathlib import Path as _P
+    prices_path = _P(prices_cache_path) if prices_cache_path else _DATA_DIR / "prices_cache.csv"
+    report_path = _P(out_path) if out_path else _DATA_DIR / "winsorization_report.csv"
+
+    if not prices_path.exists():
+        raise FileNotFoundError(f"prices_cache.csv not found at {prices_path}")
+
+    raw = pd.read_csv(prices_path, index_col=0, parse_dates=True)
+    raw = raw[raw.index.dayofweek < 5]
+
+    WINSOR_LO_Q = 0.001
+    WINSOR_HI_Q = 0.999
+    returns_raw = raw.pct_change()
+
+    rows = []
+    for tk in returns_raw.columns:
+        cn = TICKER_TO_CANONICAL.get(tk)
+        if not cn:
+            continue
+        s = returns_raw[tk].dropna()
+        if len(s) < 100:
+            continue
+        lo = float(s.quantile(WINSOR_LO_Q))
+        hi = float(s.quantile(WINSOR_HI_Q))
+        n_clipped = int(((returns_raw[tk] < lo) | (returns_raw[tk] > hi)).sum())
+        if n_clipped > 0:
+            rows.append({"column": cn, "lower_bound": round(lo, 4),
+                         "upper_bound": round(hi, 4), "n_clipped": n_clipped})
+
+    report = pd.DataFrame(rows).sort_values("column")
+    report.to_csv(report_path, index=False)
+    print(f"[Layer1] refresh_winsor_bounds: wrote {len(report)} rows -> {report_path}")
+
+    # Invalidate the in-process cache so next clip call reloads
+    global _winsor_bounds_cache
+    _winsor_bounds_cache = None
+
+    return report
 
 
 # ══════════════════════════════════════════════════════════════════════════════
