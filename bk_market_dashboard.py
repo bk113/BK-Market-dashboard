@@ -1281,7 +1281,7 @@ def render_report(df: pd.DataFrame, as_of: str, out_dir: str) -> tuple[str, str]
 
     # ── Footer ──
     ax.text(2, FOOT_ROWS * 0.5,
-            "Signal: RED = Max DD < -15%   AMBER = -15% to -7%   GREEN = > -7% from 52-week high   |   "
+            "Signal: Self-relative to each instrument's own drawdown history (P10/P30 = red/amber) — falls back to RED < -15% / AMBER -15% to -7% / GREEN > -7% only when history is thin (<14mo)   |   "
             "Vol 20D = annualised 20-day vol   |   Sharpe = 1Y excess return / vol  (rf = 4.5%)",
             fontsize=FS_FOOT, color=GREY, ha="left", va="center")
     ax.text(98, FOOT_ROWS * 0.5,
@@ -1481,7 +1481,7 @@ def build_email_html(df: pd.DataFrame) -> str:
   <div style="margin-top:14px;padding:10px 0;border-top:1px solid #e2e6ea;
     display:flex;justify-content:space-between;align-items:center;">
     <div style="font-size:9px;color:#9ca3af;font-family:monospace;line-height:1.9;">
-      Signal: RED &lt; &minus;15% &nbsp;|&nbsp; AMBER &minus;15% to &minus;7% &nbsp;|&nbsp; GREEN &gt; &minus;7% — from 52-week high<br>
+      Signal: Self-relative to each instrument's own drawdown history (P10/P30 = red/amber) &mdash; falls back to RED &lt; &minus;15% / AMBER &minus;15% to &minus;7% / GREEN &gt; &minus;7% only when history is thin (&lt;14mo)<br>
       Sharpe = 1Y annualised excess return / vol &nbsp;(rf = 4.5%)<br>
       Prices via Yahoo Finance (15 min delay)
     </div>
@@ -5877,7 +5877,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f"<div id='t-future' class='tab'>{future_tab}</div>"
         "<div class='footer'><div class='fn'>"
         "Returns are price return in USD (ETF prices) &#183; FX returns reflect USD rate changes &#183; Trend = 20-day normalised sparkline<br>"
-        "Signal: RED &lt; &#8722;15% &#183; AMBER &#8722;15% to &#8722;7% &#183; GREEN &gt; &#8722;7% from 52-week high<br>"
+        "Signal: Self-relative to each instrument's own drawdown history (P10/P30 = red/amber) &#183; falls back to RED &lt; &#8722;15% / AMBER &#8722;15% to &#8722;7% / GREEN &gt; &#8722;7% only when history is thin (&lt;14mo)<br>"
         "Fragility: CRITICAL &#8805;70 &#183; ELEVATED 55&#8211;69 &#183; WATCH 40&#8211;54 &#183; LOW &lt;40 &#183; BK Fragility Framework<br>"
         ""
         f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Updated daily before market open"
@@ -6373,7 +6373,7 @@ def render_pptx(df: pd.DataFrame, prices: pd.DataFrame, as_of: str, out_dir: str
                size=12, color=fg, align=PP_ALIGN.CENTER)
 
     _txbox(slide,
-           "Signal: RED = Max DD < −15%   AMBER = −15% to −7%   GREEN = > −7% from 52-week high",
+           "Signal: Self-relative to each instrument's own drawdown history (P10/P30 = red/amber) — falls back to RED < −15% / AMBER −15% to −7% / GREEN > −7% only when history is thin (<14mo)",
            0.7, 6.30, 12.0, 0.30, size=9, color="4b5563")
     _txbox(slide, "Source: Yahoo Finance  ·  Price return, local currency  ·  CONFIDENTIAL",
            0.7, 7.12, 12.0, 0.28, size=9, color="374151")
