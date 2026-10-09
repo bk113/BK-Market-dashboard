@@ -1,15 +1,15 @@
 code,name,last_real_date,staleness_days_vs_panel_end,flagged_stale
-T5YIE,Inflation Breakeven 5Y,2026-09-04,34,True
-T10YIE,Inflation Breakeven 10Y,2026-09-04,34,True
-T5YIFR,Inflation 5Y5Y Forward,2026-09-04,34,True
-DGS3MO,US Treasury 3M Yield,2026-09-03,35,True
-DGS2,US Treasury 2Y Yield,2026-09-03,35,True
-DGS5,US Treasury 5Y Yield,2026-09-03,35,True
-DGS10,US Treasury 10Y Yield,2026-09-03,35,True
-DGS30,US Treasury 30Y Yield,2026-09-03,35,True
-VIXCLS,VIX,2026-09-03,35,True
-DFF,Federal Funds Rate,2026-09-03,35,True
-SOFR,Secured Overnight Rate,2026-09-03,35,True
-TEDRATE,TED Spread (legacy),2022-01-21,1721,True
-DTWEXBGS,USD Trade Weighted Broad,2026-08-28,41,True
-BAMLH0A0HYM2,ICE BofA US HY Index OAS,2026-09-03,35,True
+T5YIE,Inflation Breakeven 5Y,2026-09-04,35,True
+T10YIE,Inflation Breakeven 10Y,2026-09-04,35,True
+T5YIFR,Inflation 5Y5Y Forward,2026-09-04,35,True
+DGS3MO,US Treasury 3M Yield,2026-09-03,36,True
+DGS2,US Treasury 2Y Yield,2026-09-03,36,True
+DGS5,US Treasury 5Y Yield,2026-09-03,36,True
+DGS10,US Treasury 10Y Yield,2026-09-03,36,True
+DGS30,US Treasury 30Y Yield,2026-09-03,36,True
+VIXCLS,VIX,2026-09-03,36,True
+DFF,Federal Funds Rate,2026-09-03,36,True
+SOFR,Secured Overnight Rate,2026-09-03,36,True
+TEDRATE,TED Spread (legacy),2022-01-21,1722,True
+DTWEXBGS,USD Trade Weighted Broad,2026-08-28,42,True
+BAMLH0A0HYM2,ICE BofA US HY Index OAS,2026-09-03,36,True
