@@ -5692,6 +5692,19 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         f'valuations and circular-deal tracking.'
         f'</div></div>'
 
+        # ── Data Infrastructure ──────────────────────────────────────────────────
+        f'<div class="fc" style="margin-bottom:14px;">'
+        f'<div class="lbl" style="margin-bottom:8px;">DATA INFRASTRUCTURE</div>'
+        f'<div style="font-size:12px;color:#8b949e;line-height:1.7;">'
+        f'Every instrument on this dashboard &mdash; currently {N_INSTRUMENTS} &mdash; is sourced from a single, '
+        f'centrally-maintained data layer with one instrument registry, rather than several independently-maintained pipelines. '
+        f'This replaced an earlier setup where different parts of the dashboard (including the Fragility engine) each handled '
+        f'price history, corporate-action adjustments, and data cleaning separately. '
+        f'The migration was validated by comparing every affected instrument&#39;s output against its prior production value '
+        f'before going live, not assumed to match. '
+        f'Price data uses dividend- and split-adjusted closes uniformly across all instrument types.'
+        f'</div></div>'
+
         # ── D-05: Six disclosure blocks ────────────────────────────────────────
         f'<div style="margin-top:24px;display:flex;flex-direction:column;gap:12px;">'
 
