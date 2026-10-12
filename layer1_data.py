@@ -260,6 +260,16 @@ _V23_NATIVE_SCORED_TICKERS: frozenset[str] = frozenset({
     "BTC-USD", "ETH-USD",
 })
 
+# Instruments in the registry that are NOT yet validated against the v2.3
+# production baseline. build_panel_from_layer1() excludes these from the
+# fragility panel to prevent them from contaminating the PC1 corr pillar.
+# When a new ticker is validated (regression diff < 0.5 pts vs production),
+# remove it from here and set fragility_v23_scored=True in the registry row.
+_PANEL_EXCLUDE_UNTIL_VALIDATED: frozenset[str] = frozenset({
+    "SOXX",   # EQ | Semiconductors — added post-v2.3; not in production baseline
+    "SMIN",   # EQ | India Small Cap — added post-v2.3; not in production baseline
+})
+
 # Build the registry dict
 INSTRUMENT_REGISTRY: dict[str, InstrumentMeta] = {}
 for _row in _REGISTRY_ROWS:
@@ -427,8 +437,8 @@ def _load_winsor_bounds() -> dict[str, tuple[float, float]]:
     if _winsor_bounds_cache is not None:
         return _winsor_bounds_cache
     path = _DATA_DIR / "winsorization_report.csv"
-    if not path.exists():
-        warnings.warn(f"[Layer1] winsorization_report.csv not found at {path} — "
+    if not path.exists() or path.stat().st_size < 10:
+        warnings.warn(f"[Layer1] winsorization_report.csv not found or empty at {path} — "
                       "daily-return winsorization unavailable; skipping.")
         _winsor_bounds_cache = {}
         return _winsor_bounds_cache
@@ -701,9 +711,15 @@ def build_panel_from_layer1(
     Column names use the v2.3 canonical naming convention ("EQ | World (ACWI)", etc.)
     so score_universe() in fragility_v23.py works without changes.
 
-    The canonical panel includes ALL instruments in INSTRUMENT_REGISTRY that have a
-    canonical_name — not just the native-47 scored ones. score_universe() downstream
-    filters to the native-47 itself; the extra columns go into the PC1 corr pillar.
+    The canonical panel includes all instruments in INSTRUMENT_REGISTRY that have a
+    canonical_name, EXCEPT those in _PANEL_EXCLUDE_UNTIL_VALIDATED. score_universe()
+    downstream filters to the native-47 scored set; the remaining columns (e.g. BKIQ
+    extended EQ/FI/FX) go into the PC1 corr pillar.
+
+    Instruments in _PANEL_EXCLUDE_UNTIL_VALIDATED are excluded because they were added
+    to the registry after the v2.3 production baseline was frozen. Including them in
+    sys_cols changes the PC1 fit and shifts every other ticker's corr score. They will
+    be re-admitted once a regression diff < 0.5 pts vs production is confirmed.
 
     Note on winsorization bootstrap: if winsorization_report.csv doesn't exist yet,
     clip_daily_returns() silently skips clipping and prints a warning. On first-ever
@@ -733,15 +749,22 @@ def build_panel_from_layer1(
     )
 
     # ── Rename tickers → canonical names ────────────────────────────────────
-    # Include every instrument that has a canonical name in the registry.
-    # Instruments not in TICKER_TO_CANONICAL are silently dropped (they have
-    # no canonical name and are not part of the v2.3 panel format).
+    # Include every instrument with a canonical name, except those pending
+    # v2.3 validation (see _PANEL_EXCLUDE_UNTIL_VALIDATED).
     rename_map = {
         tk: cn
         for tk, cn in TICKER_TO_CANONICAL.items()
         if tk in prices_clean.columns
+        and tk not in _PANEL_EXCLUDE_UNTIL_VALIDATED
     }
-    unmapped = [c for c in prices_clean.columns if c not in rename_map and c not in DISPLAY_EXCLUSIONS]
+    excluded_pending = [tk for tk in _PANEL_EXCLUDE_UNTIL_VALIDATED
+                        if tk in prices_clean.columns]
+    if excluded_pending:
+        print(f"[Layer1] Excluded {len(excluded_pending)} tickers pending v2.3 validation "
+              f"(would contaminate PC1 corr pillar): {excluded_pending}")
+    unmapped = [c for c in prices_clean.columns if c not in rename_map
+                and c not in DISPLAY_EXCLUSIONS
+                and c not in _PANEL_EXCLUDE_UNTIL_VALIDATED]
     if unmapped:
         print(f"[Layer1] {len(unmapped)} columns in prices_cache.csv have no canonical name "
               f"and are dropped from the fragility panel: {unmapped[:8]}"
