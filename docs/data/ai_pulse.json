@@ -1,8 +1,8 @@
 {
-  "as_of": "2026-10-11 01:48 UTC",
-  "basket_breadth_above_50dma_pct": 68.0,
-  "basket_avg_ann_vol_21d_pct": 41.84,
-  "basket_median_pe_ttm": 29.0,
+  "as_of": "2026-10-12 02:18 UTC",
+  "basket_breadth_above_50dma_pct": 64.0,
+  "basket_avg_ann_vol_21d_pct": 41.37,
+  "basket_median_pe_ttm": 29.1,
   "basket_median_beta": 1.36,
   "basket_concentration_top3_pct": 49.4,
   "basket_concentration_top3_names": [
@@ -15,10 +15,10 @@
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": 1.23,
-      "chg_1m": 6.22,
-      "chg_3m": 9.12,
-      "vol_21d_ann": 40.49
+      "chg_1d": 1.27,
+      "chg_1m": 5.54,
+      "chg_3m": 9.43,
+      "vol_21d_ann": 40.0
     },
     "etfs": [
       {
@@ -251,6 +251,12 @@
       "as_of": "2026-10-11 01:48 UTC",
       "basket_breadth_above_50dma_pct": 68.0,
       "basket_avg_ann_vol_21d_pct": 41.84
+    },
+    {
+      "date": "2026-10-12",
+      "as_of": "2026-10-12 02:18 UTC",
+      "basket_breadth_above_50dma_pct": 64.0,
+      "basket_avg_ann_vol_21d_pct": 41.37
     }
   ],
   "layers": [
@@ -303,12 +309,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": -1.84,
-      "avg_chg_1m": 3.29,
-      "avg_chg_3m": -12.01,
-      "avg_vol_21d_ann": 49.52,
-      "breadth_above_50dma_pct": 100.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), up +3.3% over 1M, 100.0% above their 50-day average."
+      "avg_chg_1d": -1.51,
+      "avg_chg_1m": -2.36,
+      "avg_chg_3m": -9.47,
+      "avg_vol_21d_ann": 45.47,
+      "breadth_above_50dma_pct": 66.7,
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -2.4% over 1M, 66.7% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -439,7 +445,7 @@
     }
   ],
   "commentary": {
-    "synthesis": "68.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 41.84% annualised. The largest single-day move was BABA (China AI / Low-Cost Models), up 5.4%. Layer performance diverged over the trailing month: Custom Silicon (n=1) led at +21.3%, while AI Cloud Infra (public) (n=1) lagged at -7.9%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Cloud Compute (n=1) (0.0%).",
+    "synthesis": "64.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 41.37% annualised. The largest single-day move was BABA (China AI / Low-Cost Models), up 5.4%. Layer performance diverged over the trailing month: Custom Silicon (n=1) led at +21.3%, while AI Cloud Infra (public) (n=1) lagged at -7.9%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Cloud Compute (n=1) (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -611,7 +617,7 @@
       "above_50dma": false,
       "drawdown_90d": -24.79,
       "pe_ttm": 27.0,
-      "pe_fwd": 12.1,
+      "pe_fwd": 12.0,
       "ev_ebitda": 2.1,
       "beta": 0.46,
       "market_cap": 277060157440.0
@@ -649,7 +655,7 @@
       "above_50dma": false,
       "drawdown_90d": -16.02,
       "pe_ttm": 15.0,
-      "pe_fwd": 13.1,
+      "pe_fwd": 13.0,
       "ev_ebitda": 2.0,
       "beta": 0.74,
       "market_cap": 491701272576.0
@@ -724,7 +730,7 @@
       "vol_21d_ann": 51.62,
       "above_50dma": true,
       "drawdown_90d": -48.35,
-      "pe_ttm": 90.3,
+      "pe_ttm": 90.6,
       "pe_fwd": 37.8,
       "ev_ebitda": 85.2,
       "beta": 2.26,
@@ -762,7 +768,7 @@
       "vol_21d_ann": 22.16,
       "above_50dma": true,
       "drawdown_90d": -17.57,
-      "pe_ttm": 29.1,
+      "pe_ttm": 29.8,
       "pe_fwd": 22.6,
       "ev_ebitda": 20.7,
       "beta": 1.1,
@@ -782,7 +788,7 @@
       "above_50dma": true,
       "drawdown_90d": -14.89,
       "pe_ttm": 17.6,
-      "pe_fwd": 23.3,
+      "pe_fwd": 23.1,
       "ev_ebitda": 24.2,
       "beta": 1.21,
       "market_cap": 4300779028480.0
@@ -850,18 +856,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 262000.0,
-      "chg_1d": -2.42,
-      "chg_1m": 2.54,
-      "chg_3m": -17.61,
-      "vol_21d_ann": 45.22,
+      "last": 258250.0,
+      "chg_1d": -1.43,
+      "chg_1m": -4.35,
+      "chg_3m": -12.75,
+      "vol_21d_ann": 40.78,
       "above_50dma": true,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
       "pe_fwd": 3.6,
       "ev_ebitda": 6.9,
       "beta": 1.54,
-      "market_cap": 1720439613161472.0
+      "market_cap": 1697456572071936.0
     },
     {
       "ticker": "000660.KS",
@@ -869,18 +875,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1681000.0,
+      "last": 1640000.0,
       "chg_1d": -2.44,
-      "chg_1m": 2.06,
-      "chg_3m": -28.24,
-      "vol_21d_ann": 56.37,
-      "above_50dma": true,
+      "chg_1m": -8.02,
+      "chg_3m": -25.47,
+      "vol_21d_ann": 48.65,
+      "above_50dma": false,
       "drawdown_90d": -54.71,
       "pe_ttm": null,
-      "pe_fwd": 3.6,
+      "pe_fwd": 3.5,
       "ev_ebitda": 7.9,
       "beta": 2.39,
-      "market_cap": 1195317986852864.0
+      "market_cap": 1164741712019456.0
     },
     {
       "ticker": "ANET",
@@ -915,7 +921,7 @@
       "above_50dma": false,
       "drawdown_90d": -37.69,
       "pe_ttm": 54.9,
-      "pe_fwd": 26.5,
+      "pe_fwd": 26.4,
       "ev_ebitda": 35.0,
       "beta": 2.05,
       "market_cap": 93467426816.0
@@ -933,7 +939,7 @@
       "vol_21d_ann": 62.14,
       "above_50dma": true,
       "drawdown_90d": -15.06,
-      "pe_ttm": 27.9,
+      "pe_ttm": 29.1,
       "pe_fwd": 22.4,
       "ev_ebitda": 16.3,
       "beta": 1.13,
