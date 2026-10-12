@@ -3312,6 +3312,153 @@ def _ordinal_suffix(n: float) -> str:
     return {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
 
+def _build_data_health_strip(data_dir: str) -> str:
+    """Read-only: build the Data Health status strip HTML rendered above all tabs."""
+    from pathlib import Path
+    from datetime import timezone
+
+    data_dir          = Path(data_dir)
+    now_utc           = datetime.now(timezone.utc)
+    clip_log_path     = data_dir / "clip_log.csv"
+    panel_prices_path = data_dir / "panel_v22_prices.csv"
+
+    # ── 1. Last refresh timestamp ─────────────────────────────────────────────
+    last_run_ts    = None
+    clip_log_valid = False
+
+    if clip_log_path.exists() and clip_log_path.stat().st_size > 10:
+        try:
+            clog = pd.read_csv(clip_log_path)
+            if not clog.empty and "run_ts" in clog.columns:
+                last_run_ts    = pd.to_datetime(clog["run_ts"], utc=True).max().to_pydatetime()
+                clip_log_valid = True
+        except Exception:
+            pass
+
+    if last_run_ts is None and panel_prices_path.exists():
+        try:
+            last_run_ts = datetime.fromtimestamp(panel_prices_path.stat().st_mtime, tz=timezone.utc)
+        except Exception:
+            pass
+
+    if last_run_ts is not None:
+        age_h   = (now_utc - last_run_ts).total_seconds() / 3600
+        stale   = age_h > 24
+        ts_sgt  = last_run_ts.astimezone(SGT).strftime("%d %b %Y %H:%M SGT")
+        s_icon  = "⚠" if stale else "✓"
+        s_col   = "#e3b341" if stale else "#3fb950"
+        refresh_h = (
+            f'<span style="color:{s_col};font-weight:700;">{s_icon}</span>'
+            f'&nbsp;<span style="color:#8b949e;">Last run:</span>'
+            f'&nbsp;<span style="color:#e6edf3;">{ts_sgt}</span>'
+            + (f'&nbsp;<span style="color:#e3b341;">({age_h:.0f}h ago)</span>' if stale else "")
+        )
+    else:
+        refresh_h = '<span style="color:#8b949e;">Last run: <span style="color:#e3b341;">unknown</span></span>'
+
+    # ── 2. Clip / winsorization count ─────────────────────────────────────────
+    n_clips      = 0
+    clip_tip_txt = ""
+
+    if clip_log_valid:
+        try:
+            clog          = pd.read_csv(clip_log_path)
+            latest_ts_str = clog["run_ts"].max()
+            latest_rows   = clog[clog["run_ts"] == latest_ts_str]
+            n_clips       = len(latest_rows)
+            detail_parts  = [
+                f"{r.get('ticker','?')} {r.get('date','?')} ({r.get('reason','?')})"
+                for _, r in latest_rows.head(8).iterrows()
+            ]
+            if n_clips > 8:
+                detail_parts.append(f"… +{n_clips - 8} more")
+            clip_tip_txt = " | ".join(detail_parts)
+        except Exception:
+            pass
+
+    clip_col = "#3fb950" if n_clips == 0 else ("#e3b341" if n_clips <= 5 else "#f85149")
+    clip_lbl = "0 clipped" if n_clips == 0 else f"{n_clips} clipped"
+    clip_h   = f'<span style="color:{clip_col};">{clip_lbl}</span>'
+    if clip_tip_txt:
+        clip_h += f'&nbsp;<span style="color:#444d56;cursor:help;" title="{clip_tip_txt}">[details]</span>'
+
+    # ── 3. FRED staleness ─────────────────────────────────────────────────────
+    fred_path    = data_dir / "fred_staleness_report.csv"
+    fred_entries = []
+
+    if fred_path.exists():
+        try:
+            fred = pd.read_csv(fred_path)
+            if not fred.empty and "flagged_stale" in fred.columns:
+                for _, row in fred[fred["flagged_stale"] == True].iterrows():
+                    fred_entries.append((
+                        str(row.get("name", row.get("code", "?"))),
+                        int(row.get("staleness_days_vs_panel_end", 0)),
+                    ))
+        except Exception:
+            pass
+
+    actively_stale = [(n, d) for n, d in fred_entries if d <= 500]
+    legacy_retired = [(n, d) for n, d in fred_entries if d > 500]
+
+    if not fred_entries:
+        fred_h = '<span style="color:#3fb950;">FRED: current</span>'
+    else:
+        if actively_stale and legacy_retired:
+            fred_col = "#e3b341"
+            fred_lbl = f"FRED: {len(actively_stale)} stale (+{len(legacy_retired)} legacy)"
+        elif actively_stale:
+            fred_col = "#e3b341"
+            fred_lbl = f"FRED: {len(actively_stale)} stale"
+        else:
+            fred_col = "#8b949e"
+            fred_lbl = f"FRED: {len(legacy_retired)} legacy only"
+        tip_parts  = [f"{n} ({d}d)" for n, d in actively_stale[:8]]
+        if legacy_retired:
+            tip_parts += [f"{n} ({d}d — retired)" for n, d in legacy_retired]
+        fred_tip = " | ".join(tip_parts)
+        fred_h   = (
+            f'<span style="color:{fred_col};">{fred_lbl}</span>'
+            f'&nbsp;<span style="color:#444d56;cursor:help;" title="{fred_tip}">[details]</span>'
+        )
+
+    # ── 4. Excluded instruments ───────────────────────────────────────────────
+    # Mirrors layer1_data._PANEL_EXCLUDE_UNTIL_VALIDATED — update if that set changes.
+    _excluded = {"SOXX", "SMIN"}
+    excl_tip  = (f"{', '.join(sorted(_excluded))}: added post-v2.3, excluded from scored panel "
+                 f"pending regression validation")
+    excl_h    = (
+        f'<span style="color:#8b949e;">Excl:</span>'
+        f'&nbsp;<span style="color:#e3b341;cursor:help;" title="{excl_tip}">'
+        f'{len(_excluded)} pending validation</span>'
+    )
+
+    # ── 5. Coverage disclaimer ────────────────────────────────────────────────
+    cov_tip = ("Monitors winsorization clips and FRED staleness. "
+               "Does not yet detect missing fetches or non-FRED staleness/delisting.")
+    cov_h   = (
+        f'<span style="color:#444d56;cursor:help;" title="{cov_tip}">'
+        f'&#9432;&nbsp;coverage: partial</span>'
+    )
+
+    # ── Assemble ──────────────────────────────────────────────────────────────
+    items = [refresh_h, clip_h, fred_h, excl_h, cov_h]
+    cells = []
+    for i, item in enumerate(items):
+        border = "border-left:1px solid #21262d;" if i > 0 else ""
+        cells.append(
+            f'<div style="display:flex;align-items:center;padding:0 10px;{border}">{item}</div>'
+        )
+
+    return (
+        '<div style="display:flex;align-items:center;flex-wrap:wrap;'
+        'background:#161b22;border:1px solid #30363d;border-radius:5px;'
+        'padding:5px 4px;margin-bottom:8px;font-size:11px;font-family:monospace;line-height:1.4;">'
+        + "".join(cells)
+        + "</div>"
+    )
+
+
 def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.DataFrame = None, regime_data: dict = None, fg_data: dict = None, frag_trend: dict = None, ai_commentary: dict = None, backtest_data: dict = None, headlines_data: list = None) -> str:
     import math
     now         = datetime.now(SGT)
@@ -3321,6 +3468,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     GA          = ""  # Set your GA4 ID here e.g. "G-XXXXXXXXXX"
     # Derive data-review tickers from the scored df (set by compute_scores sanity checks)
     data_review_tickers = set(df.loc[df.get("data_review", pd.Series(False, index=df.index)).astype(bool), "ticker"]) if "data_review" in df.columns else set()
+    _health_strip = _build_data_health_strip(_v23_data_dir())
 
     # ── S2: BK Composite Score + Risk Appetite Score + Dynamic Allocation ──
     _cur_regime = regime_data.get("regime", "Calm") if regime_data else "Calm"
@@ -5887,7 +6035,8 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "<button class='tb' onclick=\"sw('future',this)\">Research</button>"
         "<a class='tb' href='ai.html' style='text-decoration:none;display:inline-flex;align-items:center;'>AI Pulse &rarr;</a>"
         "</div>"
-        f"<div id='t-intel' class='tab on'>{summary_tab}</div>"
+        + _health_strip
+        + f"<div id='t-intel' class='tab on'>{summary_tab}</div>"
         f"<div id='t-perf' class='tab'>{perf}</div>"
         f"<div id='t-risk' class='tab'>{risk}</div>"
         f"<div id='t-frag' class='tab'>{frag}</div>"
