@@ -1,29 +1,31 @@
 """
-Phase 1: build the canonical panel_v22_{prices,returns,volumes,levels,metadata}.csv
-files for the FRAGILITY ENGINE ONLY (decision 2: not a whole-dashboard migration),
-from BKIQ's already-cached prices_cache.csv/volumes_cache.csv, using the mapping
-built by ticker_mapping.py.
+Phase 1 (thin-wrapper edition):
+build the canonical panel_v22_{prices,returns,volumes,levels,metadata}.csv files
+for the FRAGILITY ENGINE ONLY, from BKIQ's already-cached prices_cache.csv/
+volumes_cache.csv.
 
-IMPORTANT -- data currency, re-verified 2026-09-07:
-  - PRICES/RETURNS come from data/prices_cache.csv. CHECK THE DATE RANGE
-    PRINTED BELOW before trusting a run -- as of 2026-09-07 this local file
-    was found stopping 2026-04-18 (this repo's local clone had not been
-    git-pulled in ~4.5 months), while the copy actually committed to GitHub
-    (and served live at dashboard.bkiqmarkets.com) was current through
-    2026-09-04. Run `git pull` before running this script, or point
-    DATA_DIR at a freshly-pulled clone -- do not trust "already current"
-    claims from any prior run without checking the printed date range.
-  - VOLUMES: as of 2026-09-07 there is no volumes_cache.csv in the GitHub
-    repo at all (404 on raw.githubusercontent.com) -- the daily Action has
-    apparently never committed one. The local copy here is also stale
-    (last real date 2026-04-17). Real volumes need a fresh yfinance pull
-    with network access (see refresh_volumes_cache.py) before Phase 2
-    validation numbers can be trusted.
+DATA SOURCE CHANGE (Layer 1 wire-up):
+  Previously: this file ran its own independent ffill/clip/winsorization pipeline
+  (add_synthetic_vol_tickers, winsorize_returns, build_prices_and_returns).
+  Now: prices, returns, and volumes all come from layer1_data.build_panel_from_layer1(),
+  which is the single enforced data-access path (weekday filter, yield correction,
+  synthetic tickers, per-instrument daily-return winsorization from
+  winsorization_report.csv). The old parallel pipeline is retired.
+
+  UNCHANGED: FRED levels (build_levels_from_fred_manual / build_levels_stub),
+  metadata building, and the 5-CSV write. fragility_v23.py's compute_v23() call
+  chain is untouched — it still reads the same 5 CSV files from data/.
+
+IMPORTANT -- data currency (re-verified 2026-09-07 and again post-Layer-1 wire-up):
+  - PRICES/RETURNS come from data/prices_cache.csv via Layer 1. CHECK THE DATE RANGE
+    PRINTED BELOW before trusting a run. Run `git pull` before running this script.
+  - VOLUMES: as of 2026-09-07 there is no volumes_cache.csv in the GitHub repo
+    (404 on raw.githubusercontent.com) — the daily Action has apparently never
+    committed one. Layer 1 handles the missing-file case gracefully (all-NaN
+    volumes panel, volz pillar missing) with a warning.
   - LEVELS: uses build_levels_from_fred_manual() when
-    tools/fragility_migration/fred_manual/*.csv files are present (real
-    FRED data, manually downloaded -- see that function's docstring for the
-    expected file names/format), else falls back to a clearly-labelled
-    SYNTHETIC STUB (sandbox-testing only, never for production).
+    tools/fragility_migration/fred_manual/*.csv files are present (real FRED data,
+    manually downloaded), else falls back to a clearly-labelled SYNTHETIC STUB.
 """
 import json
 import sys
@@ -43,15 +45,18 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 BUILD_DIR = SCRIPT_DIR.parent.parent
 DATA_DIR = BUILD_DIR / "data"
 
-# Ticker-specific return caps, generalizing BKIQ's own RETURN_SANITY_MAX
-# (bk_market_dashboard.py ~line 742), which today only clips *display*
-# metrics (YTD/1M/3M), not the raw returns feeding the fragility engine.
-# v23's own docstring calls for "winsorize returns (0.1% / 99.9% trailing)"
-# as pipeline step 1 -- but that step is not actually implemented anywhere
-# in v23.py (confirmed: no winsorize call in the file). It belongs here, at
-# the panel-build layer, once, centrally -- not duplicated per-caller.
-WINSOR_LOWER_Q = 0.001
-WINSOR_UPPER_Q = 0.999
+# ── Layer 1 import ───────────────────────────────────────────────────────────
+# layer1_data.py lives at the repo root (BUILD_DIR). Add it to sys.path so
+# this script can import it without installing a package.
+if str(BUILD_DIR) not in sys.path:
+    sys.path.insert(0, str(BUILD_DIR))
+from layer1_data import build_panel_from_layer1  # noqa: E402
+
+# WINSOR_LOWER_Q / WINSOR_UPPER_Q are now owned by layer1_data.refresh_winsor_bounds().
+# Kept here as comments for reference only — the old inline winsorize_returns()
+# function below is retired; do not re-add it.
+# WINSOR_LOWER_Q = 0.001
+# WINSOR_UPPER_Q = 0.999
 
 
 def load_mapping():
@@ -338,20 +343,37 @@ def build_metadata(mapped_rows, excluded_rows, levels=None, staleness_report=Non
 
 
 def main():
-    mapped_rows, excluded_rows = load_mapping()
+    # ── LAYER 1 DATA PATH ─────────────────────────────────────────────────────
+    # Prices, returns, and volumes all come from Layer 1's single enforced path.
+    # The old build_prices_and_returns() + build_volumes() are retired; mapping
+    # is now owned by INSTRUMENT_REGISTRY in layer1_data.py.
+    print("Building prices/returns/volumes via Layer 1 clean data path...")
+    l1_panel = build_panel_from_layer1(
+        prices_cache_path=str(DATA_DIR / "prices_cache.csv"),
+        volumes_cache_path=str(DATA_DIR / "volumes_cache.csv"),
+    )
+    prices   = l1_panel["prices"]
+    returns  = l1_panel["returns"]
+    volumes  = l1_panel["volumes"]
+    winsor_report = l1_panel["winsor_report"]  # empty — bounds from winsorization_report.csv
 
-    print("Building prices/returns...")
-    prices, returns, winsor_report = build_prices_and_returns(mapped_rows)
     print(f"  {prices.shape[1]} columns x {prices.shape[0]} rows "
           f"({prices.index.min().date()} -> {prices.index.max().date()})")
     weekend_rows = (prices.index.dayofweek >= 5).sum()
-    print(f"  Weekend rows: {weekend_rows} (should be 0)")
-    if not winsor_report.empty:
-        print(f"  Winsorized {len(winsor_report)} columns (top 5 by clip count):")
-        print(winsor_report.head(5).to_string(index=False))
+    print(f"  Weekend rows: {weekend_rows} (should be 0 after Layer 1 weekday filter)")
 
-    print("\nBuilding volumes...")
-    volumes, vol_staleness_days = build_volumes(mapped_rows, prices.index)
+    # Volumes staleness (informational only — Layer 1 handles missing volumes gracefully)
+    vol_staleness_days: int = 0
+    vol_path = DATA_DIR / "volumes_cache.csv"
+    if vol_path.exists():
+        _vraw = pd.read_csv(vol_path, index_col=0, parse_dates=True)
+        vol_staleness_days = max(0, (prices.index.max() - _vraw.index.max()).days)
+        if vol_staleness_days > 0:
+            print(f"  WARNING: volumes_cache.csv last date = {_vraw.index.max().date()} "
+                  f"({vol_staleness_days} days behind prices). Using as-is.")
+
+    # mapped_rows / excluded_rows still needed for metadata only
+    mapped_rows, excluded_rows = load_mapping()
 
     print("\nBuilding levels...")
     fred_files_present = FRED_MANUAL_DIR.exists() and any(FRED_MANUAL_DIR.glob("*.csv"))
