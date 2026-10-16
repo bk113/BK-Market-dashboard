@@ -38,5 +38,7 @@ jobs:
           git add data/fred_staleness_report.csv data/winsorization_report.csv || true
           git add data/clip_log.csv || true
           git diff --staged --quiet || git commit -m "chore: daily update $(date -u +'%Y-%m-%d %H:%M UTC')"
+          echo "--- git status after commit ---"
+          git status --porcelain
           git pull --rebase origin main
           git push
