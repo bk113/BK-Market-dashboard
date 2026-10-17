@@ -1,10 +1,10 @@
 {
-  "as_of": "2026-10-16 01:13 UTC",
+  "as_of": "2026-10-17 01:15 UTC",
   "basket_breadth_above_50dma_pct": 36.0,
-  "basket_avg_ann_vol_21d_pct": 43.67,
-  "basket_median_pe_ttm": 28.9,
+  "basket_avg_ann_vol_21d_pct": 43.94,
+  "basket_median_pe_ttm": 26.7,
   "basket_median_beta": 1.36,
-  "basket_concentration_top3_pct": 50.0,
+  "basket_concentration_top3_pct": 50.4,
   "basket_concentration_top3_names": [
     "NVDA",
     "GOOGL",
@@ -15,10 +15,10 @@
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": -1.5,
-      "chg_1m": -0.18,
-      "chg_3m": 6.54,
-      "vol_21d_ann": 41.42
+      "chg_1d": 0.1,
+      "chg_1m": -0.85,
+      "chg_3m": 6.46,
+      "vol_21d_ann": 41.68
     },
     "etfs": [
       {
@@ -281,6 +281,12 @@
       "as_of": "2026-10-16 01:13 UTC",
       "basket_breadth_above_50dma_pct": 36.0,
       "basket_avg_ann_vol_21d_pct": 43.67
+    },
+    {
+      "date": "2026-10-17",
+      "as_of": "2026-10-17 01:15 UTC",
+      "basket_breadth_above_50dma_pct": 36.0,
+      "basket_avg_ann_vol_21d_pct": 43.94
     }
   ],
   "layers": [
@@ -333,12 +339,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": 2.14,
-      "avg_chg_1m": -15.16,
-      "avg_chg_3m": -11.97,
-      "avg_vol_21d_ann": 58.97,
+      "avg_chg_1d": 1.76,
+      "avg_chg_1m": -15.41,
+      "avg_chg_3m": -12.22,
+      "avg_vol_21d_ann": 58.76,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -15.2% over 1M, 0.0% above their 50-day average."
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -15.4% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -349,12 +355,12 @@
         "META"
       ],
       "n_names": 4,
-      "avg_chg_1d": -0.37,
-      "avg_chg_1m": 6.39,
-      "avg_chg_3m": 13.03,
-      "avg_vol_21d_ann": 30.29,
+      "avg_chg_1d": 0.42,
+      "avg_chg_1m": 6.24,
+      "avg_chg_3m": 13.79,
+      "avg_vol_21d_ann": 30.3,
       "breadth_above_50dma_pct": 75.0,
-      "blurb": "4 names (MSFT, GOOGL, AMZN, META), up +6.4% over 1M, 75.0% above their 50-day average."
+      "blurb": "4 names (MSFT, GOOGL, AMZN, META), up +6.2% over 1M, 75.0% above their 50-day average."
     },
     {
       "name": "Networking",
@@ -362,12 +368,12 @@
         "ANET"
       ],
       "n_names": 1,
-      "avg_chg_1d": -4.45,
-      "avg_chg_1m": 1.34,
-      "avg_chg_3m": 15.93,
-      "avg_vol_21d_ann": 33.21,
+      "avg_chg_1d": -5.04,
+      "avg_chg_1m": -6.05,
+      "avg_chg_3m": 10.06,
+      "avg_vol_21d_ann": 36.47,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "1 name (ANET), up +1.3% over 1M, 0.0% above their 50-day average."
+      "blurb": "1 name (ANET), down -6.0% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "AI Application",
@@ -378,12 +384,12 @@
         "PLTR"
       ],
       "n_names": 4,
-      "avg_chg_1d": -0.55,
-      "avg_chg_1m": 4.23,
-      "avg_chg_3m": 36.59,
-      "avg_vol_21d_ann": 35.21,
-      "breadth_above_50dma_pct": 75.0,
-      "blurb": "4 names (CRM, CRWD, WDAY, PLTR), up +4.2% over 1M, 75.0% above their 50-day average."
+      "avg_chg_1d": 1.65,
+      "avg_chg_1m": 4.93,
+      "avg_chg_3m": 38.11,
+      "avg_vol_21d_ann": 36.05,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "4 names (CRM, CRWD, WDAY, PLTR), up +4.9% over 1M, 100.0% above their 50-day average."
     },
     {
       "name": "Power / Infra",
@@ -393,12 +399,12 @@
         "GEV"
       ],
       "n_names": 3,
-      "avg_chg_1d": -5.93,
-      "avg_chg_1m": 3.07,
-      "avg_chg_3m": -7.38,
-      "avg_vol_21d_ann": 44.95,
-      "breadth_above_50dma_pct": 33.3,
-      "blurb": "3 names (VRT, CEG, GEV), up +3.1% over 1M, 33.3% above their 50-day average."
+      "avg_chg_1d": -2.29,
+      "avg_chg_1m": -1.4,
+      "avg_chg_3m": -9.7,
+      "avg_vol_21d_ann": 44.28,
+      "breadth_above_50dma_pct": 0.0,
+      "blurb": "3 names (VRT, CEG, GEV), down -1.4% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "Cloud Compute",
@@ -419,12 +425,12 @@
         "CRWV"
       ],
       "n_names": 1,
-      "avg_chg_1d": -15.46,
-      "avg_chg_1m": -18.71,
-      "avg_chg_3m": -9.78,
-      "avg_vol_21d_ann": 74.11,
+      "avg_chg_1d": 5.94,
+      "avg_chg_1m": -16.39,
+      "avg_chg_3m": -4.81,
+      "avg_vol_21d_ann": 76.7,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "1 name (CRWV), down -18.7% over 1M, 0.0% above their 50-day average."
+      "blurb": "1 name (CRWV), down -16.4% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "Credit \u2014 IG",
@@ -460,16 +466,16 @@
         "TCEHY"
       ],
       "n_names": 3,
-      "avg_chg_1d": 0.61,
-      "avg_chg_1m": -2.22,
-      "avg_chg_3m": -12.54,
-      "avg_vol_21d_ann": 32.09,
+      "avg_chg_1d": -0.26,
+      "avg_chg_1m": -2.12,
+      "avg_chg_3m": -13.42,
+      "avg_vol_21d_ann": 31.99,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "3 names (BABA, BIDU, TCEHY), down -2.2% over 1M, 0.0% above their 50-day average."
+      "blurb": "3 names (BABA, BIDU, TCEHY), down -2.1% over 1M, 0.0% above their 50-day average."
     }
   ],
   "commentary": {
-    "synthesis": "36.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 43.67% annualised. The largest single-day move was CRWV (AI Cloud Infra (public)), down 15.5%. Layer performance diverged over the trailing month: Hyperscaler led at +6.4%, while AI Cloud Infra (public) (n=1) lagged at -18.7%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Foundry (n=1) (0.0%).",
+    "synthesis": "36.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 43.94% annualised. The largest single-day move was CRWV (AI Cloud Infra (public)), up 5.9%. Layer performance diverged over the trailing month: Hyperscaler led at +6.2%, while AI Cloud Infra (public) (n=1) lagged at -16.4%. Breadth was strongest in Custom Silicon (n=1) (100.0% of names above their 50-day average) and weakest in Foundry (n=1) (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -488,11 +494,11 @@
       "vol_21d_ann": 32.62,
       "above_50dma": true,
       "drawdown_90d": -14.93,
-      "pe_ttm": 22.8,
-      "pe_fwd": 15.4,
-      "ev_ebitda": 18.1,
+      "pe_ttm": 22.2,
+      "pe_fwd": 15.0,
+      "ev_ebitda": 17.8,
       "beta": 1.26,
-      "market_cap": 203067031552.0
+      "market_cap": 198096093184.0
     },
     {
       "ticker": "CRWD",
@@ -500,18 +506,18 @@
       "etf": "IGV",
       "currency": "USD",
       "non_us_session": false,
-      "last": 249.29,
-      "chg_1d": -4.56,
-      "chg_1m": 2.8,
-      "chg_3m": 22.34,
-      "vol_21d_ann": 47.15,
+      "last": 244.57,
+      "chg_1d": -1.89,
+      "chg_1m": 1.33,
+      "chg_3m": 20.43,
+      "vol_21d_ann": 47.65,
       "above_50dma": true,
       "drawdown_90d": -17.8,
-      "pe_ttm": 4891.4,
-      "pe_fwd": 151.8,
-      "ev_ebitda": 2304.6,
+      "pe_ttm": 3789.8,
+      "pe_fwd": 141.1,
+      "ev_ebitda": 2139.9,
       "beta": 1.2,
-      "market_cap": 250423754752.0
+      "market_cap": 232832548864.0
     },
     {
       "ticker": "WDAY",
@@ -519,18 +525,18 @@
       "etf": "IGV",
       "currency": "USD",
       "non_us_session": false,
-      "last": 188.77,
-      "chg_1d": 1.48,
-      "chg_1m": -1.0,
-      "chg_3m": 29.8,
-      "vol_21d_ann": 31.08,
-      "above_50dma": false,
-      "drawdown_90d": -21.37,
-      "pe_ttm": 40.0,
-      "pe_fwd": 14.9,
-      "ev_ebitda": 30.1,
+      "last": 196.63,
+      "chg_1d": 4.16,
+      "chg_1m": 4.72,
+      "chg_3m": 35.81,
+      "vol_21d_ann": 33.76,
+      "above_50dma": true,
+      "drawdown_90d": -19.39,
+      "pe_ttm": 38.9,
+      "pe_fwd": 14.4,
+      "ev_ebitda": 29.2,
       "beta": 1.07,
-      "market_cap": 47387832320.0
+      "market_cap": 45985210368.0
     },
     {
       "ticker": "PLTR",
@@ -538,18 +544,18 @@
       "etf": "IGV",
       "currency": "USD",
       "non_us_session": false,
-      "last": 200.97,
-      "chg_1d": -3.69,
-      "chg_1m": 16.46,
-      "chg_3m": 49.49,
-      "vol_21d_ann": 30.01,
+      "last": 200.5,
+      "chg_1d": -0.23,
+      "chg_1m": 15.01,
+      "chg_3m": 51.46,
+      "vol_21d_ann": 30.17,
       "above_50dma": true,
-      "drawdown_90d": -21.4,
-      "pe_ttm": 172.8,
-      "pe_fwd": 85.3,
-      "ev_ebitda": 177.5,
+      "drawdown_90d": -20.37,
+      "pe_ttm": 160.4,
+      "pe_fwd": 79.1,
+      "ev_ebitda": 164.5,
       "beta": 1.6,
-      "market_cap": 481813200896.0
+      "market_cap": 447040946176.0
     },
     {
       "ticker": "CRWV",
@@ -557,18 +563,18 @@
       "etf": "\u2014",
       "currency": "USD",
       "non_us_session": false,
-      "last": 65.78,
-      "chg_1d": -15.46,
-      "chg_1m": -18.71,
-      "chg_3m": -9.78,
-      "vol_21d_ann": 74.11,
+      "last": 69.69,
+      "chg_1d": 5.94,
+      "chg_1m": -16.39,
+      "chg_3m": -4.81,
+      "vol_21d_ann": 76.7,
       "above_50dma": false,
       "drawdown_90d": -48.44,
       "pe_ttm": null,
       "pe_fwd": null,
-      "ev_ebitda": 22.3,
+      "ev_ebitda": 21.1,
       "beta": null,
-      "market_cap": 38436585472.0
+      "market_cap": 33858830336.0
     },
     {
       "ticker": "NVDA",
@@ -583,11 +589,11 @@
       "vol_21d_ann": 25.78,
       "above_50dma": false,
       "drawdown_90d": -10.58,
-      "pe_ttm": 28.9,
-      "pe_fwd": 13.6,
-      "ev_ebitda": 25.9,
+      "pe_ttm": 27.1,
+      "pe_fwd": 13.5,
+      "ev_ebitda": 25.5,
       "beta": 2.22,
-      "market_cap": 5245452681216.0
+      "market_cap": 5170596937728.0
     },
     {
       "ticker": "AVGO",
@@ -602,11 +608,11 @@
       "vol_21d_ann": 34.95,
       "above_50dma": false,
       "drawdown_90d": -20.69,
-      "pe_ttm": 45.4,
-      "pe_fwd": 17.8,
-      "ev_ebitda": 32.1,
+      "pe_ttm": 43.3,
+      "pe_fwd": 17.0,
+      "ev_ebitda": 30.7,
       "beta": 1.48,
-      "market_cap": 1643703959552.0
+      "market_cap": 1569330823168.0
     },
     {
       "ticker": "AMD",
@@ -621,11 +627,11 @@
       "vol_21d_ann": 55.59,
       "above_50dma": true,
       "drawdown_90d": -26.05,
-      "pe_ttm": 152.0,
-      "pe_fwd": 35.7,
-      "ev_ebitda": 95.1,
+      "pe_ttm": 134.9,
+      "pe_fwd": 33.6,
+      "ev_ebitda": 89.3,
       "beta": 2.45,
-      "market_cap": 917826371584.0
+      "market_cap": 863171182592.0
     },
     {
       "ticker": "BABA",
@@ -633,18 +639,18 @@
       "etf": "KWEB",
       "currency": "USD",
       "non_us_session": false,
-      "last": 111.17,
-      "chg_1d": 0.29,
-      "chg_1m": 1.67,
-      "chg_3m": -5.38,
-      "vol_21d_ann": 37.97,
+      "last": 111.13,
+      "chg_1d": -0.04,
+      "chg_1m": 3.6,
+      "chg_3m": -3.34,
+      "vol_21d_ann": 37.27,
       "above_50dma": false,
-      "drawdown_90d": -20.31,
-      "pe_ttm": 26.8,
-      "pe_fwd": 12.0,
-      "ev_ebitda": 2.1,
+      "drawdown_90d": -20.12,
+      "pe_ttm": 26.4,
+      "pe_fwd": 11.8,
+      "ev_ebitda": 2.0,
       "beta": 0.46,
-      "market_cap": 276463091712.0
+      "market_cap": 271437856768.0
     },
     {
       "ticker": "BIDU",
@@ -660,10 +666,10 @@
       "above_50dma": false,
       "drawdown_90d": -32.41,
       "pe_ttm": null,
-      "pe_fwd": 11.0,
+      "pe_fwd": 10.7,
       "ev_ebitda": -0.1,
       "beta": 0.58,
-      "market_cap": 28105369600.0
+      "market_cap": 27281545216.0
     },
     {
       "ticker": "TCEHY",
@@ -671,18 +677,18 @@
       "etf": "KWEB",
       "currency": "USD",
       "non_us_session": false,
-      "last": 53.61,
-      "chg_1d": 0.68,
-      "chg_1m": -1.56,
-      "chg_3m": -9.23,
-      "vol_21d_ann": 32.82,
+      "last": 52.75,
+      "chg_1d": -1.59,
+      "chg_1m": -3.21,
+      "chg_3m": -13.92,
+      "vol_21d_ann": 33.23,
       "above_50dma": false,
       "drawdown_90d": -16.02,
-      "pe_ttm": 14.9,
-      "pe_fwd": 12.8,
-      "ev_ebitda": 2.0,
+      "pe_ttm": 14.5,
+      "pe_fwd": 12.6,
+      "ev_ebitda": 1.9,
       "beta": 0.74,
-      "market_cap": 482761277440.0
+      "market_cap": 475016921088.0
     },
     {
       "ticker": "ORCL",
@@ -697,11 +703,11 @@
       "vol_21d_ann": 57.08,
       "above_50dma": false,
       "drawdown_90d": -43.93,
-      "pe_ttm": 22.4,
-      "pe_fwd": 12.2,
-      "ev_ebitda": 15.8,
+      "pe_ttm": 20.1,
+      "pe_fwd": 11.7,
+      "ev_ebitda": 15.3,
       "beta": 1.77,
-      "market_cap": 407645945856.0
+      "market_cap": 388729372672.0
     },
     {
       "ticker": "HYG",
@@ -754,11 +760,11 @@
       "vol_21d_ann": 54.63,
       "above_50dma": true,
       "drawdown_90d": -47.38,
-      "pe_ttm": 88.4,
-      "pe_fwd": 33.1,
-      "ev_ebitda": 74.7,
+      "pe_ttm": 74.9,
+      "pe_fwd": 31.2,
+      "ev_ebitda": 70.6,
       "beta": 2.26,
-      "market_cap": 216803508224.0
+      "market_cap": 204751880192.0
     },
     {
       "ticker": "TSM",
@@ -773,11 +779,11 @@
       "vol_21d_ann": 30.17,
       "above_50dma": false,
       "drawdown_90d": -21.55,
-      "pe_ttm": 32.4,
-      "pe_fwd": 18.4,
+      "pe_ttm": 26.7,
+      "pe_fwd": 17.9,
       "ev_ebitda": 4.9,
       "beta": 1.24,
-      "market_cap": 2189988593664.0
+      "market_cap": 2139990917120.0
     },
     {
       "ticker": "MSFT",
@@ -792,11 +798,11 @@
       "vol_21d_ann": 20.96,
       "above_50dma": true,
       "drawdown_90d": -12.54,
-      "pe_ttm": 30.3,
-      "pe_fwd": 22.7,
-      "ev_ebitda": 20.9,
+      "pe_ttm": 29.5,
+      "pe_fwd": 22.3,
+      "ev_ebitda": 20.5,
       "beta": 1.1,
-      "market_cap": 4005636341760.0
+      "market_cap": 3928485003264.0
     },
     {
       "ticker": "GOOGL",
@@ -811,11 +817,11 @@
       "vol_21d_ann": 20.91,
       "above_50dma": true,
       "drawdown_90d": -14.89,
-      "pe_ttm": 17.8,
-      "pe_fwd": 22.9,
-      "ev_ebitda": 24.1,
+      "pe_ttm": 17.1,
+      "pe_fwd": 22.3,
+      "ev_ebitda": 23.5,
       "beta": 1.21,
-      "market_cap": 4270937866240.0
+      "market_cap": 4165393448960.0
     },
     {
       "ticker": "AMZN",
@@ -830,11 +836,11 @@
       "vol_21d_ann": 24.15,
       "above_50dma": false,
       "drawdown_90d": -13.4,
-      "pe_ttm": 20.8,
-      "pe_fwd": 24.4,
-      "ev_ebitda": 17.0,
+      "pe_ttm": 20.1,
+      "pe_fwd": 23.9,
+      "ev_ebitda": 16.7,
       "beta": 1.46,
-      "market_cap": 2747921072128.0
+      "market_cap": 2696578334720.0
     },
     {
       "ticker": "META",
@@ -842,18 +848,18 @@
       "etf": "XLC",
       "currency": "USD",
       "non_us_session": false,
-      "last": 737.54,
-      "chg_1d": -3.27,
-      "chg_1m": 10.13,
-      "chg_3m": 11.07,
-      "vol_21d_ann": 55.13,
+      "last": 736.72,
+      "chg_1d": -0.11,
+      "chg_1m": 9.5,
+      "chg_3m": 14.13,
+      "vol_21d_ann": 55.18,
       "above_50dma": true,
       "drawdown_90d": -20.88,
-      "pe_ttm": 28.7,
-      "pe_fwd": 21.3,
-      "ev_ebitda": 17.3,
+      "pe_ttm": 26.7,
+      "pe_fwd": 20.5,
+      "ev_ebitda": 16.7,
       "beta": 1.19,
-      "market_cap": 1876798734336.0
+      "market_cap": 1807009841152.0
     },
     {
       "ticker": "MU",
@@ -868,11 +874,11 @@
       "vol_21d_ann": 49.87,
       "above_50dma": false,
       "drawdown_90d": -39.1,
-      "pe_ttm": 12.8,
-      "pe_fwd": 4.6,
-      "ev_ebitda": 9.3,
+      "pe_ttm": 11.8,
+      "pe_fwd": 4.2,
+      "ev_ebitda": 8.8,
       "beta": 2.23,
-      "market_cap": 1053626531840.0
+      "market_cap": 994340044800.0
     },
     {
       "ticker": "005930.KS",
@@ -880,18 +886,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 214750.0,
-      "chg_1d": 2.26,
-      "chg_1m": -17.24,
-      "chg_3m": -15.62,
-      "vol_21d_ann": 58.59,
+      "last": 215500.0,
+      "chg_1d": 2.62,
+      "chg_1m": -16.96,
+      "chg_3m": -15.32,
+      "vol_21d_ann": 58.84,
       "above_50dma": false,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
       "pe_fwd": 3.0,
-      "ev_ebitda": 5.4,
+      "ev_ebitda": 5.6,
       "beta": 1.54,
-      "market_cap": 1398435445997568.0
+      "market_cap": 1403319360684032.0
     },
     {
       "ticker": "000660.KS",
@@ -899,18 +905,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1291000.0,
-      "chg_1d": 2.3,
-      "chg_1m": -28.75,
-      "chg_3m": -30.01,
-      "vol_21d_ann": 68.45,
+      "last": 1272000.0,
+      "chg_1d": 0.79,
+      "chg_1m": -29.8,
+      "chg_3m": -31.04,
+      "vol_21d_ann": 67.58,
       "above_50dma": false,
       "drawdown_90d": -56.76,
       "pe_ttm": null,
-      "pe_fwd": 2.8,
+      "pe_fwd": 2.7,
       "ev_ebitda": 5.8,
       "beta": 2.39,
-      "market_cap": 940966802358272.0
+      "market_cap": 927118351400960.0
     },
     {
       "ticker": "ANET",
@@ -918,18 +924,18 @@
       "etf": "XLK",
       "currency": "USD",
       "non_us_session": false,
-      "last": 195.42,
-      "chg_1d": -4.45,
-      "chg_1m": 1.34,
-      "chg_3m": 15.93,
-      "vol_21d_ann": 33.21,
+      "last": 185.58,
+      "chg_1d": -5.04,
+      "chg_1m": -6.05,
+      "chg_3m": 10.06,
+      "vol_21d_ann": 36.47,
       "above_50dma": false,
       "drawdown_90d": -15.51,
-      "pe_ttm": 58.5,
-      "pe_fwd": 35.5,
-      "ev_ebitda": 47.6,
+      "pe_ttm": 55.8,
+      "pe_fwd": 33.9,
+      "ev_ebitda": 45.2,
       "beta": 1.6,
-      "market_cap": 234058088448.0
+      "market_cap": 223211536384.0
     },
     {
       "ticker": "VRT",
@@ -937,18 +943,18 @@
       "etf": "XLI",
       "currency": "USD",
       "non_us_session": false,
-      "last": 222.83,
-      "chg_1d": -6.09,
-      "chg_1m": -5.02,
-      "chg_3m": -24.22,
-      "vol_21d_ann": 38.07,
+      "last": 214.75,
+      "chg_1d": -3.63,
+      "chg_1m": -10.3,
+      "chg_3m": -25.82,
+      "vol_21d_ann": 38.88,
       "above_50dma": false,
-      "drawdown_90d": -37.73,
-      "pe_ttm": 51.7,
-      "pe_fwd": 23.4,
-      "ev_ebitda": 30.9,
+      "drawdown_90d": -39.99,
+      "pe_ttm": 46.7,
+      "pe_fwd": 22.5,
+      "ev_ebitda": 29.8,
       "beta": 2.05,
-      "market_cap": 82676203520.0
+      "market_cap": 79469256704.0
     },
     {
       "ticker": "CEG",
@@ -956,18 +962,18 @@
       "etf": "XLU",
       "currency": "USD",
       "non_us_session": false,
-      "last": 279.54,
-      "chg_1d": -5.49,
-      "chg_1m": 7.56,
-      "chg_3m": 11.2,
-      "vol_21d_ann": 59.76,
-      "above_50dma": true,
+      "last": 275.0,
+      "chg_1d": -1.62,
+      "chg_1m": 5.96,
+      "chg_3m": 9.13,
+      "vol_21d_ann": 60.16,
+      "above_50dma": false,
       "drawdown_90d": -15.06,
-      "pe_ttm": 28.9,
-      "pe_fwd": 20.7,
-      "ev_ebitda": 15.3,
+      "pe_ttm": 26.5,
+      "pe_fwd": 20.4,
+      "ev_ebitda": 15.2,
       "beta": 1.13,
-      "market_cap": 97434533888.0
+      "market_cap": 96148398080.0
     },
     {
       "ticker": "GEV",
@@ -975,18 +981,18 @@
       "etf": "XLI",
       "currency": "USD",
       "non_us_session": false,
-      "last": 941.78,
-      "chg_1d": -6.2,
-      "chg_1m": 6.68,
-      "chg_3m": -9.11,
-      "vol_21d_ann": 37.01,
+      "last": 926.44,
+      "chg_1d": -1.63,
+      "chg_1m": 0.15,
+      "chg_3m": -12.42,
+      "vol_21d_ann": 33.81,
       "above_50dma": false,
       "drawdown_90d": -25.54,
-      "pe_ttm": 28.3,
-      "pe_fwd": 36.7,
-      "ev_ebitda": 60.8,
+      "pe_ttm": 26.4,
+      "pe_fwd": 36.5,
+      "ev_ebitda": 60.5,
       "beta": 0.97,
-      "market_cap": 246742089728.0
+      "market_cap": 245346500608.0
     }
   ],
   "methodology": "1M/3M returns are trailing 21/63 trading-day price changes. Vol (per name) = annualised stdev of that name's own trailing 21-day daily returns. Basket vol = same calculation pooled across the equity subset. Breadth = % of equity subset trading above its own 50-day moving average. Drawdown = max peak-to-trough over trailing 90 sessions per name. Layer aggregates are simple, equal-weighted means across that layer's names -- not market-cap-weighted, so a smaller name carries the same influence on a layer average as a mega-cap one. A layer backed by only one or two names is labelled (n=1)/(n=2) wherever cited in the synthesis below, since its 'breadth' figure is really just that name's own number, not a breadth statistic. Samsung Electronics (005930.KS) and SK Hynix (000660.KS) trade in KRW on the Korea Exchange, on a trading session that closes hours before the US session even opens -- their 1-day changes are not on the same clock as the rest of the basket, shown for completeness, not for direct day-over-day comparison. 'history' holds up to the trailing 60 days of basket breadth/vol, appended once per run, so the page can show a trend rather than a single snapshot. The synthesis paragraph above is LLM-generated only when commentary.generated_by = 'llm'; when it reads 'fallback' (as it does whenever no API key is configured), that paragraph is template arithmetic like everything else on this page, not a model output. Descriptive only; not a signal or recommendation. P/E (ttm) and EV/EBITDA are from yfinance's own reported fields, best-effort -- a name shows '-' when the field is missing, the company is loss-making (a negative P/E is dropped rather than shown, since it isn't a valuation multiple), or it's one of the two credit ETFs (LQD/HYG), which are skipped entirely -- a bond ETF has no earnings, and Yahoo's fields for one aren't a real multiple. The basket-wide P/E figure is a MEDIAN, not a mean: trailing P/E is right-skewed by nature (a name near breakeven GAAP earnings can print a P/E in the thousands) and a simple average lets one such name single-handedly set the headline number -- the per-name table still shows that name's actual reported figure, unrounded down, so nothing is hidden, just not allowed to distort the summary stat. Beta is Yahoo's standard 5-year monthly beta versus each name's home-market index, not a figure BK/IQ computes; the basket figure is also a median for the same reason. Concentration = top-3-by-market-cap share of the basket, USD-denominated names only (Samsung and SK Hynix excluded from this one stat specifically, to avoid mixing KRW and USD market caps without an FX conversion). Avg pairwise correlation is computed over the trailing 63 trading days across the equity subset (a longer window than the 21D vol figure, deliberately, since correlation on 21 days alone is noisy) -- a rising number here means names are moving together regardless of layer, independent of the fragility engine's own correlation pillar. The benchmark block compares the basket's own equal-weighted average against SOXX/IGV/QQQ using the identical calculation, so any gap reflects the basket's different membership, not a different formula."
