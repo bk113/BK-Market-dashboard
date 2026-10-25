@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-24 01:30 UTC",
+  "as_of": "2026-10-25 01:02 UTC",
   "basket_breadth_above_50dma_pct": 20.0,
   "basket_avg_ann_vol_21d_pct": 46.8,
   "basket_median_pe_ttm": 26.7,
@@ -16,7 +16,7 @@
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
       "chg_1d": 0.39,
-      "chg_1m": -10.36,
+      "chg_1m": -10.37,
       "chg_3m": 2.89,
       "vol_21d_ann": 44.19
     },
@@ -329,6 +329,12 @@
       "as_of": "2026-10-24 01:30 UTC",
       "basket_breadth_above_50dma_pct": 20.0,
       "basket_avg_ann_vol_21d_pct": 46.8
+    },
+    {
+      "date": "2026-10-25",
+      "as_of": "2026-10-25 01:02 UTC",
+      "basket_breadth_above_50dma_pct": 20.0,
+      "basket_avg_ann_vol_21d_pct": 46.8
     }
   ],
   "layers": [
@@ -508,10 +514,10 @@
         "TCEHY"
       ],
       "n_names": 3,
-      "avg_chg_1d": -1.09,
-      "avg_chg_1m": -11.09,
-      "avg_chg_3m": -17.83,
-      "avg_vol_21d_ann": 27.95,
+      "avg_chg_1d": -1.14,
+      "avg_chg_1m": -11.13,
+      "avg_chg_3m": -17.87,
+      "avg_vol_21d_ann": 27.94,
       "breadth_above_50dma_pct": 0.0,
       "blurb": "3 names (BABA, BIDU, TCEHY), down -11.1% over 1M, 0.0% above their 50-day average."
     }
@@ -536,7 +542,7 @@
       "vol_21d_ann": 32.68,
       "above_50dma": true,
       "drawdown_90d": -14.93,
-      "pe_ttm": 22.0,
+      "pe_ttm": 22.7,
       "pe_fwd": 15.5,
       "ev_ebitda": 18.3,
       "beta": 1.26,
@@ -555,7 +561,7 @@
       "vol_21d_ann": 57.45,
       "above_50dma": true,
       "drawdown_90d": -18.46,
-      "pe_ttm": 5151.4,
+      "pe_ttm": 4292.8,
       "pe_fwd": 159.9,
       "ev_ebitda": 2429.1,
       "beta": 1.2,
@@ -574,7 +580,7 @@
       "vol_21d_ann": 31.44,
       "above_50dma": true,
       "drawdown_90d": -13.14,
-      "pe_ttm": 41.3,
+      "pe_ttm": 42.8,
       "pe_fwd": 15.9,
       "ev_ebitda": 32.1,
       "beta": 1.07,
@@ -719,18 +725,18 @@
       "etf": "KWEB",
       "currency": "USD",
       "non_us_session": false,
-      "last": 49.48,
-      "chg_1d": -0.14,
-      "chg_1m": -10.99,
-      "chg_3m": -13.45,
-      "vol_21d_ann": 27.95,
+      "last": 49.41,
+      "chg_1d": -0.28,
+      "chg_1m": -11.12,
+      "chg_3m": -13.57,
+      "vol_21d_ann": 27.93,
       "above_50dma": false,
-      "drawdown_90d": -21.19,
+      "drawdown_90d": -21.3,
       "pe_ttm": 13.6,
       "pe_fwd": 11.9,
       "ev_ebitda": 1.8,
       "beta": 0.74,
-      "market_cap": 445547970560.0
+      "market_cap": 444917645312.0
     },
     {
       "ticker": "ORCL",
@@ -899,7 +905,7 @@
       "drawdown_90d": -20.88,
       "pe_ttm": 21.9,
       "pe_fwd": 18.5,
-      "ev_ebitda": 14.6,
+      "ev_ebitda": 14.4,
       "beta": 1.19,
       "market_cap": 1637078401024.0
     },
