@@ -1,7 +1,7 @@
 {
-  "as_of": "2026-10-25 01:02 UTC",
+  "as_of": "2026-10-26 01:06 UTC",
   "basket_breadth_above_50dma_pct": 20.0,
-  "basket_avg_ann_vol_21d_pct": 46.8,
+  "basket_avg_ann_vol_21d_pct": 46.64,
   "basket_median_pe_ttm": 26.7,
   "basket_median_beta": 1.36,
   "basket_concentration_top3_pct": 50.2,
@@ -15,10 +15,10 @@
   "benchmarks": {
     "basket_avg": {
       "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": 0.39,
-      "chg_1m": -10.37,
-      "chg_3m": 2.89,
-      "vol_21d_ann": 44.19
+      "chg_1d": 0.15,
+      "chg_1m": -10.57,
+      "chg_3m": 2.84,
+      "vol_21d_ann": 44.04
     },
     "etfs": [
       {
@@ -335,6 +335,12 @@
       "as_of": "2026-10-25 01:02 UTC",
       "basket_breadth_above_50dma_pct": 20.0,
       "basket_avg_ann_vol_21d_pct": 46.8
+    },
+    {
+      "date": "2026-10-26",
+      "as_of": "2026-10-26 01:06 UTC",
+      "basket_breadth_above_50dma_pct": 20.0,
+      "basket_avg_ann_vol_21d_pct": 46.64
     }
   ],
   "layers": [
@@ -387,12 +393,12 @@
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": 2.45,
-      "avg_chg_1m": -22.48,
-      "avg_chg_3m": -16.58,
-      "avg_vol_21d_ann": 59.04,
+      "avg_chg_1d": 0.46,
+      "avg_chg_1m": -24.2,
+      "avg_chg_3m": -16.96,
+      "avg_vol_21d_ann": 57.73,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -22.5% over 1M, 0.0% above their 50-day average."
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -24.2% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
@@ -523,7 +529,7 @@
     }
   ],
   "commentary": {
-    "synthesis": "20.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 46.8% annualised. The largest single-day move was CRWD (AI Application), up 8.2%. Layer performance diverged over the trailing month: AI Application led at +3.9%, while AI Cloud Infra (public) (n=1) lagged at -39.8%. Breadth was strongest in AI Application (100.0% of names above their 50-day average) and weakest in AI Compute (0.0%).",
+    "synthesis": "20.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 46.64% annualised. The largest single-day move was CRWD (AI Application), up 8.2%. Layer performance diverged over the trailing month: AI Application led at +3.9%, while AI Cloud Infra (public) (n=1) lagged at -39.8%. Breadth was strongest in AI Application (100.0% of names above their 50-day average) and weakest in AI Compute (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -599,7 +605,7 @@
       "vol_21d_ann": 44.55,
       "above_50dma": true,
       "drawdown_90d": -17.88,
-      "pe_ttm": 174.1,
+      "pe_ttm": 169.6,
       "pe_fwd": 83.7,
       "ev_ebitda": 174.2,
       "beta": 1.6,
@@ -656,7 +662,7 @@
       "vol_21d_ann": 37.59,
       "above_50dma": false,
       "drawdown_90d": -24.66,
-      "pe_ttm": 42.9,
+      "pe_ttm": 41.1,
       "pe_fwd": 16.6,
       "ev_ebitda": 30.1,
       "beta": 1.48,
@@ -934,18 +940,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 215500.0,
-      "chg_1d": 0.47,
-      "chg_1m": -17.43,
-      "chg_3m": -16.8,
-      "vol_21d_ann": 61.58,
+      "last": 213000.0,
+      "chg_1d": -1.16,
+      "chg_1m": -22.26,
+      "chg_3m": -18.23,
+      "vol_21d_ann": 57.83,
       "above_50dma": false,
       "drawdown_90d": -42.83,
       "pe_ttm": null,
-      "pe_fwd": 3.0,
+      "pe_fwd": 2.9,
       "ev_ebitda": 5.6,
       "beta": 1.54,
-      "market_cap": 1403319360684032.0
+      "market_cap": 1387039555584000.0
     },
     {
       "ticker": "000660.KS",
@@ -953,18 +959,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1277000.0,
-      "chg_1d": 4.42,
-      "chg_1m": -31.23,
-      "chg_3m": -30.43,
-      "vol_21d_ann": 67.18,
+      "last": 1278000.0,
+      "chg_1d": 0.08,
+      "chg_1m": -31.58,
+      "chg_3m": -30.15,
+      "vol_21d_ann": 66.99,
       "above_50dma": false,
       "drawdown_90d": -58.09,
       "pe_ttm": null,
       "pe_fwd": 2.7,
       "ev_ebitda": 5.9,
       "beta": 2.39,
-      "market_cap": 930762698260480.0
+      "market_cap": 931491567632384.0
     },
     {
       "ticker": "ANET",
@@ -979,7 +985,7 @@
       "vol_21d_ann": 46.39,
       "above_50dma": false,
       "drawdown_90d": -21.07,
-      "pe_ttm": 58.6,
+      "pe_ttm": 54.4,
       "pe_fwd": 33.0,
       "ev_ebitda": 44.0,
       "beta": 1.6,
@@ -1037,7 +1043,7 @@
       "above_50dma": false,
       "drawdown_90d": -30.63,
       "pe_ttm": 23.4,
-      "pe_fwd": 32.4,
+      "pe_fwd": 32.3,
       "ev_ebitda": 53.3,
       "beta": 0.97,
       "market_cap": 217061867520.0
