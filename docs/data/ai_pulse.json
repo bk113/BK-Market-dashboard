@@ -1,9 +1,9 @@
 {
-  "as_of": "2026-10-31 02:16 UTC",
+  "as_of": "2026-11-01 02:07 UTC",
   "basket_breadth_above_50dma_pct": 12.0,
   "basket_avg_ann_vol_21d_pct": 55.59,
   "basket_median_pe_ttm": 25.9,
-  "basket_median_beta": 1.46,
+  "basket_median_beta": 1.26,
   "basket_concentration_top3_pct": 49.4,
   "basket_concentration_top3_names": [
     "NVDA",
@@ -371,6 +371,12 @@
       "as_of": "2026-10-31 02:16 UTC",
       "basket_breadth_above_50dma_pct": 12.0,
       "basket_avg_ann_vol_21d_pct": 55.59
+    },
+    {
+      "date": "2026-11-01",
+      "as_of": "2026-11-01 02:07 UTC",
+      "basket_breadth_above_50dma_pct": 12.0,
+      "basket_avg_ann_vol_21d_pct": 55.59
     }
   ],
   "layers": [
@@ -552,8 +558,8 @@
       "n_names": 3,
       "avg_chg_1d": -1.18,
       "avg_chg_1m": -9.56,
-      "avg_chg_3m": -25.68,
-      "avg_vol_21d_ann": 28.82,
+      "avg_chg_3m": -25.69,
+      "avg_vol_21d_ann": 28.81,
       "breadth_above_50dma_pct": 0.0,
       "blurb": "3 names (BABA, BIDU, TCEHY), down -9.6% over 1M, 0.0% above their 50-day average."
     }
@@ -761,18 +767,18 @@
       "etf": "KWEB",
       "currency": "USD",
       "non_us_session": false,
-      "last": 49.05,
-      "chg_1d": 0.84,
-      "chg_1m": -9.17,
-      "chg_3m": -21.62,
-      "vol_21d_ann": 26.75,
+      "last": 49.04,
+      "chg_1d": 0.82,
+      "chg_1m": -9.19,
+      "chg_3m": -21.64,
+      "vol_21d_ann": 26.74,
       "above_50dma": false,
       "drawdown_90d": -22.52,
       "pe_ttm": 13.5,
       "pe_fwd": 11.8,
       "ev_ebitda": 1.8,
       "beta": 0.74,
-      "market_cap": 441676005376.0
+      "market_cap": 441585958912.0
     },
     {
       "ticker": "ORCL",
@@ -884,8 +890,8 @@
       "drawdown_90d": -5.15,
       "pe_ttm": 27.2,
       "pe_fwd": 21.6,
-      "ev_ebitda": 18.8,
-      "beta": null,
+      "ev_ebitda": 19.2,
+      "beta": 1.1,
       "market_cap": 3875804807168.0
     },
     {
@@ -920,11 +926,11 @@
       "vol_21d_ann": 35.64,
       "above_50dma": false,
       "drawdown_90d": -15.38,
-      "pe_ttm": 19.3,
-      "pe_fwd": 22.8,
-      "ev_ebitda": 16.3,
-      "beta": 1.46,
-      "market_cap": 2598423756800.0
+      "pe_ttm": 19.4,
+      "pe_fwd": 22.6,
+      "ev_ebitda": 15.0,
+      "beta": null,
+      "market_cap": 2598937821184.0
     },
     {
       "ticker": "META",
@@ -979,7 +985,7 @@
       "drawdown_90d": -42.2,
       "pe_ttm": null,
       "pe_fwd": 3.0,
-      "ev_ebitda": 6.0,
+      "ev_ebitda": 4.0,
       "beta": 1.54,
       "market_cap": 1465182593220608.0
     },
@@ -998,7 +1004,7 @@
       "drawdown_90d": -58.09,
       "pe_ttm": null,
       "pe_fwd": 2.7,
-      "ev_ebitda": 7.1,
+      "ev_ebitda": 4.3,
       "beta": 2.39,
       "market_cap": 999935763808256.0
     },
@@ -1036,7 +1042,7 @@
       "drawdown_90d": -41.95,
       "pe_ttm": 43.5,
       "pe_fwd": 23.9,
-      "ev_ebitda": 28.8,
+      "ev_ebitda": 28.0,
       "beta": 2.05,
       "market_cap": 89526550528.0
     },
