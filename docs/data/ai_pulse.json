@@ -1,6 +1,6 @@
 {
-  "as_of": "2026-11-07 02:43 UTC",
-  "basket_breadth_above_50dma_pct": 12.0,
+  "as_of": "2026-11-08 02:21 UTC",
+  "basket_breadth_above_50dma_pct": 16.0,
   "basket_avg_ann_vol_21d_pct": 67.54,
   "basket_median_pe_ttm": 24.4,
   "basket_median_beta": 1.39,
@@ -48,12 +48,6 @@
     ]
   },
   "history": [
-    {
-      "date": "2026-09-09",
-      "as_of": "2026-09-09 01:12 UTC",
-      "basket_breadth_above_50dma_pct": 68.0,
-      "basket_avg_ann_vol_21d_pct": 55.43
-    },
     {
       "date": "2026-09-10",
       "as_of": "2026-09-10 01:01 UTC",
@@ -407,6 +401,12 @@
       "as_of": "2026-11-07 02:43 UTC",
       "basket_breadth_above_50dma_pct": 12.0,
       "basket_avg_ann_vol_21d_pct": 67.54
+    },
+    {
+      "date": "2026-11-08",
+      "as_of": "2026-11-08 02:21 UTC",
+      "basket_breadth_above_50dma_pct": 16.0,
+      "basket_avg_ann_vol_21d_pct": 67.54
     }
   ],
   "layers": [
@@ -560,7 +560,7 @@
       "n_names": 1,
       "avg_chg_1d": -0.12,
       "avg_chg_1m": 2.01,
-      "avg_chg_3m": -0.94,
+      "avg_chg_3m": -0.51,
       "avg_vol_21d_ann": 6.35,
       "breadth_above_50dma_pct": null,
       "blurb": "1 name (LQD), up +2.0% over 1M."
@@ -573,7 +573,7 @@
       "n_names": 1,
       "avg_chg_1d": -0.06,
       "avg_chg_1m": 0.12,
-      "avg_chg_3m": -2.3,
+      "avg_chg_3m": -1.86,
       "avg_vol_21d_ann": 5.04,
       "breadth_above_50dma_pct": null,
       "blurb": "1 name (HYG), up +0.1% over 1M."
@@ -586,16 +586,16 @@
         "TCEHY"
       ],
       "n_names": 3,
-      "avg_chg_1d": 1.1,
-      "avg_chg_1m": 0.92,
-      "avg_chg_3m": -18.47,
-      "avg_vol_21d_ann": 32.54,
-      "breadth_above_50dma_pct": 33.3,
-      "blurb": "3 names (BABA, BIDU, TCEHY), up +0.9% over 1M, 33.3% above their 50-day average."
+      "avg_chg_1d": 1.14,
+      "avg_chg_1m": 0.96,
+      "avg_chg_3m": -18.43,
+      "avg_vol_21d_ann": 32.52,
+      "breadth_above_50dma_pct": 66.7,
+      "blurb": "3 names (BABA, BIDU, TCEHY), up +1.0% over 1M, 66.7% above their 50-day average."
     }
   ],
   "commentary": {
-    "synthesis": "12.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 67.54% annualised. The largest single-day move was AMD (AI Compute), up 11.0%. Layer performance diverged over the trailing month: Credit \u2014 IG (n=1) led at +2.0%, while Custom Silicon (n=1) lagged at -48.6%. Breadth was strongest in Hyperscaler (50.0% of names above their 50-day average) and weakest in AI Compute (0.0%).",
+    "synthesis": "16.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 67.54% annualised. The largest single-day move was AMD (AI Compute), up 11.0%. Layer performance diverged over the trailing month: Credit \u2014 IG (n=1) led at +2.0%, while Custom Silicon (n=1) lagged at -48.6%. Breadth was strongest in China AI / Low-Cost Models (66.7% of names above their 50-day average) and weakest in AI Compute (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
@@ -633,7 +633,7 @@
       "vol_21d_ann": 65.34,
       "above_50dma": false,
       "drawdown_90d": -22.22,
-      "pe_ttm": 4338.0,
+      "pe_ttm": 3615.0,
       "pe_fwd": 134.7,
       "ev_ebitda": 2039.4,
       "beta": 1.15,
@@ -672,7 +672,7 @@
       "above_50dma": false,
       "drawdown_90d": -25.86,
       "pe_ttm": 112.9,
-      "pe_fwd": 64.4,
+      "pe_fwd": 63.3,
       "ev_ebitda": 112.1,
       "beta": 1.61,
       "market_cap": 386435252224.0
@@ -748,7 +748,7 @@
       "above_50dma": false,
       "drawdown_90d": -37.73,
       "pe_ttm": 95.9,
-      "pe_fwd": 26.0,
+      "pe_fwd": 25.5,
       "ev_ebitda": 65.5,
       "beta": 2.54,
       "market_cap": 736464797696.0
@@ -797,18 +797,18 @@
       "etf": "KWEB",
       "currency": "USD",
       "non_us_session": false,
-      "last": 53.59,
-      "chg_1d": -1.0,
-      "chg_1m": 1.65,
-      "chg_3m": -12.89,
-      "vol_21d_ann": 30.78,
-      "above_50dma": false,
+      "last": 53.66,
+      "chg_1d": -0.87,
+      "chg_1m": 1.78,
+      "chg_3m": -12.78,
+      "vol_21d_ann": 30.72,
+      "above_50dma": true,
       "drawdown_90d": -22.52,
       "pe_ttm": 14.7,
       "pe_fwd": 12.9,
       "ev_ebitda": 2.0,
       "beta": 0.75,
-      "market_cap": 482556903424.0
+      "market_cap": 483187228672.0
     },
     {
       "ticker": "ORCL",
@@ -838,10 +838,10 @@
       "last": 77.23,
       "chg_1d": -0.06,
       "chg_1m": 0.12,
-      "chg_3m": -2.3,
+      "chg_3m": -1.86,
       "vol_21d_ann": 5.04,
       "above_50dma": false,
-      "drawdown_90d": -3.36,
+      "drawdown_90d": -2.93,
       "pe_ttm": null,
       "pe_fwd": null,
       "ev_ebitda": null,
@@ -857,10 +857,10 @@
       "last": 104.53,
       "chg_1d": -0.12,
       "chg_1m": 2.01,
-      "chg_3m": -0.94,
+      "chg_3m": -0.51,
       "vol_21d_ann": 6.35,
       "above_50dma": true,
-      "drawdown_90d": -5.49,
+      "drawdown_90d": -5.17,
       "pe_ttm": null,
       "pe_fwd": null,
       "ev_ebitda": null,
@@ -1052,7 +1052,7 @@
       "above_50dma": false,
       "drawdown_90d": -26.57,
       "pe_ttm": 45.8,
-      "pe_fwd": 30.3,
+      "pe_fwd": 28.5,
       "ev_ebitda": 38.0,
       "beta": 1.64,
       "market_cap": 215789125632.0
@@ -1090,7 +1090,7 @@
       "above_50dma": false,
       "drawdown_90d": -20.22,
       "pe_ttm": 24.4,
-      "pe_fwd": 18.6,
+      "pe_fwd": 18.7,
       "ev_ebitda": 14.2,
       "beta": 1.13,
       "market_cap": 88559132672.0
