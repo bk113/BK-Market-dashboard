@@ -6700,89 +6700,145 @@ def export_market_pulse(
     errors: list[str] = []
     out: dict = {}
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
-
-    def _jv(v, dp: int = 2):
-        """Null-safe round; returns None for NaN / inf."""
-        if v is None:
-            return None
+    # ── Atomic write helper ───────────────────────────────────────────────────
+    def _write_pulse(payload: dict) -> None:
         try:
-            f = float(v)
-            if not np.isfinite(f):
+            _docs_data = _Path(__file__).resolve().parent / "docs" / "data"
+            _docs_data.mkdir(parents=True, exist_ok=True)
+            _out_path  = _docs_data / "market_pulse.json"
+
+            class _NpEncoder(json.JSONEncoder):
+                def default(self, o):
+                    if isinstance(o, (np.integer,)):  return int(o)
+                    if isinstance(o, (np.floating,)):
+                        return None if not np.isfinite(float(o)) else float(o)
+                    if isinstance(o, (np.bool_,)):    return bool(o)
+                    return super().default(o)
+
+            _pl = json.dumps(payload, indent=2, cls=_NpEncoder,
+                             allow_nan=False, ensure_ascii=True)
+            with tempfile.NamedTemporaryFile(
+                "wb", dir=_docs_data, suffix=".json.tmp", delete=False
+            ) as _fh:
+                _fh.write(_pl.encode("utf-8"))
+                _tmp = _fh.name
+            _Path(_tmp).replace(_out_path)
+            print(f"[Pulse]  market_pulse.json written -> {_out_path}")
+        except Exception as _we:
+            print(f"[Pulse]  ERROR writing market_pulse.json: {_we}")
+
+    # ── Setup (all setup failures are caught; write an errors-only file) ──────
+    try:
+        def _jv(v, dp: int = 2):
+            if v is None:
                 return None
-            return round(f, dp)
-        except (TypeError, ValueError):
-            return None
+            try:
+                f = float(v)
+                if not np.isfinite(f):
+                    return None
+                return round(f, dp)
+            except (TypeError, ValueError):
+                return None
 
-    prices_lv  = prices.ffill(limit=5)
-    last_close = prices_lv.iloc[-1]        # last valid close per ticker
-
-    # Classify each ticker's display unit
-    _RATE_TICKERS = set(YIELD_TICKERS)                       # ^TNX ^IRX ^FVX ^TYX
-    _VOL_TICKERS  = {t for s, t, _, _ in UNIVERSE if s == "VOL"}
-
-    def _unit(ticker: str) -> str:
-        if ticker in _RATE_TICKERS:
-            return "bp"
-        if ticker in _VOL_TICKERS:
-            return "level"
-        return "%"
-
-    def _chg(curr_v, prev_v, unit: str) -> float | None:
-        """
-        Compute change in the ticker's native unit.
-        % tickers  → percentage change (e.g. +1.23)
-        bp tickers → yield-level diff × 100  (e.g. +10.5 bps)
-        level tickers → absolute level diff  (e.g. +1.3 VIX pts)
-        """
-        if curr_v is None or prev_v is None:
-            return None
+        # Determine the latest COMPLETED NYSE session by checking market_close.
+        # An in-progress session (market still open) is not counted so the file
+        # never contains intraday prices.
+        _now_utc = _dt.datetime.utcnow()
+        _official_cutoff: _dt.date | None = None
         try:
-            c, p = float(curr_v), float(prev_v)
-        except (TypeError, ValueError):
-            return None
-        if not (np.isfinite(c) and np.isfinite(p)):
-            return None
-        if unit == "%":
-            if p == 0:
+            import pandas_market_calendars as _mcal_ep
+            _today_ep = _dt.date.today()
+            _sched_ep = _mcal_ep.get_calendar("NYSE").schedule(
+                start_date=str(_today_ep - _dt.timedelta(days=14)),
+                end_date=str(_today_ep),
+            )
+            for _sess in reversed(_sched_ep.index):
+                _mc = _sched_ep.loc[_sess, "market_close"].to_pydatetime()
+                _mc_naive = _mc.replace(tzinfo=None) if _mc.tzinfo else _mc
+                if _now_utc >= _mc_naive:
+                    _official_cutoff = _sess.date()
+                    break
+        except Exception:
+            pass
+        if _official_cutoff is None:
+            # Weekday fallback: use the UTC date (not local date) so the
+            # result is consistent regardless of the server's timezone.
+            # Treat 21:00 UTC as the approximate NYSE close (4 PM Eastern).
+            _official_cutoff = _now_utc.date()
+            if _now_utc.hour < 21:
+                _official_cutoff -= _dt.timedelta(days=1)
+            while _official_cutoff.weekday() >= 5:
+                _official_cutoff -= _dt.timedelta(days=1)
+
+        # Filter to official closes only; never include the current session
+        # while it is still in progress.
+        _cutoff_ts = pd.Timestamp(_official_cutoff)
+        prices_official = prices[prices.index <= _cutoff_ts]
+        if prices_official.empty:
+            prices_official = prices
+
+        # Yield-corrected copy: download() divides YIELD_TICKERS by 10, but
+        # yfinance already returns them in percentage units (e.g. ^TNX = 4.998
+        # for 4.998 %), so they end up 10x too small in prices. Multiply back
+        # so the JSON shows real yield levels and correct bp changes. This copy
+        # is local to the export and does not affect any other calculation.
+        prices_ep = prices_official.copy()
+        for _yt in YIELD_TICKERS:
+            if _yt in prices_ep.columns:
+                prices_ep[_yt] = prices_ep[_yt] * 10.0
+
+        prices_lv  = prices_ep.ffill(limit=5)
+        last_close = prices_lv.iloc[-1]
+
+        _RATE_TICKERS = set(YIELD_TICKERS)
+        _VOL_TICKERS  = {t for s, t, _, _ in UNIVERSE if s == "VOL"}
+
+        def _unit(ticker: str) -> str:
+            if ticker in _RATE_TICKERS: return "bp"
+            if ticker in _VOL_TICKERS:  return "level"
+            return "%"
+
+        def _chg(curr_v, prev_v, unit: str) -> float | None:
+            if curr_v is None or prev_v is None: return None
+            try:
+                c, p = float(curr_v), float(prev_v)
+            except (TypeError, ValueError):
                 return None
-            return _jv((c - p) / p * 100, dp=2)
-        if unit == "bp":
-            return _jv((c - p) * 100, dp=1)
-        # level
-        return _jv(c - p, dp=2)
+            if not (np.isfinite(c) and np.isfinite(p)): return None
+            if unit == "%":
+                if p == 0: return None
+                return _jv((c - p) / p * 100, dp=2)
+            if unit == "bp":
+                return _jv((c - p) * 100, dp=1)
+            return _jv(c - p, dp=2)
+
+        # In the export only: fix instrument names that are wrong in UNIVERSE.
+        # ^IRX is the 13-week T-bill rate, not the 2Y. BNO tracks Brent, not WTI.
+        _NAME_OVERRIDES: dict[str, str] = {
+            "^IRX": "13-week T-bill",
+            "BNO":  "Brent (BNO)",
+        }
+
+    except Exception as _setup_e:
+        errors.append(f"setup: {_setup_e}")
+        out["errors"] = errors
+        _write_pulse(out)
+        return
 
     # ── 1. Metadata ───────────────────────────────────────────────────────────
     try:
         generated_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # price_as_of_date: last row where >= 50 % of columns have a valid close
-        _valid_counts = prices_lv.notna().sum(axis=1)
-        _threshold    = len(prices_lv.columns) * 0.5
-        _valid_dates  = prices_lv.index[_valid_counts >= _threshold]
-        _pad_ts       = _valid_dates[-1] if len(_valid_dates) > 0 else prices_lv.index[-1]
+        # Use unfilled official closes for price_as_of_date and instrument_count
+        # so stale ffilled values are not counted as fresh instruments.
+        _valid_counts = prices_official.notna().sum(axis=1)
+        _threshold    = len(prices_official.columns) * 0.5
+        _valid_dates  = prices_official.index[_valid_counts >= _threshold]
+        _pad_ts       = _valid_dates[-1] if len(_valid_dates) > 0 else prices_official.index[-1]
         price_as_of_date = str(_pad_ts.date())
-        instrument_count = int(prices_lv.loc[_pad_ts].notna().sum())
+        instrument_count = int(prices_official.loc[_pad_ts].notna().sum())
 
-        # fresh: compare to latest completed NYSE session
-        try:
-            import pandas_market_calendars as _mcal_mp
-            _nyse_mp  = _mcal_mp.get_calendar("NYSE")
-            _today_mp = _dt.date.today()
-            _sched_mp = _nyse_mp.schedule(
-                start_date=str(_today_mp - _dt.timedelta(days=14)),
-                end_date=str(_today_mp),
-            )
-            _latest_nyse = (
-                _sched_mp.index[-1].date() if not _sched_mp.empty
-                else _today_mp
-            )
-        except Exception:
-            _latest_nyse = _dt.date.today()
-            while _latest_nyse.weekday() >= 5:
-                _latest_nyse -= _dt.timedelta(days=1)
-
-        fresh = price_as_of_date == str(_latest_nyse)
+        fresh = price_as_of_date == str(_official_cutoff)
 
         out["metadata"] = {
             "generated_at":     generated_at,
@@ -6797,6 +6853,8 @@ def export_market_pulse(
 
     # ── 2. Fear & Greed ───────────────────────────────────────────────────────
     try:
+        # Use fg_data from caller if available; otherwise compute from ORIGINAL
+        # prices so the score matches the main dashboard exactly.
         _fg = fg_data if fg_data is not None else compute_fear_greed(prices)
 
         _score_1d, _score_5d = None, None
@@ -6811,7 +6869,6 @@ def export_market_pulse(
         except Exception:
             pass
 
-        # 7 component values from details
         _comps: dict = {}
         for _cname, _cdata in (_fg.get("details") or {}).items():
             _sv = _cdata.get("score") if isinstance(_cdata, dict) else _cdata
@@ -6832,7 +6889,6 @@ def export_market_pulse(
     try:
         _BREADTH_EXCL_SECTIONS = {"RATES", "VOL"}
 
-        # Optional: load asset_class from metadata CSV for grouping
         _ticker_to_ac: dict[str, str] = {}
         try:
             _meta_p = _Path(__file__).resolve().parent / "data" / "panel_v22_metadata.csv"
@@ -6872,7 +6928,6 @@ def export_market_pulse(
                 "above_200dma_pct":_jv(_a200 / _n * 100),
             }
 
-        # Group tickers by asset_class (metadata) or section prefix (fallback)
         _sec_map = {t: s for s, t, _, _ in UNIVERSE}
         _ac_buckets: dict[str, list] = {}
         for _t in _breadth_tks:
@@ -6880,26 +6935,35 @@ def export_market_pulse(
             _ac_buckets.setdefault(_ac, []).append(_t)
 
         out["breadth"] = {
-            "overall":          _bstat(_breadth_tks),
-            "by_asset_class":   {_ac: _bstat(_tks) for _ac, _tks in sorted(_ac_buckets.items())},
+            "overall":           _bstat(_breadth_tks),
+            "by_asset_class":    {_ac: _bstat(_tks) for _ac, _tks in sorted(_ac_buckets.items())},
             "excluded_sections": sorted(_BREADTH_EXCL_SECTIONS),
         }
     except Exception as _e:
         errors.append(f"breadth: {_e}")
         out["breadth"] = None
 
-    # ── 4. Moves (all instruments) ────────────────────────────────────────────
+    # ── 4. Moves (all instruments) + 5. Headline moves ───────────────────────
     try:
-        # Reference prices for each lookback.
-        # 1D: strict (no ffill) for the latest row — same logic as compute_metrics.
-        _curr_strict = prices.iloc[-1]
-        _prev_1d  = prices_lv.iloc[-2]  if len(prices_lv) >= 2  else pd.Series(dtype=float)
-        _prev_5d  = prices_lv.iloc[-6]  if len(prices_lv) >= 6  else pd.Series(dtype=float)
+        # 1D: strict (no ffill) from the yield-corrected prices_ep
+        _curr_strict = prices_ep.iloc[-1]
+        _prev_1d = prices_lv.iloc[-2] if len(prices_lv) >= 2 else pd.Series(dtype=float)
+        _prev_5d = prices_lv.iloc[-6] if len(prices_lv) >= 6 else pd.Series(dtype=float)
 
-        # MTD base: first valid close in the current calendar month
-        _today_ts = prices_lv.index[-1]
-        _mtd_rows = prices_lv[prices_lv.index.month == _today_ts.month]
-        _mtd_base = _mtd_rows.bfill().iloc[0] if len(_mtd_rows) > 0 else pd.Series(dtype=float)
+        # MTD base: last valid close of the PRIOR calendar month.
+        # Filter on BOTH year and month so a 10-year panel never picks up a
+        # row from a previous November as the "first row of this November".
+        _today_ts    = prices_lv.index[-1]
+        _this_m_rows = prices_ep[
+            (prices_ep.index.month == _today_ts.month) &
+            (prices_ep.index.year  == _today_ts.year)
+        ]
+        if len(_this_m_rows) > 0:
+            _first_this_m = _this_m_rows.index[0]
+            _prior_rows   = prices_lv[prices_lv.index < _first_this_m]
+            _mtd_base     = _prior_rows.iloc[-1] if len(_prior_rows) > 0 else pd.Series(dtype=float)
+        else:
+            _mtd_base = pd.Series(dtype=float)
 
         _moves = []
         for _sec, _tk, _name, _ in UNIVERSE:
@@ -6911,9 +6975,9 @@ def export_market_pulse(
             _p1   = _prev_1d.get(_tk)
             _p5   = _prev_5d.get(_tk)
             _pm   = _mtd_base.get(_tk)
-            _lv1d = last_close.get(_tk)   # ffilled — used for 5D & MTD denominator
+            _lv1d = last_close.get(_tk)
             _moves.append({
-                "name":       _name,
+                "name":       _NAME_OVERRIDES.get(_tk, _name),
                 "ticker":     _tk,
                 "asset_class": _sec,
                 "close":      _cl,
@@ -6925,28 +6989,27 @@ def export_market_pulse(
 
         out["moves"] = _moves
 
-        # ── 5. Headline moves ─────────────────────────────────────────────────
         _HEADLINE_TICKERS = [
-            "^IRX",    # 2Y Treasury yield
-            "^TNX",    # 10Y Treasury yield
-            "HYG",     # HY Credit (OAS proxy)
-            "LQD",     # IG Credit
-            "DX-Y.NYB",# US Dollar Index
-            "JPY=X",   # USD/JPY
-            "GLD",     # Gold
-            "BNO",     # WTI oil proxy
-            "^VIX",    # VIX
-            "SPY",     # S&P 500
-            "QQQ",     # Nasdaq 100
-            "SOXX",    # Semiconductors
-            "BTC-USD", # Bitcoin
+            "^IRX",     # 13-week T-bill
+            "^TNX",     # 10Y Treasury yield
+            "HYG",      # HY Credit (OAS proxy)
+            "LQD",      # IG Credit
+            "DX-Y.NYB", # US Dollar Index
+            "JPY=X",    # USD/JPY
+            "GLD",      # Gold
+            "BNO",      # Brent crude (BNO)
+            "^VIX",     # VIX
+            "SPY",      # S&P 500
+            "QQQ",      # Nasdaq 100
+            "SOXX",     # Semiconductors
+            "BTC-USD",  # Bitcoin
         ]
         _mv_by_tk = {m["ticker"]: m for m in _moves}
         out["headline_moves"] = [_mv_by_tk[t] for t in _HEADLINE_TICKERS if t in _mv_by_tk]
 
     except Exception as _e:
         errors.append(f"moves: {_e}")
-        out["moves"]         = None
+        out["moves"]          = None
         out["headline_moves"] = None
 
     # ── 6. Top movers ─────────────────────────────────────────────────────────
@@ -6954,7 +7017,7 @@ def export_market_pulse(
         _tradeable = [
             m for m in (out.get("moves") or [])
             if is_rankable(m["ticker"])
-            and m.get("unit") == "%"           # only compare like-for-like %
+            and m.get("unit") == "%"
             and m.get("chg_1d") is not None
         ]
         _tradeable.sort(key=lambda m: m["chg_1d"])
@@ -6969,35 +7032,7 @@ def export_market_pulse(
     if errors:
         out["errors"] = errors
 
-    # ── Atomic write ──────────────────────────────────────────────────────────
-    try:
-        _docs_data = _Path(__file__).resolve().parent / "docs" / "data"
-        _docs_data.mkdir(parents=True, exist_ok=True)
-        _out_path  = _docs_data / "market_pulse.json"
-
-        class _NpEncoder(json.JSONEncoder):
-            def default(self, o):
-                if isinstance(o, (np.integer,)):
-                    return int(o)
-                if isinstance(o, (np.floating,)):
-                    return None if not np.isfinite(float(o)) else float(o)
-                if isinstance(o, (np.bool_,)):
-                    return bool(o)
-                return super().default(o)
-
-        _payload = json.dumps(out, indent=2, cls=_NpEncoder, allow_nan=False,
-                              ensure_ascii=True)
-
-        with tempfile.NamedTemporaryFile(
-            "wb", dir=_docs_data, suffix=".json.tmp", delete=False
-        ) as _fh:
-            _fh.write(_payload.encode("utf-8"))
-            _tmp = _fh.name
-        _Path(_tmp).replace(_out_path)
-        print(f"[Pulse]  market_pulse.json written -> {_out_path}")
-
-    except Exception as _e:
-        print(f"[Pulse]  ERROR writing market_pulse.json: {_e}")
+    _write_pulse(out)
 
 
 def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
@@ -7108,7 +7143,10 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
     # docs/index.html. fg_data already computed above in html mode; for
     # non-html runs the function computes it internally.
     _fg_export = fg_data if html_flag else None
-    export_market_pulse(prices, df, fg_data=_fg_export)
+    try:
+        export_market_pulse(prices, df, fg_data=_fg_export)
+    except Exception as _ep:
+        print(f"[Pulse]  FATAL (outer guard): {_ep}")
 
     print("[Done]")
 
