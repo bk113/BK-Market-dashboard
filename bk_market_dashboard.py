@@ -6675,6 +6675,331 @@ def _now_sgt() -> str:
     return datetime.now(SGT).strftime("%H:%M:%S SGT")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+#  MARKET PULSE EXPORT
+# ══════════════════════════════════════════════════════════════════════════════
+
+def export_market_pulse(
+    prices: pd.DataFrame,
+    df: pd.DataFrame,
+    fg_data: dict | None = None,
+) -> None:
+    """
+    Write docs/data/market_pulse.json atomically on every run.
+    Provides a machine-readable market overview for the AI Leverage Loop
+    brief. Any section failure is recorded in an 'errors' list; the
+    dashboard run is never aborted because of this export.
+
+    Intentionally excluded: Fragility score, Fragility instruments,
+    regime, market tone, BK Composite.
+    """
+    import json
+    import tempfile
+    import datetime as _dt
+
+    errors: list[str] = []
+    out: dict = {}
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _jv(v, dp: int = 2):
+        """Null-safe round; returns None for NaN / inf."""
+        if v is None:
+            return None
+        try:
+            f = float(v)
+            if not np.isfinite(f):
+                return None
+            return round(f, dp)
+        except (TypeError, ValueError):
+            return None
+
+    prices_lv  = prices.ffill(limit=5)
+    last_close = prices_lv.iloc[-1]        # last valid close per ticker
+
+    # Classify each ticker's display unit
+    _RATE_TICKERS = set(YIELD_TICKERS)                       # ^TNX ^IRX ^FVX ^TYX
+    _VOL_TICKERS  = {t for s, t, _, _ in UNIVERSE if s == "VOL"}
+
+    def _unit(ticker: str) -> str:
+        if ticker in _RATE_TICKERS:
+            return "bp"
+        if ticker in _VOL_TICKERS:
+            return "level"
+        return "%"
+
+    def _chg(curr_v, prev_v, unit: str) -> float | None:
+        """
+        Compute change in the ticker's native unit.
+        % tickers  → percentage change (e.g. +1.23)
+        bp tickers → yield-level diff × 100  (e.g. +10.5 bps)
+        level tickers → absolute level diff  (e.g. +1.3 VIX pts)
+        """
+        if curr_v is None or prev_v is None:
+            return None
+        try:
+            c, p = float(curr_v), float(prev_v)
+        except (TypeError, ValueError):
+            return None
+        if not (np.isfinite(c) and np.isfinite(p)):
+            return None
+        if unit == "%":
+            if p == 0:
+                return None
+            return _jv((c - p) / p * 100, dp=2)
+        if unit == "bp":
+            return _jv((c - p) * 100, dp=1)
+        # level
+        return _jv(c - p, dp=2)
+
+    # ── 1. Metadata ───────────────────────────────────────────────────────────
+    try:
+        generated_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # price_as_of_date: last row where >= 50 % of columns have a valid close
+        _valid_counts = prices_lv.notna().sum(axis=1)
+        _threshold    = len(prices_lv.columns) * 0.5
+        _valid_dates  = prices_lv.index[_valid_counts >= _threshold]
+        _pad_ts       = _valid_dates[-1] if len(_valid_dates) > 0 else prices_lv.index[-1]
+        price_as_of_date = str(_pad_ts.date())
+        instrument_count = int(prices_lv.loc[_pad_ts].notna().sum())
+
+        # fresh: compare to latest completed NYSE session
+        try:
+            import pandas_market_calendars as _mcal_mp
+            _nyse_mp  = _mcal_mp.get_calendar("NYSE")
+            _today_mp = _dt.date.today()
+            _sched_mp = _nyse_mp.schedule(
+                start_date=str(_today_mp - _dt.timedelta(days=14)),
+                end_date=str(_today_mp),
+            )
+            _latest_nyse = (
+                _sched_mp.index[-1].date() if not _sched_mp.empty
+                else _today_mp
+            )
+        except Exception:
+            _latest_nyse = _dt.date.today()
+            while _latest_nyse.weekday() >= 5:
+                _latest_nyse -= _dt.timedelta(days=1)
+
+        fresh = price_as_of_date == str(_latest_nyse)
+
+        out["metadata"] = {
+            "generated_at":     generated_at,
+            "price_as_of_date": price_as_of_date,
+            "fresh":            fresh,
+            "instrument_count": instrument_count,
+            "source":           "Yahoo Finance",
+        }
+    except Exception as _e:
+        errors.append(f"metadata: {_e}")
+        out["metadata"] = None
+
+    # ── 2. Fear & Greed ───────────────────────────────────────────────────────
+    try:
+        _fg = fg_data if fg_data is not None else compute_fear_greed(prices)
+
+        _score_1d, _score_5d = None, None
+        try:
+            if len(prices) >= 2:
+                _score_1d = _jv(compute_fear_greed(prices.iloc[:-1]).get("score"))
+        except Exception:
+            pass
+        try:
+            if len(prices) >= 6:
+                _score_5d = _jv(compute_fear_greed(prices.iloc[:-5]).get("score"))
+        except Exception:
+            pass
+
+        # 7 component values from details
+        _comps: dict = {}
+        for _cname, _cdata in (_fg.get("details") or {}).items():
+            _sv = _cdata.get("score") if isinstance(_cdata, dict) else _cdata
+            _comps[_cname] = _jv(_sv)
+
+        out["fear_greed"] = {
+            "score":        _jv(_fg.get("score")),
+            "label":        _fg.get("label"),
+            "components":   _comps,
+            "score_1d_ago": _score_1d,
+            "score_5d_ago": _score_5d,
+        }
+    except Exception as _e:
+        errors.append(f"fear_greed: {_e}")
+        out["fear_greed"] = None
+
+    # ── 3. Breadth ────────────────────────────────────────────────────────────
+    try:
+        _BREADTH_EXCL_SECTIONS = {"RATES", "VOL"}
+
+        # Optional: load asset_class from metadata CSV for grouping
+        _ticker_to_ac: dict[str, str] = {}
+        try:
+            _meta_p = _Path(__file__).resolve().parent / "data" / "panel_v22_metadata.csv"
+            if _meta_p.exists():
+                _meta_df = pd.read_csv(_meta_p)
+                for _, _row in _meta_df.iterrows():
+                    if str(_row.get("data_type", "")).strip() == "tradeable":
+                        _ticker_to_ac[str(_row["ticker"])] = str(_row["asset_class"])
+        except Exception:
+            pass
+
+        _breadth_tks = [
+            t for s, t, _, _ in UNIVERSE
+            if s not in _BREADTH_EXCL_SECTIONS
+            and t not in DISPLAY_EXCLUSIONS
+            and t in prices_lv.columns
+        ]
+
+        _ma50_last  = prices_lv.rolling(50,  min_periods=20).mean().iloc[-1]
+        _ma200_last = prices_lv.rolling(200, min_periods=100).mean().iloc[-1]
+
+        def _bstat(tks):
+            _valid = [t for t in tks if _jv(last_close.get(t)) is not None]
+            if not _valid:
+                return {"n_instruments": 0, "above_50dma_n": 0, "above_50dma_pct": None,
+                        "above_200dma_n": 0, "above_200dma_pct": None}
+            _n   = len(_valid)
+            _a50 = sum(1 for t in _valid
+                       if pd.notna(_ma50_last.get(t)) and last_close[t] > _ma50_last[t])
+            _a200= sum(1 for t in _valid
+                       if pd.notna(_ma200_last.get(t)) and last_close[t] > _ma200_last[t])
+            return {
+                "n_instruments":   _n,
+                "above_50dma_n":   _a50,
+                "above_50dma_pct": _jv(_a50 / _n * 100),
+                "above_200dma_n":  _a200,
+                "above_200dma_pct":_jv(_a200 / _n * 100),
+            }
+
+        # Group tickers by asset_class (metadata) or section prefix (fallback)
+        _sec_map = {t: s for s, t, _, _ in UNIVERSE}
+        _ac_buckets: dict[str, list] = {}
+        for _t in _breadth_tks:
+            _ac = _ticker_to_ac.get(_t) or _sec_map.get(_t, "OTHER").split("_")[0]
+            _ac_buckets.setdefault(_ac, []).append(_t)
+
+        out["breadth"] = {
+            "overall":          _bstat(_breadth_tks),
+            "by_asset_class":   {_ac: _bstat(_tks) for _ac, _tks in sorted(_ac_buckets.items())},
+            "excluded_sections": sorted(_BREADTH_EXCL_SECTIONS),
+        }
+    except Exception as _e:
+        errors.append(f"breadth: {_e}")
+        out["breadth"] = None
+
+    # ── 4. Moves (all instruments) ────────────────────────────────────────────
+    try:
+        # Reference prices for each lookback.
+        # 1D: strict (no ffill) for the latest row — same logic as compute_metrics.
+        _curr_strict = prices.iloc[-1]
+        _prev_1d  = prices_lv.iloc[-2]  if len(prices_lv) >= 2  else pd.Series(dtype=float)
+        _prev_5d  = prices_lv.iloc[-6]  if len(prices_lv) >= 6  else pd.Series(dtype=float)
+
+        # MTD base: first valid close in the current calendar month
+        _today_ts = prices_lv.index[-1]
+        _mtd_rows = prices_lv[prices_lv.index.month == _today_ts.month]
+        _mtd_base = _mtd_rows.bfill().iloc[0] if len(_mtd_rows) > 0 else pd.Series(dtype=float)
+
+        _moves = []
+        for _sec, _tk, _name, _ in UNIVERSE:
+            if _tk in DISPLAY_EXCLUSIONS or _tk not in prices_lv.columns:
+                continue
+            _u    = _unit(_tk)
+            _cl   = _jv(float(last_close.get(_tk, np.nan)))
+            _c1   = _curr_strict.get(_tk)
+            _p1   = _prev_1d.get(_tk)
+            _p5   = _prev_5d.get(_tk)
+            _pm   = _mtd_base.get(_tk)
+            _lv1d = last_close.get(_tk)   # ffilled — used for 5D & MTD denominator
+            _moves.append({
+                "name":       _name,
+                "ticker":     _tk,
+                "asset_class": _sec,
+                "close":      _cl,
+                "unit":       _u,
+                "chg_1d":     _chg(_c1,   _p1,  _u),
+                "chg_5d":     _chg(_lv1d, _p5,  _u),
+                "chg_mtd":    _chg(_lv1d, _pm,  _u),
+            })
+
+        out["moves"] = _moves
+
+        # ── 5. Headline moves ─────────────────────────────────────────────────
+        _HEADLINE_TICKERS = [
+            "^IRX",    # 2Y Treasury yield
+            "^TNX",    # 10Y Treasury yield
+            "HYG",     # HY Credit (OAS proxy)
+            "LQD",     # IG Credit
+            "DX-Y.NYB",# US Dollar Index
+            "JPY=X",   # USD/JPY
+            "GLD",     # Gold
+            "BNO",     # WTI oil proxy
+            "^VIX",    # VIX
+            "SPY",     # S&P 500
+            "QQQ",     # Nasdaq 100
+            "SOXX",    # Semiconductors
+            "BTC-USD", # Bitcoin
+        ]
+        _mv_by_tk = {m["ticker"]: m for m in _moves}
+        out["headline_moves"] = [_mv_by_tk[t] for t in _HEADLINE_TICKERS if t in _mv_by_tk]
+
+    except Exception as _e:
+        errors.append(f"moves: {_e}")
+        out["moves"]         = None
+        out["headline_moves"] = None
+
+    # ── 6. Top movers ─────────────────────────────────────────────────────────
+    try:
+        _tradeable = [
+            m for m in (out.get("moves") or [])
+            if is_rankable(m["ticker"])
+            and m.get("unit") == "%"           # only compare like-for-like %
+            and m.get("chg_1d") is not None
+        ]
+        _tradeable.sort(key=lambda m: m["chg_1d"])
+        out["top_movers"] = {
+            "losers":  _tradeable[:5],
+            "gainers": list(reversed(_tradeable[-5:])),
+        }
+    except Exception as _e:
+        errors.append(f"top_movers: {_e}")
+        out["top_movers"] = None
+
+    if errors:
+        out["errors"] = errors
+
+    # ── Atomic write ──────────────────────────────────────────────────────────
+    try:
+        _docs_data = _Path(__file__).resolve().parent / "docs" / "data"
+        _docs_data.mkdir(parents=True, exist_ok=True)
+        _out_path  = _docs_data / "market_pulse.json"
+
+        class _NpEncoder(json.JSONEncoder):
+            def default(self, o):
+                if isinstance(o, (np.integer,)):
+                    return int(o)
+                if isinstance(o, (np.floating,)):
+                    return None if not np.isfinite(float(o)) else float(o)
+                if isinstance(o, (np.bool_,)):
+                    return bool(o)
+                return super().default(o)
+
+        _payload = json.dumps(out, indent=2, cls=_NpEncoder, allow_nan=False,
+                              ensure_ascii=True)
+
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=_docs_data, suffix=".json.tmp", delete=False
+        ) as _fh:
+            _fh.write(_payload.encode("utf-8"))
+            _tmp = _fh.name
+        _Path(_tmp).replace(_out_path)
+        print(f"[Pulse]  market_pulse.json written -> {_out_path}")
+
+    except Exception as _e:
+        print(f"[Pulse]  ERROR writing market_pulse.json: {_e}")
+
+
 def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
              html_flag: bool = False, out_dir: str = OUT_DIR,
              lookback_days: int = 2520) -> None:
@@ -6777,6 +7102,13 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
     if send_email_flag:
         html = build_email_html(df)
         send_email(html)
+
+    # Export machine-readable market overview. Runs on every invocation so
+    # the AI Leverage Loop brief can read structured data instead of scraping
+    # docs/index.html. fg_data already computed above in html mode; for
+    # non-html runs the function computes it internally.
+    _fg_export = fg_data if html_flag else None
+    export_market_pulse(prices, df, fg_data=_fg_export)
 
     print("[Done]")
 
