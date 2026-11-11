@@ -5,168 +5,279 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BK/IQ — AI Pulse &amp; Investor Watch</title>
 <meta name="description" content="A rule-based read on AI-exposed markets, refreshed daily, plus a standing watch-list of what tends to get glossed over in AI investing.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..900;1,8..60,300..900&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg: #0b0d10;
-    --panel: #0f1215;
-    --line: #1e2226;
-    --ink: #e8e6e1;
-    --ink-dim: #9a9d9f;
-    --ink-faint: #6b6e70;
-    --amber: #c9a15c;
-    --up: #6fa287;
-    --down: #b4574a;
-    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  /* -----------------------------------------------------------------------
+     Design tokens — light (default) and dark.
+
+     Contrast ratios for status colors used as text, computed against paper
+     and dark-bg respectively (WCAG 2.1 relative-luminance formula):
+       Status red  #B03A2E on paper  #FBFAF6 → 5.76:1  ✓ AA
+       Status green #3C7A4E on paper #FBFAF6 → 4.93:1  ✓ AA
+       Status amber #C98A2B on paper #FBFAF6 → 2.81:1  ✗ — amber is used
+         only as a border/background tint in this theme, never as body text;
+         its dark-mode equivalent #D4A843 on --bg-dark #131416 → 7.14:1 ✓ AA
+       Dark-mode equivalents (lightened for legibility on dark background):
+         Status red  #E05454 on dark  #131416 → 4.82:1  ✓ AA
+         Status green #52A870 on dark #131416 → 5.31:1  ✓ AA
+  ----------------------------------------------------------------------- */
+  :root {
+    --bg:         #FBFAF6;
+    --panel:      #F3F1EC;
+    --line:       #DDD9D1;
+    --ink:        #1B2333;
+    --ink-dim:    #4A5568;
+    --ink-faint:  #7A8290;
+    --accent:     #B4561A;
+    --up:         #3C7A4E;
+    --down:       #B03A2E;
+    --amber:      #7A5C18;      /* darkened for text AA on paper; use --amber-bg as tint */
+    --amber-bg:   rgba(201,138,43,.12);
+    --amber-border: #C98A2B;
+    --status-red:    #B03A2E;
+    --status-amber:  #C98A2B;
+    --status-green:  #3C7A4E;
+    --status-red-bg:    rgba(176,58,46,.09);
+    --status-amber-bg:  rgba(201,138,43,.09);
+    --status-green-bg:  rgba(60,122,78,.09);
+    --font-head: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
-  *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
-  body{
-    background:var(--bg);
-    color:var(--ink);
-    font-family:var(--font-body);
-    line-height:1.55;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap{max-width:720px;margin:0 auto;padding:48px 20px 80px;}
-  a{color:var(--amber);text-decoration:none;}
-  a:hover{text-decoration:underline;}
-  a:focus-visible, button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
-  .kicker{
-    font-size:13px;color:var(--ink-faint);letter-spacing:0.02em;margin-bottom:6px;
-  }
-  h1{
-    font-size:28px;line-height:1.25;margin:0 0 8px;font-weight:600;
-    letter-spacing:-0.01em;
-  }
-  .lede{color:var(--ink-dim);font-size:15px;max-width:56ch;margin:0 0 40px;}
-
-  section{margin-bottom:56px;}
-  h2{font-size:19px;font-weight:600;margin:0 0 4px;}
-  .section-note{color:var(--ink-faint);font-size:13px;margin:0 0 20px;max-width:58ch;}
-
-  /* AI Pulse ledger */
-  .pulse-meta{
-    display:flex;justify-content:space-between;align-items:baseline;
-    font-size:12px;color:var(--ink-faint);font-family:var(--font-mono);
-    margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line);
-  }
-  .stat-row{
-    display:flex;gap:28px;margin-bottom:24px;flex-wrap:wrap;
-  }
-  .stat{min-width:140px;}
-  .stat-value{font-family:var(--font-mono);font-size:22px;color:var(--ink);}
-  .stat-label{font-size:12px;color:var(--ink-faint);margin-top:2px;}
-
-  .trend-row{display:flex;gap:36px;flex-wrap:wrap;margin-bottom:24px;}
-  .trend-block{min-width:220px;}
-  .trend-label{font-size:12px;color:var(--ink-faint);margin-bottom:6px;}
-  .trend-range{font-family:var(--font-mono);font-size:11px;color:var(--ink-faint);margin-top:4px;}
-  .trend-empty{font-size:12px;color:var(--ink-faint);}
-  .session-flag{color:var(--ink-faint);font-size:11px;vertical-align:super;}
-
-  .bench-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px;}
-  .bench-table th{
-    text-align:right;font-weight:400;color:var(--ink-faint);
-    font-size:12px;padding:0 0 8px;border-bottom:1px solid var(--line);
-  }
-  .bench-table th:first-child{text-align:left;}
-  .bench-table td{
-    padding:8px 0;border-bottom:1px solid var(--line);
-    font-family:var(--font-mono);text-align:right;white-space:nowrap;
-  }
-  .bench-table td:first-child{text-align:left;font-family:var(--font-body);color:var(--ink-dim);}
-  .bench-table tr.bench-basket td:first-child{color:var(--amber);font-weight:600;}
-  .bench-table tr.bench-basket td{color:var(--ink);}
-
-  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px;}
-  thead th{
-    text-align:right;font-weight:400;color:var(--ink-faint);
-    font-size:12px;padding:0 0 8px;border-bottom:1px solid var(--line);
-  }
-  thead th:first-child, thead th:nth-child(2), thead th:nth-child(3){text-align:left;}
-  tbody td{
-    padding:9px 0;border-bottom:1px solid var(--line);
-    font-family:var(--font-mono);text-align:right;white-space:nowrap;
-  }
-  tbody td:first-child{
-    text-align:left;font-family:var(--font-body);color:var(--ink);
-  }
-  tbody td:nth-child(2){text-align:left;color:var(--ink-faint);font-family:var(--font-body);font-size:13px;}
-  tbody td:nth-child(3){text-align:left;color:var(--amber);font-family:var(--font-mono);font-size:12px;}
-  .up{color:var(--up);}
-  .down{color:var(--down);}
-  .empty-state{
-    color:var(--ink-faint);font-size:13px;padding:20px 0;border-bottom:1px solid var(--line);
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:         #131416;
+      --panel:      #1A1C1F;
+      --line:       #272B30;
+      --ink:        #E4E0D6;
+      --ink-dim:    #9EA5B0;
+      --ink-faint:  #636A74;
+      --accent:     #D4703E;
+      --up:         #52A870;
+      --down:       #E05454;
+      --amber:      #D4A843;
+      --amber-bg:   rgba(212,168,67,.14);
+      --amber-border: #D4A843;
+      --status-red:    #E05454;
+      --status-amber:  #D4A843;
+      --status-green:  #52A870;
+      --status-red-bg:    rgba(224,84,84,.12);
+      --status-amber-bg:  rgba(212,168,67,.12);
+      --status-green-bg:  rgba(82,168,112,.12);
+    }
   }
 
-  /* Lessons */
-  .lesson{
-    padding:18px 0;border-bottom:1px solid var(--line);
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
   }
-  .lesson:last-child{border-bottom:none;}
-  .lesson-watch{font-size:15px;color:var(--ink);margin:0 0 5px;font-weight:600;}
-  .lesson-why{font-size:14px;color:var(--ink-dim);margin:0;max-width:60ch;}
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
 
-  footer{
-    border-top:1px solid var(--line);padding-top:20px;margin-top:40px;
-    font-size:12px;color:var(--ink-faint);
-  }
-  footer p{margin:0 0 6px;}
-  .circle-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;}
-  .circle-table th{text-align:left;font-weight:400;color:var(--ink-faint);font-size:12px;padding:0 10px 8px 0;border-bottom:1px solid var(--line);}
-  .circle-table td{padding:10px 10px 10px 0;border-bottom:1px solid var(--line);vertical-align:top;}
-  .circle-table td:first-child{font-weight:600;white-space:nowrap;}
-  .circle-table td.amt{font-family:var(--font-mono);color:var(--amber);white-space:nowrap;}
-  .caveat{
-    font-size:12px;color:var(--ink-faint);border-left:2px solid var(--line);
-    padding-left:12px;margin:16px 0 0;
-  }
-  .navbar{
-    display:flex;gap:16px;flex-wrap:wrap;font-size:12px;margin-bottom:36px;
-    padding-bottom:16px;border-bottom:1px solid var(--line);
-  }
-  .navbar a{color:var(--ink-dim);}
-  .navbar a:hover{color:var(--amber);}
-  .badge{
-    display:inline-block;font-size:10px;letter-spacing:0.03em;
-    padding:2px 7px;border-radius:3px;margin-left:8px;vertical-align:middle;
-    font-family:var(--font-mono);text-transform:uppercase;
-  }
-  .badge-live{background:rgba(111,162,135,0.15);color:var(--up);}
-  .badge-static{background:rgba(201,161,92,0.15);color:var(--amber);}
-  .badge-ai{background:rgba(94,141,201,0.15);color:#8fb4e3;}
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-  /* Synthesis card */
-  .synthesis-card{
-    background:var(--panel);border:1px solid var(--line);border-radius:8px;
-    padding:16px 18px;margin-bottom:24px;
+  .kicker {
+    font-family: var(--font-body);
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink-faint); margin-bottom: 8px;
   }
-  .synthesis-head{
-    display:flex;align-items:center;margin-bottom:10px;font-size:12px;
-    color:var(--ink-faint);font-family:var(--font-mono);text-transform:uppercase;
-    letter-spacing:0.03em;
+  h1 {
+    font-family: var(--font-head);
+    font-size: 30px; line-height: 1.2; font-weight: 600;
+    margin: 0 0 10px; letter-spacing: -0.01em;
   }
-  .synthesis-text{font-size:14px;color:var(--ink);line-height:1.7;margin:0;}
-  .synthesis-disclaimer{
-    font-size:11px;color:var(--ink-faint);margin:10px 0 0;font-style:italic;
+  .lede { color: var(--ink-dim); font-size: 14px; max-width: 58ch; margin: 0 0 36px; }
+
+  section { margin-bottom: 60px; }
+  h2 {
+    font-family: var(--font-head);
+    font-size: 20px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.01em;
+  }
+  h3 {
+    font-family: var(--font-head);
+    font-size: 16px; font-weight: 600; margin: 24px 0 4px; color: var(--ink-dim);
+  }
+  .section-note { color: var(--ink-faint); font-size: 13px; margin: 0 0 20px; max-width: 60ch; }
+
+  /* ---- navbar ---- */
+  .navbar {
+    display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px;
+    margin-bottom: 32px; padding-bottom: 14px; border-bottom: 1px solid var(--line);
+  }
+  .navbar a { color: var(--ink-dim); }
+  .navbar a:hover { color: var(--accent); }
+
+  /* ---- badge ---- */
+  .badge {
+    display: inline-block; font-size: 10px; letter-spacing: 0.04em;
+    padding: 2px 7px; border-radius: 2px; margin-left: 8px; vertical-align: middle;
+    font-family: var(--font-mono); text-transform: uppercase;
+  }
+  .badge-live  { background: var(--status-green-bg); color: var(--status-green); }
+  .badge-static { background: var(--amber-bg); color: var(--amber); }
+  .badge-ai    { background: rgba(94,141,201,.14); color: #6BA3D6; }
+
+  /* ---- freshness banner ---- */
+  .freshness-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    border-left: 3px solid;
+    padding: 10px 14px; margin-bottom: 20px; border-radius: 0 3px 3px 0;
+    font-size: 13px; line-height: 1.5;
+  }
+  .freshness-banner.fresh {
+    border-color: var(--status-green);
+    background: var(--status-green-bg);
+    color: var(--ink-dim);
+  }
+  .freshness-banner.stale {
+    border-color: var(--status-red);
+    background: var(--status-red-bg);
+    color: var(--status-red);
+  }
+  .freshness-label { flex: 1; }
+  .freshness-label strong { color: var(--ink); }
+
+  /* ---- stat tiles ---- */
+  .pulse-meta {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: var(--ink-faint); font-family: var(--font-mono);
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+  }
+  .stat-row { display: flex; gap: 24px; margin-bottom: 24px; flex-wrap: wrap; }
+  .stat { min-width: 130px; }
+  .stat-value { font-family: var(--font-mono); font-size: 22px; color: var(--ink); }
+  .stat-label { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+
+  /* ---- sparklines ---- */
+  .trend-row { display: flex; gap: 36px; flex-wrap: wrap; margin-bottom: 24px; }
+  .trend-block { min-width: 220px; }
+  .trend-label { font-size: 12px; color: var(--ink-faint); margin-bottom: 6px; }
+  .trend-range { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin-top: 4px; }
+  .trend-empty { font-size: 12px; color: var(--ink-faint); }
+  .session-flag { color: var(--ink-faint); font-size: 11px; vertical-align: super; }
+
+  /* ---- benchmark table ---- */
+  .bench-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
+  .bench-table th {
+    text-align: right; font-weight: 400; color: var(--ink-faint);
+    font-size: 11px; padding: 0 0 8px; border-bottom: 1px solid var(--line);
+  }
+  .bench-table th:first-child { text-align: left; }
+  .bench-table td {
+    padding: 8px 0; border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono); text-align: right; white-space: nowrap;
+  }
+  .bench-table td:first-child { text-align: left; font-family: var(--font-body); color: var(--ink-dim); }
+  .bench-table tr.bench-basket td:first-child { color: var(--accent); font-weight: 600; }
+  .bench-table tr.bench-basket td { color: var(--ink); }
+
+  /* ---- synthesis card ---- */
+  .synthesis-card {
+    background: var(--panel); border-left: 3px solid var(--line);
+    padding: 14px 16px; margin-bottom: 24px;
+  }
+  .synthesis-head {
+    font-size: 11px; color: var(--ink-faint); font-family: var(--font-mono);
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px;
+  }
+  .synthesis-text { font-size: 14px; color: var(--ink); line-height: 1.7; margin: 0; }
+  .synthesis-disclaimer { font-size: 11px; color: var(--ink-faint); margin: 8px 0 0; font-style: italic; }
+
+  /* ---- FRED credit panel ---- */
+  .credit-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px 16px; margin-bottom: 20px;
+  }
+  .credit-cell { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  .credit-val { font-family: var(--font-mono); font-size: 20px; color: var(--ink); }
+  .credit-label { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+  .credit-date { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+  .credit-stale { color: var(--status-red); font-size: 11px; font-style: italic; }
+
+  /* ---- layer section headings ---- */
+  .layer-group-heading {
+    font-family: var(--font-head);
+    font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 32px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line);
+  }
+  .layer-group-heading:first-child { margin-top: 0; }
+
+  /* ---- layer groups ---- */
+  .layer-group { margin-bottom: 22px; }
+  .layer-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    flex-wrap: wrap; gap: 4px 16px; margin-bottom: 4px;
+  }
+  .layer-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .layer-mini-stats {
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); white-space: nowrap;
+  }
+  .funding-badge {
+    display: inline-block; font-family: var(--font-mono); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 1px 5px; border-radius: 2px; margin-left: 6px; vertical-align: middle;
+  }
+  .funding-debt  { background: var(--status-red-bg);   color: var(--status-red); }
+  .funding-cash  { background: var(--status-green-bg); color: var(--status-green); }
+  .layer-blurb { font-size: 13px; color: var(--ink-dim); margin: 0 0 8px; max-width: 64ch; }
+
+  /* ---- constituent table ---- */
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+  .layer-group table { min-width: 720px; }
+  thead th {
+    text-align: right; font-weight: 400; color: var(--ink-faint);
+    font-size: 11px; padding: 0 0 8px; border-bottom: 1px solid var(--line);
+  }
+  thead th:first-child, thead th:nth-child(2), thead th:nth-child(3) { text-align: left; }
+  tbody td {
+    padding: 9px 0; border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono); text-align: right; white-space: nowrap;
+  }
+  tbody td:first-child { text-align: left; font-family: var(--font-body); color: var(--ink); }
+  tbody td:nth-child(2) { text-align: left; color: var(--ink-faint); font-family: var(--font-body); font-size: 12px; }
+  tbody td:nth-child(3) { text-align: left; color: var(--accent); font-family: var(--font-mono); font-size: 12px; }
+  .up   { color: var(--up); }
+  .down { color: var(--down); }
+  .empty-state { color: var(--ink-faint); font-size: 13px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+
+  /* ---- privates / circular deals ---- */
+  .circle-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
+  .circle-table th {
+    text-align: left; font-weight: 400; color: var(--ink-faint);
+    font-size: 11px; padding: 0 10px 8px 0; border-bottom: 1px solid var(--line);
+  }
+  .circle-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .circle-table td:first-child { font-weight: 600; white-space: nowrap; }
+  .circle-table td.amt { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; }
+  .caveat {
+    font-size: 12px; color: var(--ink-faint);
+    border-left: 2px solid var(--line); padding-left: 12px; margin: 16px 0 0;
   }
 
-  /* Layer groups */
-  .layer-group{margin-bottom:22px;}
-  .layer-head{
-    display:flex;justify-content:space-between;align-items:baseline;
-    flex-wrap:wrap;gap:6px 16px;margin-bottom:6px;
+  /* ---- lessons ---- */
+  .lesson { padding: 18px 0; border-bottom: 1px solid var(--line); }
+  .lesson:last-child { border-bottom: none; }
+  .lesson-watch { font-size: 15px; color: var(--ink); margin: 0 0 5px; font-weight: 500; }
+  .lesson-why { font-size: 14px; color: var(--ink-dim); margin: 0; max-width: 62ch; }
+
+  /* ---- footer ---- */
+  footer {
+    border-top: 1px solid var(--line); padding-top: 20px; margin-top: 40px;
+    font-size: 12px; color: var(--ink-faint);
   }
-  .layer-name{font-size:14px;font-weight:600;color:var(--ink);}
-  .layer-mini-stats{
-    font-family:var(--font-mono);font-size:12px;color:var(--ink-faint);
-    white-space:nowrap;
-  }
-  .layer-blurb{font-size:13px;color:var(--ink-dim);margin:0 0 8px;max-width:62ch;}
-  .layer-group table{min-width:720px;}
+  footer p { margin: 0 0 6px; }
 </style>
 </head>
 <body>
@@ -190,14 +301,14 @@
   <section id="pulse">
     <h2>AI Pulse — equities &amp; credit<span class="badge badge-live">Live · daily</span></h2>
     <p class="section-note">
-      27 instruments across 13 layers: AI compute, custom silicon, foundry,
-      memory (Micron plus Korea's two HBM co-leaders, Samsung and SK
-      Hynix), hyperscalers, networking, AI applications, power and grid
-      infrastructure, cloud compute, one public AI-cloud pure-play, China's
-      low-cost-model layer, and two broad credit ETFs standing in for the
-      debt side of the buildout. Rule-based: breadth is a moving-average
-      count over the equity subset only, credit ETFs excluded from that
-      stat.
+      29 instruments across 15 layers: AI compute, custom silicon, foundry,
+      memory (Micron plus Korea's two HBM co-leaders, Samsung and SK Hynix),
+      hyperscalers, networking, AI applications, power and grid infrastructure,
+      cloud compute, one public AI-cloud pure-play (debt-funded), two
+      data-centre REITs (Equinix and Digital Realty), China's low-cost-model
+      layer, and two broad credit ETFs standing in for the debt side of the
+      buildout. Rule-based: breadth is a moving-average count over the equity
+      subset only, credit ETFs excluded from that stat.
     </p>
     <p class="section-note">
       Why a custom basket rather than just SOXX or IGV: a single ETF hides
@@ -224,6 +335,8 @@
       Insights, Oct 2025). Power and cooling capacity is the physical
       constraint behind every capex number elsewhere on this page.
     </p>
+
+    <div id="freshnessBanner" style="display:none;"></div>
 
     <div class="pulse-meta">
       <span id="asOf">loading…</span>
@@ -289,21 +402,34 @@
       <p class="synthesis-disclaimer" id="synthDisclaimer"></p>
     </div>
 
+    <h3>Credit and funding</h3>
+    <p class="section-note" style="margin-top:0;">
+      FRED keyless series — 2Y Treasury yield and four ICE BofA OAS indices
+      tracking IG and HY spread levels. A widening in HY vs. IG while AI
+      capex commentary intensifies is the kind of divergence worth noting.
+      Updated each run; individual series marked stale when the FRED endpoint
+      fails rather than failing the whole workflow.
+    </p>
+    <div class="credit-grid" id="fredGrid">
+      <div class="credit-cell"><div class="credit-val">—</div><div class="credit-label">Loading…</div></div>
+    </div>
+
     <div id="layerGroups">
       <div class="empty-state">Waiting on first data refresh.</div>
     </div>
     <p class="section-note" style="margin-top:10px;">
       Each layer's line above its table is a plain mean/breadth count across
       that layer's own names — not the LLM. Vol and 90D drawdown in the
-      tables are each name's own risk figures, not the basket aggregate. P/E
-      and beta are per-name fields from Yahoo Finance directly (not
-      BK/IQ-computed) — a "—" means the field wasn't reported for that name
-      this run, the company is loss-making (P/E specifically), or it's LQD
-      /HYG, where these fields aren't meaningful. The basket-wide P/E and
-      beta stats above are medians, not averages, so one extreme name (a
-      near-breakeven name can print a P/E in the thousands) can't distort
-      the headline number — the per-name table still shows its real figure.
-      Swipe a table sideways on mobile to see all columns.
+      tables are each name's own risk figures, not the basket aggregate.
+      Layers under "Builders" show a funding label: debt-funded layers
+      (Oracle, CoreWeave) rely on external debt to finance their AI
+      infrastructure, unlike the cash-funded hyperscalers. P/E and beta are
+      per-name fields from Yahoo Finance directly (not BK/IQ-computed) — a
+      "—" means the field wasn't reported for that name this run, the
+      company is loss-making (P/E specifically), or it's LQD/HYG, where
+      these fields aren't meaningful. The basket-wide P/E and beta stats
+      above are medians, not averages, so one extreme name can't distort
+      the headline number. Swipe a table sideways on mobile to see all columns.
     </p>
   </section>
 
@@ -497,8 +623,9 @@
 </div>
 
 <script>
-// Minimal dependency-free sparkline: one polyline + a dot on the latest
-// point. Returns '' if there isn't enough history yet to draw a line.
+// ---------------------------------------------------------------------------
+// Sparkline
+// ---------------------------------------------------------------------------
 function sparklineSVG(values, color) {
   const w = 220, h = 40, pad = 3;
   const pts = values.map((v, i) => ({ v, i })).filter(d => d.v != null);
@@ -520,13 +647,172 @@ function sparklineSVG(values, color) {
   </svg>`;
 }
 
+// ---------------------------------------------------------------------------
+// Formatters
+// ---------------------------------------------------------------------------
+const cls    = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
+const fmt    = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+const fmtPln = v => v == null ? '—' : v.toFixed(2) + '%';
+
+const fmtPE = v => {
+  if (v == null) return '—';
+  if (v > 200) return `<span title="P/E not meaningful — near-zero trailing earnings" style="color:var(--amber-border);cursor:help;">${v.toFixed(0)}&times; &#9888;</span>`;
+  return v.toFixed(1) + '&times;';
+};
+const fmtBeta = v => v == null ? '—' : v.toFixed(2);
+
+// ---------------------------------------------------------------------------
+// Freshness banner
+// ---------------------------------------------------------------------------
+function renderFreshness(data) {
+  const el = document.getElementById('freshnessBanner');
+  if (!data.price_as_of_date) { el.style.display = 'none'; return; }
+  const fresh = data.fresh;
+  el.style.display = 'flex';
+  el.className = 'freshness-banner ' + (fresh ? 'fresh' : 'stale');
+  if (fresh) {
+    el.innerHTML = `<span class="freshness-label">Data to US close <strong>${data.price_as_of_date}</strong>, generated ${data.generated_at} UTC</span>`;
+  } else {
+    el.innerHTML = `<span class="freshness-label"><strong>Data may be stale</strong> — latest price date ${data.price_as_of_date} does not match the most recently completed NYSE session. Generated ${data.generated_at} UTC.</span>`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FRED credit panel
+// ---------------------------------------------------------------------------
+function renderFredCredit(fredCredit) {
+  const grid = document.getElementById('fredGrid');
+  if (!fredCredit || Object.keys(fredCredit).length === 0) {
+    grid.innerHTML = '<div class="credit-cell"><div class="credit-stale">Credit data unavailable this run.</div></div>';
+    return;
+  }
+  grid.innerHTML = Object.entries(fredCredit).map(([id, s]) => {
+    if (s.stale) {
+      return `<div class="credit-cell">
+        <div class="credit-val">—</div>
+        <div class="credit-label">${s.label}</div>
+        <div class="credit-stale">stale</div>
+      </div>`;
+    }
+    const unit = s.unit === 'bps' ? ' <span style="font-size:12px">bps</span>' : '%';
+    return `<div class="credit-cell">
+      <div class="credit-val">${s.value != null ? s.value.toFixed(s.unit === 'bps' ? 0 : 2) : '—'}${unit}</div>
+      <div class="credit-label">${s.label}</div>
+      <div class="credit-date">${s.date || ''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Layer groups
+// ---------------------------------------------------------------------------
+const GROUP_ORDER = ['Suppliers', 'Builders', 'Products', 'Credit'];
+
+function renderLayers(data) {
+  const groupsEl = document.getElementById('layerGroups');
+  if (!data.layers || data.layers.length === 0) {
+    groupsEl.innerHTML = '<div class="empty-state">Waiting on first data refresh.</div>';
+    return;
+  }
+
+  const byTicker = {};
+  (data.constituents || []).forEach(r => { byTicker[r.ticker] = r; });
+  const anyNonUs = (data.constituents || []).some(r => r.non_us_session);
+
+  // Group layers by layer_group, maintaining BASKET insertion order within each group.
+  const grouped = {};
+  GROUP_ORDER.forEach(g => { grouped[g] = []; });
+  data.layers.forEach(layer => {
+    const g = layer.layer_group || 'Other';
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(layer);
+  });
+
+  let html = '';
+  GROUP_ORDER.forEach(groupName => {
+    const layersInGroup = grouped[groupName] || [];
+    if (layersInGroup.length === 0) return;
+    html += `<div class="layer-group-heading">${groupName}</div>`;
+    layersInGroup.forEach(layer => {
+      const rows = layer.tickers.map(t => byTicker[t]).filter(Boolean);
+      const rowsHtml = rows.map(row => `<tr>
+        <td>${row.ticker}${row.non_us_session ? '<span class="session-flag" title="Korea Exchange session — not synchronised with the US close">&dagger;</span>' : ''}</td>
+        <td>${row.etf || '—'}</td>
+        <td>${fmtLast(row)}</td>
+        <td class="${cls(row.chg_1d)}">${fmt(row.chg_1d)}</td>
+        <td class="${cls(row.chg_1m)}">${fmt(row.chg_1m)}</td>
+        <td class="${cls(row.chg_3m)}">${fmt(row.chg_3m)}</td>
+        <td>${fmtPln(row.vol_21d_ann)}</td>
+        <td class="${cls(row.drawdown_90d)}">${fmt(row.drawdown_90d)}</td>
+        <td>${fmtPE(row.pe_ttm)}</td>
+        <td>${fmtBeta(row.beta)}</td>
+      </tr>`).join('');
+
+      const miniStats = [
+        layer.breadth_above_50dma_pct != null ? layer.breadth_above_50dma_pct + '% > 50dma' : null,
+        layer.avg_chg_1m != null ? '1M avg ' + fmt(layer.avg_chg_1m) : null,
+        layer.avg_vol_21d_ann != null ? 'vol ' + fmtPln(layer.avg_vol_21d_ann) : null,
+      ].filter(Boolean).join(' · ');
+
+      const fundingBadge = (groupName === 'Builders')
+        ? `<span class="funding-badge ${layer.funding_profile === 'debt_funded' ? 'funding-debt' : 'funding-cash'}">${layer.funding_profile === 'debt_funded' ? 'debt-funded' : 'cash-funded'}</span>`
+        : '';
+
+      html += `<div class="layer-group">
+        <div class="layer-head">
+          <span class="layer-name">${layer.name}${fundingBadge}</span>
+          <span class="layer-mini-stats">${miniStats}</span>
+        </div>
+        <p class="layer-blurb">${layer.blurb || ''}</p>
+        <div class="table-scroll">
+        <table>
+          <thead><tr>
+            <th>Ticker</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th><th>P/E (ttm)</th><th>Beta</th>
+          </tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        </div>
+      </div>`;
+    });
+  });
+
+  if (anyNonUs) {
+    html += `<p class="section-note" style="margin-top:10px;">
+      <span class="session-flag">&dagger;</span> Korea Exchange listing — this
+      market closes hours before the US session opens, so its 1-day change
+      reflects a different clock than the rest of the table, not a data error.
+    </p>`;
+  }
+
+  groupsEl.innerHTML = html;
+}
+
+// ---------------------------------------------------------------------------
+// Last-price formatter
+// ---------------------------------------------------------------------------
+const fmtLast = row => {
+  if (row.last == null) return '—';
+  if (row.currency && row.currency !== 'USD') {
+    return row.currency + ' ' + Math.round(row.last).toLocaleString();
+  }
+  return row.last.toFixed(2);
+};
+
+// ---------------------------------------------------------------------------
+// Main load
+// ---------------------------------------------------------------------------
 async function loadPulse() {
   try {
     const res = await fetch('data/ai_pulse.json', { cache: 'no-store' });
     const data = await res.json();
 
+    // Freshness banner
+    renderFreshness(data);
+
+    // as_of line (legacy — still used as the visible timestamp)
     document.getElementById('asOf').textContent = 'As of ' + data.as_of;
 
+    // Basket stat tiles
     document.getElementById('breadthVal').textContent =
       data.basket_breadth_above_50dma_pct != null ? data.basket_breadth_above_50dma_pct + '%' : '—';
     document.getElementById('volVal').textContent =
@@ -546,10 +832,7 @@ async function loadPulse() {
     document.getElementById('corrLabel').textContent =
       'Avg pairwise corr., trailing ' + (data.basket_avg_pairwise_corr_window_days || '—') + 'D';
 
-    // Trend: up to 60 trailing days of basket breadth/vol, stored inside
-    // this same JSON's "history" array (see fetch_ai_pulse.py's
-    // build_history()). Sparse-history-safe: shows a plain message instead
-    // of a broken chart until there are at least 2 days to draw a line.
+    // 60-day breadth + vol sparklines
     const hist = data.history || [];
     document.getElementById('trendDaysB').textContent = hist.length || '—';
     document.getElementById('trendDaysV').textContent = hist.length || '—';
@@ -559,9 +842,9 @@ async function loadPulse() {
       const bValid = bVals.filter(v => v != null);
       const vValid = vVals.filter(v => v != null);
       document.getElementById('sparkBreadth').innerHTML =
-        sparklineSVG(bVals, 'var(--amber)') || '<span class="trend-empty">Not enough history yet.</span>';
+        sparklineSVG(bVals, 'var(--accent)') || '<span class="trend-empty">Not enough history yet.</span>';
       document.getElementById('sparkVol').innerHTML =
-        sparklineSVG(vVals, '#8fb4e3') || '<span class="trend-empty">Not enough history yet.</span>';
+        sparklineSVG(vVals, '#6BA3D6') || '<span class="trend-empty">Not enough history yet.</span>';
       if (bValid.length) document.getElementById('rangeBreadth').textContent =
         `${hist[0].date} → ${hist[hist.length - 1].date} · range ${Math.min(...bValid).toFixed(1)}%–${Math.max(...bValid).toFixed(1)}%`;
       if (vValid.length) document.getElementById('rangeVol').textContent =
@@ -572,22 +855,10 @@ async function loadPulse() {
       document.getElementById('sparkVol').innerHTML = msg;
     }
 
-    // Shared formatters -- declared here (rather than down by the per-name
-    // table code below) because the benchmark block right after this also
-    // needs them.
-    const cls = v => v == null ? '' : (v >= 0 ? 'up' : 'down');
-    const fmt = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
-    const fmtPlain = v => v == null ? '—' : v.toFixed(2) + '%';
-
-    // Basket vs. off-the-shelf ETFs: same compute_return_metrics() function
-    // applied to the basket's own equal-weighted average and to SOXX/IGV/QQQ
-    // (see fetch_ai_pulse.py's fetch_benchmarks()) -- a sanity check that
-    // the custom basket actually differs from buying the sector ETF.
+    // Benchmark table
     const bench = data.benchmarks || {};
     const benchRows = [];
-    if (bench.basket_avg) {
-      benchRows.push({ ...bench.basket_avg, isBasket: true });
-    }
+    if (bench.basket_avg) benchRows.push({ ...bench.basket_avg, isBasket: true });
     (bench.etfs || []).forEach(e => benchRows.push({ label: `${e.ticker} — ${e.name}`, ...e }));
     const benchTbody = benchRows.length
       ? benchRows.map(r => `<tr class="${r.isBasket ? 'bench-basket' : ''}">
@@ -595,15 +866,12 @@ async function loadPulse() {
           <td class="${cls(r.chg_1d)}">${fmt(r.chg_1d)}</td>
           <td class="${cls(r.chg_1m)}">${fmt(r.chg_1m)}</td>
           <td class="${cls(r.chg_3m)}">${fmt(r.chg_3m)}</td>
-          <td>${fmtPlain(r.vol_21d_ann)}</td>
+          <td>${fmtPln(r.vol_21d_ann)}</td>
         </tr>`).join('')
       : '<tr><td colspan="5" class="empty-state">Benchmark data unavailable this run.</td></tr>';
     document.querySelector('#benchTable tbody').innerHTML = benchTbody;
 
-    // Synthesis card: an LLM-generated paragraph when configured, otherwise
-    // a rule-based templated reflection computed straight from the numbers
-    // on this page (see scripts/fetch_ai_pulse.py's _template_synthesis()) —
-    // either way it's a real statement, just labelled by which it is.
+    // Synthesis card
     const commentary = data.commentary || {};
     const genByLlm = commentary.generated_by === 'llm';
     document.getElementById('synthBadge').innerHTML =
@@ -612,77 +880,12 @@ async function loadPulse() {
       commentary.synthesis || 'No synthesis available for this run.';
     document.getElementById('synthDisclaimer').textContent = commentary.disclaimer || '';
 
-    const groupsEl = document.getElementById('layerGroups');
-    if (!data.layers || data.layers.length === 0) {
-      groupsEl.innerHTML = '<div class="empty-state">Waiting on first data refresh.</div>';
-      return;
-    }
+    // FRED credit panel
+    renderFredCredit(data.fred_credit || {});
 
-    // Non-USD tickers (currently the two Korea Exchange memory names) get
-    // their currency shown explicitly rather than a bare number that would
-    // otherwise look like a USD price next to everything else in the table.
-    const fmtLast = row => {
-      if (row.last == null) return '—';
-      if (row.currency && row.currency !== 'USD') {
-        return row.currency + ' ' + Math.round(row.last).toLocaleString();
-      }
-      return row.last.toFixed(2);
-    };
-    const fmtPE = v => {
-      if (v == null) return '—';
-      if (v > 200) return `<span title="P/E not meaningful — near-zero trailing earnings" style="color:#e3b341;cursor:help;">${v.toFixed(0)}× ⚠</span>`;
-      return v.toFixed(1) + '×';
-    };
-    const fmtBeta = v => v == null ? '—' : v.toFixed(2);
-    const byTicker = {};
-    (data.constituents || []).forEach(r => { byTicker[r.ticker] = r; });
-    const anyNonUsSession = (data.constituents || []).some(r => r.non_us_session);
+    // Layer groups (Suppliers / Builders / Products / Credit)
+    renderLayers(data);
 
-    groupsEl.innerHTML = data.layers.map(layer => {
-      const rows = layer.tickers.map(t => byTicker[t]).filter(Boolean);
-      const rowsHtml = rows.map(row => `<tr>
-        <td>${row.ticker}${row.non_us_session ? '<span class="session-flag" title="Korea Exchange session — not synchronized with the US close">&dagger;</span>' : ''}</td>
-        <td>${row.etf || '—'}</td>
-        <td>${fmtLast(row)}</td>
-        <td class="${cls(row.chg_1d)}">${fmt(row.chg_1d)}</td>
-        <td class="${cls(row.chg_1m)}">${fmt(row.chg_1m)}</td>
-        <td class="${cls(row.chg_3m)}">${fmt(row.chg_3m)}</td>
-        <td>${fmtPlain(row.vol_21d_ann)}</td>
-        <td class="${cls(row.drawdown_90d)}">${fmt(row.drawdown_90d)}</td>
-        <td>${fmtPE(row.pe_ttm)}</td>
-        <td>${fmtBeta(row.beta)}</td>
-      </tr>`).join('');
-
-      const miniStats = [
-        layer.breadth_above_50dma_pct != null ? layer.breadth_above_50dma_pct + '% > 50dma' : null,
-        layer.avg_chg_1m != null ? '1M avg ' + fmt(layer.avg_chg_1m) : null,
-        layer.avg_vol_21d_ann != null ? 'vol ' + fmtPlain(layer.avg_vol_21d_ann) : null,
-      ].filter(Boolean).join(' · ');
-
-      return `<div class="layer-group">
-        <div class="layer-head">
-          <span class="layer-name">${layer.name}</span>
-          <span class="layer-mini-stats">${miniStats}</span>
-        </div>
-        <p class="layer-blurb">${layer.blurb || ''}</p>
-        <div class="table-scroll">
-        <table>
-          <thead><tr>
-            <th>Ticker</th><th>ETF</th><th>Last</th><th>1D</th><th>1M</th><th>3M</th><th>Vol (21D ann.)</th><th>90D DD</th><th>P/E (ttm)</th><th>Beta</th>
-          </tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
-        </div>
-      </div>`;
-    }).join('');
-
-    if (anyNonUsSession) {
-      groupsEl.innerHTML += `<p class="section-note" style="margin-top:10px;">
-        <span class="session-flag">&dagger;</span> Korea Exchange listing — this
-        market closes hours before the US session opens, so its 1-day change
-        reflects a different clock than the rest of the table, not a data error.
-      </p>`;
-    }
   } catch (e) {
     document.getElementById('asOf').textContent = 'Data unavailable';
   }

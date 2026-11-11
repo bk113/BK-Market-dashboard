@@ -1,0 +1,46 @@
+[
+  {
+    "name": "US data-centre power draw",
+    "tier": "Infrastructure",
+    "value": 61.8,
+    "unit": "GW",
+    "date": "2025-12-31",
+    "source": "S&P Global Commodity Insights, Oct 2025",
+    "direction": "higher_is_worse",
+    "green_threshold": 50,
+    "red_threshold": 100
+  },
+  {
+    "name": "Projected US data-centre power draw (2030)",
+    "tier": "Infrastructure",
+    "value": 134.4,
+    "unit": "GW",
+    "date": "2030-12-31",
+    "source": "S&P Global Commodity Insights, Oct 2025 (forecast)",
+    "direction": "higher_is_worse",
+    "green_threshold": 50,
+    "red_threshold": 120
+  },
+  {
+    "name": "Largest hyperscaler capex/revenue ratio",
+    "tier": "Credit pressure",
+    "value": null,
+    "unit": "%",
+    "date": null,
+    "source": "S&P Global Ratings, 2026 — flagged as rising through 2026–2027",
+    "direction": "higher_is_worse",
+    "green_threshold": 15,
+    "red_threshold": 30
+  },
+  {
+    "name": "Circular-deal committed spend (analyst est.)",
+    "tier": "Credit pressure",
+    "value": 800,
+    "unit": "USD bn",
+    "date": "2026-09-01",
+    "source": "Press and analyst estimates (see circular deals table)",
+    "direction": "higher_is_worse",
+    "green_threshold": 200,
+    "red_threshold": 600
+  }
+]

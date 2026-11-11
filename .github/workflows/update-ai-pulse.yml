@@ -2,9 +2,16 @@ name: Update AI Pulse data
 
 on:
   schedule:
-    # 07:10 SGT daily (23:10 UTC previous day) — just after your existing
-    # 07:00 SGT dashboard refresh, so both stay in sync.
-    - cron: "10 23 * * *"
+    # Primary: 21:30 UTC Mon–Fri (~90 min after EDT close at 20:00 UTC,
+    # ~30 min after EST close at 21:00 UTC in winter). GitHub Actions
+    # queueing typically adds 1–4 h on this repo's tier, so actual start
+    # time lands late evening or overnight SGT — well after US data settles.
+    - cron: "30 21 * * 1-5"
+    # Safety: 22:45 UTC Mon–Fri. The idempotent check in fetch_ai_pulse.py
+    # exits cleanly (no commit) if the primary run already captured today's
+    # close, so this run is a no-op when the primary succeeded and a real
+    # retry when it was delayed past market-data availability.
+    - cron: "45 22 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
@@ -21,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install yfinance numpy requests
+        run: pip install yfinance numpy requests pandas pandas_market_calendars
 
       - name: Fetch AI basket data
         env:
@@ -33,7 +40,8 @@ jobs:
         run: |
           git config user.name "bkiq-bot"
           git config user.email "actions@github.com"
-          git add docs/data/ai_pulse.json
+          git add docs/data/ai_pulse.json || true
+          git add docs/data/manual_indicators.json || true
           git diff --quiet --cached || git commit -m "Auto-refresh AI Pulse data"
           git pull --rebase origin main
           git push
