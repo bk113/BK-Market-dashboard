@@ -209,10 +209,16 @@ def is_already_captured(json_path):
 def fetch_fred_series():
     """Fetch the five FRED credit/rate series via the keyless CSV endpoint.
     Returns a dict keyed by series ID. Any individual fetch failure is
-    silently skipped and flagged with stale=True rather than failing the run."""
+    silently skipped and flagged with stale=True rather than failing the run.
+
+    Each successful series also includes value_1m_ago and chg_1m (absolute
+    change in the series' own unit, latest minus ~30-calendar-days-prior row)
+    computed from the same CSV response — no second request. If the 1m-ago
+    row cannot be found (sparse history, holiday gaps), chg_1m is null."""
     import requests
     import csv
     import io
+    import datetime as _fdt
 
     results = {}
     for series_id, meta in FRED_SERIES.items():
@@ -226,11 +232,37 @@ def fetch_fred_series():
             if not rows:
                 raise ValueError("empty series")
             date_str, val_str = rows[-1]
+            latest_val = round(float(val_str), 4)
+
+            # 1-month change: find the row closest to 30 calendar days before
+            # the latest date, within a ±10-day tolerance. Uses the already-
+            # fetched row list — no second network request.
+            value_1m_ago = None
+            chg_1m = None
+            try:
+                latest_date = _fdt.date.fromisoformat(date_str)
+                target = latest_date - _fdt.timedelta(days=30)
+                parsed = []
+                for rd, rv in rows[:-1]:  # exclude latest itself
+                    try:
+                        parsed.append((_fdt.date.fromisoformat(rd), float(rv)))
+                    except (ValueError, TypeError):
+                        pass
+                if parsed:
+                    closest = min(parsed, key=lambda x: abs((x[0] - target).days))
+                    if abs((closest[0] - target).days) <= 10:
+                        value_1m_ago = round(closest[1], 4)
+                        chg_1m = round(latest_val - value_1m_ago, 4)
+            except Exception:
+                pass  # leave value_1m_ago / chg_1m as None
+
             results[series_id] = {
                 "label": meta["label"],
                 "unit": meta["unit"],
-                "value": round(float(val_str), 4),
+                "value": latest_val,
                 "date": date_str,
+                "value_1m_ago": value_1m_ago,
+                "chg_1m": chg_1m,
                 "stale": False,
             }
         except Exception as e:
@@ -240,6 +272,8 @@ def fetch_fred_series():
                 "unit": meta["unit"],
                 "value": None,
                 "date": None,
+                "value_1m_ago": None,
+                "chg_1m": None,
                 "stale": True,
             }
     return results

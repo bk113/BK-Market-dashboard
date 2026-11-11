@@ -201,7 +201,27 @@
   .credit-cell { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
   .credit-val { font-family: var(--font-mono); font-size: 20px; color: var(--ink); }
   .credit-label { font-size: 11px; color: var(--ink-faint); margin-top: 3px; }
+  .credit-chg { font-family: var(--font-mono); font-size: 11px; margin-top: 2px; }
   .credit-date { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); }
+
+  /* ---- Manual indicators panel ---- */
+  .manual-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px; margin-bottom: 20px;
+  }
+  .manual-card {
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 12px 14px; background: var(--panel);
+  }
+  .manual-name { font-size: 13px; font-weight: 500; color: var(--ink); line-height: 1.3; }
+  .manual-tier { font-size: 10px; color: var(--ink-faint); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+  .manual-val-row { display: flex; align-items: baseline; gap: 6px; margin-top: 8px; }
+  .manual-val { font-family: var(--font-mono); font-size: 20px; color: var(--ink); }
+  .manual-val.pending { font-size: 13px; color: var(--ink-faint); font-style: italic; font-family: var(--font-body); }
+  .manual-unit { font-size: 11px; color: var(--ink-faint); }
+  .manual-date { font-family: var(--font-mono); font-size: 10px; color: var(--ink-faint); margin-top: 3px; }
+  .manual-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+  .manual-source { font-size: 10px; color: var(--ink-faint); margin-top: 6px; line-height: 1.4; border-top: 1px solid var(--line); padding-top: 6px; }
   .credit-stale { color: var(--status-red); font-size: 11px; font-style: italic; }
 
   /* ---- layer section headings ---- */
@@ -431,6 +451,20 @@
       above are medians, not averages, so one extreme name can't distort
       the headline number. Swipe a table sideways on mobile to see all columns.
     </p>
+  </section>
+
+  <section id="manual-indicators">
+    <h2>Manual indicators <span class="badge badge-static">Manual · pending</span></h2>
+    <p class="section-note">
+      Supplementary data points that require manual retrieval — GPU rental
+      pricing, issuer-specific credit metrics, and CDS spreads that have no
+      live API. All values below are pending BK input; source notes indicate
+      exactly where to find each figure. Thresholds are illustrative until
+      BK calibrates them from real data.
+    </p>
+    <div id="manualIndicatorsGrid" class="manual-grid">
+      <div class="empty-state">Loading…</div>
+    </div>
   </section>
 
   <section id="privates">
@@ -694,10 +728,20 @@ function renderFredCredit(fredCredit) {
         <div class="credit-stale">stale</div>
       </div>`;
     }
-    const unit = s.unit === 'bps' ? ' <span style="font-size:12px">bps</span>' : '%';
+    const isBps = s.unit === 'bps';
+    const unit = isBps ? ' <span style="font-size:12px">bps</span>' : '%';
+    const valStr = s.value != null ? s.value.toFixed(isBps ? 0 : 2) : '—';
+    let chgHtml = '';
+    if (s.chg_1m != null) {
+      const sign = s.chg_1m >= 0 ? '+' : '';
+      const chgCls = s.chg_1m >= 0 ? 'up' : 'down';
+      const chgFmt = isBps ? s.chg_1m.toFixed(0) : s.chg_1m.toFixed(2);
+      chgHtml = `<div class="credit-chg ${chgCls}">${sign}${chgFmt} 1M</div>`;
+    }
     return `<div class="credit-cell">
-      <div class="credit-val">${s.value != null ? s.value.toFixed(s.unit === 'bps' ? 0 : 2) : '—'}${unit}</div>
+      <div class="credit-val">${valStr}${unit}</div>
       <div class="credit-label">${s.label}</div>
+      ${chgHtml}
       <div class="credit-date">${s.date || ''}</div>
     </div>`;
   }).join('');
@@ -890,7 +934,74 @@ async function loadPulse() {
     document.getElementById('asOf').textContent = 'Data unavailable';
   }
 }
+
+// ---------------------------------------------------------------------------
+// Manual indicators
+// ---------------------------------------------------------------------------
+function renderManualIndicators(items) {
+  const grid = document.getElementById('manualIndicatorsGrid');
+  if (!items || items.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No manual indicator data found.</div>';
+    return;
+  }
+  grid.innerHTML = items.map(item => {
+    const isPending = item.value == null;
+
+    // Status dot: only computed when value is present
+    let statusDot = '';
+    if (!isPending && item.direction) {
+      let isGood = false, isBad = false;
+      if (item.direction === 'higher_is_worse') {
+        isGood = item.value <= item.green_threshold;
+        isBad  = item.value >= item.red_threshold;
+      } else {
+        // lower_is_worse
+        isGood = item.value >= item.green_threshold;
+        isBad  = item.value <= item.red_threshold;
+      }
+      const dotColor = isBad ? 'var(--status-red)' : (isGood ? 'var(--status-green)' : 'var(--status-amber)');
+      statusDot = `<span class="manual-status" style="background:${dotColor};"></span>`;
+    }
+
+    const valHtml = isPending
+      ? `<span class="manual-val pending">pending</span>`
+      : `<span class="manual-val">${item.value}${statusDot}</span>`;
+
+    const unitHtml = item.unit && !isPending
+      ? `<span class="manual-unit">${item.unit}</span>`
+      : '';
+
+    const dateHtml = item.date
+      ? `<div class="manual-date">${item.date}</div>`
+      : '';
+
+    const sourceHtml = item.source
+      ? `<div class="manual-source">${item.source}</div>`
+      : '';
+
+    return `<div class="manual-card">
+      <div class="manual-name">${item.name}</div>
+      <div class="manual-tier">${item.tier || ''}</div>
+      <div class="manual-val-row">${valHtml}${unitHtml}</div>
+      ${dateHtml}
+      ${sourceHtml}
+    </div>`;
+  }).join('');
+}
+
+async function loadManualIndicators() {
+  try {
+    const res = await fetch('data/manual_indicators.json', { cache: 'no-store' });
+    const items = await res.json();
+    renderManualIndicators(items);
+  } catch (e) {
+    const grid = document.getElementById('manualIndicatorsGrid');
+    if (grid) grid.innerHTML = '<div class="empty-state">Manual indicator data unavailable.</div>';
+  }
+}
+
 loadPulse();
+loadManualIndicators();
 </script>
 
 </body>

@@ -2355,3 +2355,149 @@ External files that `bk_market_dashboard.py` imports or directly depends on. The
 | 2026-10-12 | Added `_build_data_health_strip()` function (line 3315, +139 lines) and injected result between tabs and first tab div in `build_web_html()`; call site at line ~3464. Reads `clip_log.csv`, `fred_staleness_report.csv`, `panel_v22_prices.csv` mtime. Shows 5 signals: last-run timestamp, clip count, FRED staleness (13 stale + 1 legacy TEDRATE), excluded instruments (SOXX/SMIN), partial-coverage disclaimer. | Claude Code |
 | 2026-10-12 | `daily_dashboard.yml`: added `data/clip_log.csv` to `git add` step so clip events are committed each run and the Data Health strip's clip count reflects reality. | Claude Code |
 | 2026-10-12 | CODE_MAP regeneration: all 45 documented function line numbers updated to match current 6850-line source; 13 missing function entries added (including all v2.3 integration functions: `compute_fragility_legacy`, `compute_fragility_v23`, `compute_fragility_trend_v23`, `compute_fragility_hybrid`, `_get_v23_output`, `_load_ticker_mapping`, `_na_reason`, `_v23_data_dir`; plus `_historical_dd_percentiles`, `compute_stress_contributors`, `compute_fragility_trend_legacy`, `_ordinal_suffix`, `_build_data_health_strip`); §8 data flow rewritten to describe two-path architecture; new §9 Related Modules section added; anomalies renumbered §11; update log renumbered §12. | Claude Code |
+| 2026-11-11 | §13 added — AI Pulse subsystem documentation (scripts/fetch_ai_pulse.py, docs/ai.html, docs/data/ai_pulse.json, docs/data/manual_indicators.json) reflecting post-PR#1 state. Covers BASKET additions (EQIX/DLR), new constants (LAYER_GROUPS, DEBT_FUNDED_LAYERS, FRED_SERIES), all new functions (get_latest_nyse_close_date, is_already_captured, fetch_fred_series with 1m-change), new ai_pulse.json output fields, and ai.html design token system. | Claude Code |
+
+---
+
+## 13. AI Pulse subsystem
+
+This section documents the **separate** AI-equity monitoring pipeline that lives alongside the main `bk_market_dashboard.py` dashboard. It has its own script, its own GitHub Actions workflow, and its own front-end page. Nothing in §1–§12 is shared with this subsystem.
+
+---
+
+### 13.1 Files
+
+| File | Purpose |
+|---|---|
+| `scripts/fetch_ai_pulse.py` | Daily data fetch: equity basket, benchmarks, FRED credit, LLM synthesis → writes `docs/data/ai_pulse.json` |
+| `.github/workflows/update-ai-pulse.yml` | Scheduled workflow (two weekday crons + workflow_dispatch) that runs the script and commits the output |
+| `docs/ai.html` | GitHub Pages front-end that reads `ai_pulse.json` and `manual_indicators.json` |
+| `docs/data/ai_pulse.json` | Machine-generated output; committed by the workflow bot each run |
+| `docs/data/manual_indicators.json` | Manually maintained supplementary indicators (pending BK fill); committed by the workflow passthrough (`git add ... || true`) |
+
+---
+
+### 13.2 scripts/fetch_ai_pulse.py — constants
+
+**`BASKET`** (`dict[str, tuple[str, str]]`): `ticker → (layer_name, etf_proxy)`. Current layers: AI Compute (NVDA, AMD), Custom Silicon (AVGO, MRVL, QCOM), Foundry (TSM, ASML), Memory (MU, SKX, WDC), Networking (ANET, CSCO), Power/Infra (VST, CEG, GEV, ETN), Data Centre REIT (EQIX, DLR — added PR#1), Hyperscaler (MSFT, GOOGL, AMZN, META), Cloud Compute (ORCL), AI Cloud Infra/public (CRWV), AI Application (PLTR, SOUN, BBAI), China AI/Low-Cost Models (BIDU, 005930.KS), Credit—IG (LQD), Credit—HY (HYG).
+
+**`DEBT_FUNDED_LAYERS`** (`frozenset[str]`): `{"Cloud Compute", "AI Cloud Infra (public)"}` — layers whose companies rely on external debt to fund AI infrastructure (Oracle, CoreWeave). Drives the `funding_profile` field on each layer in the JSON output and the funding badge in `ai.html`.
+
+**`LAYER_GROUPS`** (`dict[str, set[str]]`): Maps group heading → set of layer names. Groups: Suppliers (AI Compute, Custom Silicon, Foundry, Memory, Networking, Power/Infra, Data Centre REIT), Builders (Hyperscaler, Cloud Compute, AI Cloud Infra (public)), Products (AI Application, China AI/Low-Cost Models), Credit (Credit—IG, Credit—HY). Controls grouping in `ai.html`'s `renderLayers()`.
+
+**`FRED_SERIES`** (`dict[str, dict]`): Five FRED series fetched via keyless CSV endpoint:
+- `DGS2` → 2Y Treasury yield (%)
+- `BAMLH0A0HYM2` → HY OAS all (bps)
+- `BAMLC0A0CM` → IG OAS (bps)
+- `BAMLH0A3HYC` → HY OAS BB (bps)
+- `BAMLH0A2HYB` → HY OAS BB-B (bps)
+
+**`ANTHROPIC_MODEL`** (env var fallback `"claude-haiku-4-5-20251001"`): Model used for LLM synthesis commentary.
+
+---
+
+### 13.3 scripts/fetch_ai_pulse.py — functions
+
+#### `get_latest_nyse_close_date() → datetime.date`
+Returns the date of the most recently completed NYSE session. Tries `pandas_market_calendars` (imported conditionally under `_HAS_MCal` guard); falls back to walking backward from today skipping weekends if the library is absent or the lookup fails. Used to determine whether today's close has already been captured (`is_already_captured`) and to set `price_as_of_date` in the output JSON.
+
+#### `is_already_captured(json_path: str) → bool`
+Reads existing `ai_pulse.json`, extracts `price_as_of_date`, and compares it to `get_latest_nyse_close_date()`. Returns `True` if they match (today's close is already in the file). Called at the top of `main()`; if `True`, the script calls `sys.exit(0)` with no file write, so both the primary and safety-retry workflow crons are idempotent — the safety run is a no-op when the primary already succeeded.
+
+#### `fetch_fred_series() → dict[str, dict]`
+Fetches each series in `FRED_SERIES` from `https://fred.stlouisfed.org/graph/fredgraph.csv?id=<id>` (no API key required). Parses the CSV response in memory (`csv.reader` over `io.StringIO`). For each series:
+- Takes the final non-empty row as the latest value
+- Finds the row with date closest to 30 calendar days before the latest, within ±10 calendar days (from the same already-fetched row list — no second request)
+- Emits `value_1m_ago` and `chg_1m` (absolute change in the series' own unit)
+- If 1m-ago row cannot be found (sparse history, holiday gaps), `chg_1m` is `null`
+- Per-series failure is non-fatal: sets `stale: true`, `value: null`, `chg_1m: null` and continues
+
+Output per series: `{label, unit, value, date, value_1m_ago, chg_1m, stale}`.
+
+#### `_layer_group(layer_name: str) → str`
+Looks up `layer_name` in `LAYER_GROUPS` values; returns the matching group key ("Suppliers", "Builders", "Products", "Credit") or `"Other"` if not found.
+
+#### `build_layers(constituents, basket_meta) → list[dict]`
+Builds the `layers` array in the output JSON. Each element includes: `name`, `tickers`, `blurb`, `layer_group` (via `_layer_group()`), `funding_profile` ("debt_funded" if name in `DEBT_FUNDED_LAYERS`, else "cash_funded"), plus breadth/vol/return aggregates.
+
+#### `main()`
+Entry point. Flow:
+1. `is_already_captured()` → `sys.exit(0)` if already fresh
+2. Fetch equity data via yfinance
+3. Build basket constituents and layers
+4. Determine `price_as_of_date` from latest data date across tickers
+5. Set `fresh = (price_as_of_date == str(get_latest_nyse_close_date()))`
+6. Set `generated_at = datetime.utcnow().isoformat(timespec="seconds")` (ISO 8601 UTC, no timezone suffix)
+7. `fetch_fred_series()` → `fred_credit`
+8. Run LLM synthesis (Anthropic API, falls back to rule-based if key absent)
+9. Build output dict and write `docs/data/ai_pulse.json`
+
+---
+
+### 13.4 ai_pulse.json output contract
+
+Top-level fields:
+
+| Field | Type | Notes |
+|---|---|---|
+| `as_of` | str | Full ISO 8601 generation timestamp (UTC). Legacy field — do not remove; `docs/index.html` SGT conversion depends on it. |
+| `generated_at` | str | Same value as `as_of` but semantically "when was this run". Added PR#1. |
+| `price_as_of_date` | str (YYYY-MM-DD) | Date of the latest price data captured. Added PR#1. |
+| `fresh` | bool | `true` if `price_as_of_date == get_latest_nyse_close_date()`. Added PR#1. |
+| `fred_credit` | dict | Keyed by FRED series ID; each value: `{label, unit, value, date, value_1m_ago, chg_1m, stale}`. Added PR#1; `value_1m_ago`/`chg_1m` added PR#2. |
+| `layers` | list | Each layer: `{name, tickers, blurb, layer_group, funding_profile, breadth_above_50dma_pct, avg_chg_1m, avg_vol_21d_ann}`. `layer_group` and `funding_profile` added PR#1. |
+| `constituents` | list | Per-ticker: `{ticker, etf, last, currency, chg_1d, chg_1m, chg_3m, vol_21d_ann, drawdown_90d, pe_ttm, beta, non_us_session}`. |
+| `benchmarks` | dict | `basket_avg` row + `etfs` list (SPY, QQQ, SOXX). |
+| `commentary` | dict | `{synthesis, disclaimer, generated_by}`. `generated_by` = "llm" or "rule_based". |
+| `history` | list | Rolling 60-entry log of `{date, basket_breadth_above_50dma_pct, basket_avg_ann_vol_21d_pct}`. |
+| `basket_breadth_above_50dma_pct` | float | Current basket breadth. |
+| `basket_avg_ann_vol_21d_pct` | float | Current basket vol. |
+| `basket_median_pe_ttm` | float | Median TTM P/E. |
+| `basket_median_beta` | float | Median beta. |
+| `basket_avg_pairwise_corr` | float | Average pairwise 90D correlation. |
+| `basket_concentration_top3_pct` | float | Top-3 USD-name weight as % of USD basket. |
+| `basket_concentration_top3_names` | list[str] | Ticker labels for concentration stat. |
+
+---
+
+### 13.5 docs/data/manual_indicators.json
+
+Schema per entry: `{name, tier, value, unit, date, source, direction, green_threshold, red_threshold}`. All 7 current entries have `value: null` (pending BK fill). `direction` is "higher_is_worse" or "lower_is_worse". `tier` follows a 5-tier label convention: Tier 0 — Supply & Pricing, Tier 1 — Capex Cycle, Tier 2 — Corporate Credit, Tier 3 — Market-Implied Credit, Tier 4 — Systemic Risk.
+
+The file is committed by the workflow's `git add docs/data/manual_indicators.json || true` passthrough — it is not regenerated by `fetch_ai_pulse.py`; the script does not read or write it. BK fills values manually and commits; the workflow only commits the file if it changed.
+
+---
+
+### 13.6 docs/ai.html — design system
+
+CSS tokens (`:root`): `--bg #FBFAF6`, `--panel #F3F1EC`, `--line #DDD9D1`, `--ink #1B2333`, `--ink-dim #4A5568`, `--ink-faint #7A8290`, `--accent #B4561A`. Status: `--status-red #B03A2E` (5.76:1 on paper ✓ AA), `--status-green #3C7A4E` (4.93:1 ✓ AA), `--status-amber #C98A2B` (2.81:1 ✗ — amber used only as border/tint, never as body text). Dark-mode overrides under `@media (prefers-color-scheme: dark)` flip all tokens; dark-mode status colors pass AA independently. Fonts: Source Serif 4 (headings, `--font-head`), IBM Plex Sans (body, `--font-body`).
+
+---
+
+### 13.7 docs/ai.html — JavaScript functions
+
+#### `renderFreshness(data)`
+Reads `data.fresh` and `data.price_as_of_date`. Shows a green banner ("Data to US close YYYY-MM-DD…") if fresh, red banner ("Data may be stale…") if not. Banner hidden if `price_as_of_date` absent.
+
+#### `renderFredCredit(fredCredit)`
+Renders the FRED credit grid (#fredGrid). Each cell shows value, unit, `chg_1m` delta badge (colour-coded up/down), date. Stale series show "—" and a "stale" label. `chg_1m` badge only shown when non-null.
+
+#### `renderLayers(data)`
+Groups layers under GROUP_ORDER = ['Suppliers', 'Builders', 'Products', 'Credit'] using `layer.layer_group`. Funding badge (debt-funded / cash-funded) shown for Builders group. Breadth/vol/return mini-stats line above each table. Per-name columns: Ticker, ETF, Last, 1D, 1M, 3M, Vol (21D ann.), 90D DD, P/E (ttm), Beta.
+
+#### `renderManualIndicators(items)`
+Renders `docs/data/manual_indicators.json` into #manualIndicatorsGrid as cards. `value: null` → shows italic "pending" text rather than blank or NaN. When a real value is present, computes a green/amber/red status dot using `direction` + `green_threshold`/`red_threshold`. Source note shown in each card footer.
+
+#### `loadManualIndicators()`
+Async fetch of `data/manual_indicators.json` → calls `renderManualIndicators()`. Called in parallel with `loadPulse()` at page load; failure is non-fatal (shows "unavailable" message in the grid).
+
+#### `loadPulse()`
+Main async loader. Fetches `data/ai_pulse.json` then calls all render functions in order: `renderFreshness`, `as_of` line, stat tiles, sparklines, benchmark table, synthesis card, `renderFredCredit`, `renderLayers`.
+
+---
+
+### 13.8 .github/workflows/update-ai-pulse.yml
+
+Two weekday crons: `30 21 * * 1-5` (primary, ~21:30 UTC) and `45 22 * * 1-5` (safety retry, ~22:45 UTC). The safety run is typically a no-op because `is_already_captured()` in `fetch_ai_pulse.py` exits cleanly if `price_as_of_date` already matches the latest NYSE session. `workflow_dispatch: {}` allows manual triggering. pip install: `yfinance numpy requests pandas pandas_market_calendars`. Each `git add` on its own line (`git add docs/data/ai_pulse.json || true` / `git add docs/data/manual_indicators.json || true`). Commit guarded by `git diff --quiet --cached`.
+
+---
