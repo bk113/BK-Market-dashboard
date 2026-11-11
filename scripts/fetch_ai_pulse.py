@@ -168,19 +168,38 @@ ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "").strip()
 def get_latest_nyse_close_date():
     """Return the most recently completed NYSE trading session as a date.
     Uses pandas_market_calendars when available; falls back to the most
-    recent weekday (less accurate for US holidays)."""
-    today = dt.date.today()
+    recent weekday (less accurate for US holidays).
+
+    An in-progress session (market still open) is never counted so the
+    function is safe to call at any time of day.
+    """
+    now_utc = dt.datetime.utcnow()
+    today = now_utc.date()   # use UTC date, not local, for consistency
     if _HAS_MCal:
         try:
             nyse = mcal.get_calendar("NYSE")
             start = today - dt.timedelta(days=14)
-            schedule = nyse.schedule(start_date=str(start), end_date=str(today))
+            # end_date must be today (UTC) so today's session is included
+            # only when its market_close has already passed.
+            schedule = nyse.schedule(start_date=str(start),
+                                     end_date=str(today))
             if not schedule.empty:
-                return schedule.index[-1].date()
+                # Walk backwards; return the first session whose market_close
+                # is in the past so an open session is never counted.
+                for sess in reversed(schedule.index):
+                    mclose = schedule.loc[sess, "market_close"].to_pydatetime()
+                    mclose_naive = (mclose.replace(tzinfo=None)
+                                    if mclose.tzinfo else mclose)
+                    if now_utc >= mclose_naive:
+                        return sess.date()
+                # All sessions still open — fall through to weekday fallback
         except Exception as e:
             print(f"WARNING: NYSE calendar lookup failed: {e}")
-    # Weekday fallback
+    # Weekday fallback: use UTC date and treat 21:00 UTC as the approximate
+    # NYSE close (4 PM Eastern) so local-timezone offsets don't shift the date.
     candidate = today
+    if now_utc.hour < 21:
+        candidate -= dt.timedelta(days=1)
     while candidate.weekday() >= 5:
         candidate -= dt.timedelta(days=1)
     return candidate
