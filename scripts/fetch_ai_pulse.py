@@ -621,18 +621,30 @@ def main():
         auto_adjust=True, progress=False, group_by="ticker",
     )
 
+    # Compute the last completed NYSE session once so trimming, price_as_of_date,
+    # and fresh all derive from the same value — a daytime run never writes an
+    # unfinished bar or marks it fresh.
+    latest_nyse = get_latest_nyse_close_date()
+
     rows = []
     uptrend_count = 0
     all_daily_returns = []
     daily_ret_by_ticker = {}
+    price_date = None  # set from trimmed closes; never touches raw today bar
 
     for t in tickers:
         try:
             closes = raw[t]["Close"].dropna()
         except Exception:
             continue
+        # Drop any bar dated after the last completed session.  yfinance
+        # sometimes returns an intraday bar for today; this trims it so no
+        # unfinished value enters any calculation.
+        closes = closes.loc[:str(latest_nyse)]
         if len(closes) < 60:
             continue
+        if price_date is None:
+            price_date = closes.index[-1].date()
 
         last = float(closes.iloc[-1])
         d1 = pct(last, float(closes.iloc[-2])) if len(closes) >= 2 else None
@@ -752,21 +764,9 @@ def main():
     layers = build_layers(rows)
     synthesis_text, generated_by = build_synthesis(breadth, ann_vol, layers, rows)
 
-    # Determine the price date from the downloaded data itself — the last
-    # available close in the raw download (most reliable source).
-    price_date = None
-    for t in tickers:
-        try:
-            closes = raw[t]["Close"].dropna()
-            if len(closes) > 0:
-                price_date = closes.index[-1].date()
-                break
-        except Exception:
-            continue
-    price_as_of_date = str(price_date) if price_date else dt.date.today().isoformat()
-
-    # fresh = price_as_of_date matches the most recently completed NYSE session.
-    latest_nyse = get_latest_nyse_close_date()
+    # price_as_of_date and fresh derive from trimmed closes and latest_nyse so
+    # they are consistent with each other and with is_already_captured.
+    price_as_of_date = str(price_date) if price_date else str(latest_nyse)
     fresh = (price_as_of_date == str(latest_nyse))
 
     generated_at = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -789,6 +789,7 @@ def main():
         "generated_at": generated_at,
         "price_as_of_date": price_as_of_date,
         "fresh": fresh,
+        "basket_n_equity_names": len(equity_rows),
         "basket_breadth_above_50dma_pct": breadth,
         "basket_avg_ann_vol_21d_pct": ann_vol,
         "basket_median_pe_ttm": median_pe_ttm,
@@ -880,9 +881,10 @@ def main():
         json.dump(out, f, indent=2)
 
     stale_fred = [k for k, v in fred_credit.items() if v.get("stale")]
-    print(f"Wrote {out_path} — {len(rows)} names, {len(layers)} layers, "
-          f"price_as_of_date={price_as_of_date}, fresh={fresh}, "
-          f"breadth {breadth}%, median PE {median_pe_ttm}, concentration(top3) "
+    print(f"Wrote {out_path} — {len(rows)} names ({len(equity_rows)} equity), {len(layers)} layers")
+    print(f"  price_as_of_date={price_as_of_date}, generated_at={generated_at}, "
+          f"fresh={fresh}, basket_n_equity_names={len(equity_rows)}")
+    print(f"  breadth {breadth}%, median PE {median_pe_ttm}, concentration(top3) "
           f"{concentration_top3_pct}%, avg corr {avg_pairwise_corr}, "
           f"{len(benchmarks_etfs)} benchmark ETFs, synthesis via {generated_by}, "
           f"FRED stale={stale_fred or 'none'}")
