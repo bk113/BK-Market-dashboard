@@ -400,6 +400,13 @@ FX_CCY_MAP = {
 }
 
 
+def _breadth_universe(columns) -> list:
+    """Tradeable price instruments for breadth counts: no yields, no VOL-section series."""
+    _sec = {t: s for s, t, _n, _b in UNIVERSE}
+    return [t for t in columns
+            if t in _sec and _sec[t] not in ("RATES", "VOL") and t not in DISPLAY_EXCLUSIONS]
+
+
 
 
 # ── COLORS (report) ───────────────────────────────────────────────────────────
@@ -764,18 +771,7 @@ def download(lookback_days: int = 2520) -> tuple:
 
     prices = prices.ffill(limit=3).dropna(how="all")
     prices = prices[[t for t in tickers if t in prices.columns]]
-
-    # Yield ticker correction: yfinance returns x10 values
-    for yt in YIELD_TICKERS:
-        if yt in prices.columns:
-            prices[yt] = prices[yt] / 10.0
-
-    # Synthetic tickers: compute GVZ/OVX as 20D rolling vol of GLD/BNO
-    for proxy, source in SYNTHETIC_TICKERS.items():
-        if source in prices.columns:
-            rets = prices[source].pct_change()
-            rolling_vol = rets.rolling(window=20).std() * (252 ** 0.5) * 100.0
-            prices[proxy] = rolling_vol.bfill()
+    prices = _finish_price_panel(prices)
 
     print(f"[Download] Prices: {len(prices)} days | last close: {prices.index[-1].date()} | cols: {len(prices.columns)}")
 
@@ -835,6 +831,69 @@ def download(lookback_days: int = 2520) -> tuple:
 
     print(f"[Download] Volumes: {len(volumes)} days | vol cols with data: {(volumes > 0).any().sum()}")
     return prices, volumes
+
+
+def _finish_price_panel(prices: pd.DataFrame, correct_yields: bool = True) -> pd.DataFrame:
+    """Apply the yield /10 correction and add the synthetic GVZ/OVX columns."""
+    # Yield ticker correction: yfinance returns x10 values
+    if correct_yields:
+        for yt in YIELD_TICKERS:
+            if yt in prices.columns:
+                prices[yt] = prices[yt] / 10.0
+
+    # Synthetic tickers: compute GVZ/OVX as 20D rolling vol of GLD/BNO
+    for proxy, source in SYNTHETIC_TICKERS.items():
+        if source in prices.columns:
+            rets = prices[source].pct_change()
+            rolling_vol = rets.rolling(window=20).std() * (252 ** 0.5) * 100.0
+            prices[proxy] = rolling_vol.bfill()
+    return prices
+
+
+def load_trading_day_panel(calendar_prices: pd.DataFrame) -> pd.DataFrame:
+    """
+    Price panel with one row per completed NYSE session, for anything that
+    counts rows as trading days (returns, vol, moving averages, breadth).
+
+    download() returns a calendar-daily panel forward-filled across weekends
+    and holidays. This one is rebuilt from the raw cache: weekend, holiday and
+    still-open-session rows are dropped. Within the remaining rows an
+    instrument with no print is carried for at most 3 sessions, except on the
+    last row, which is left as reported so a missing close stays missing.
+    """
+    from_cache = True
+    try:
+        raw = pd.read_csv(CACHE_FILE, index_col=0, parse_dates=True)
+        if raw.index.tz is not None:
+            raw.index = raw.index.tz_localize(None)
+        raw = raw[[t for t in calendar_prices.columns if t in raw.columns]]
+    except Exception as e:
+        print(f"[Panel]  Raw cache unreadable ({e}) -- trading-day panel built from the filled panel")
+        raw = calendar_prices.drop(columns=[c for c in SYNTHETIC_TICKERS if c in calendar_prices.columns])
+        from_cache = False
+
+    raw = raw[raw.index <= pd.Timestamp(_last_completed_nyse_session())]
+    sessions = None
+    try:
+        import pandas_market_calendars as _mcal
+        _sched = _mcal.get_calendar("NYSE").schedule(
+            start_date=str(raw.index[0].date()), end_date=str(raw.index[-1].date()))
+        sessions = raw.index.intersection(pd.DatetimeIndex(_sched.index))
+    except Exception:
+        pass
+    if sessions is None or len(sessions) == 0:
+        # No calendar library: a weekday on which at least half the panel printed.
+        _wk = raw[raw.index.dayofweek < 5]
+        sessions = _wk.index[_wk.notna().sum(axis=1) >= _wk.shape[1] * 0.5]
+
+    td = raw.loc[sessions].dropna(how="all")
+    filled = td.ffill(limit=3)
+    filled.iloc[-1] = td.iloc[-1]
+    filled = _finish_price_panel(filled, correct_yields=from_cache)
+    filled = filled[[c for c in calendar_prices.columns if c in filled.columns]]
+    print(f"[Panel]  Trading-day panel: {len(filled)} sessions | last: {filled.index[-1].date()} "
+          f"| cols: {len(filled.columns)}")
+    return filled
 
 
 def compute_metrics(prices: pd.DataFrame) -> pd.DataFrame:
@@ -2286,12 +2345,18 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
         details["Momentum"] = {"value": f"SPY {cur*100:+.1f}% vs 125D MA", "score": scores["Momentum"]}
 
     # ── 3. Market Breadth: % instruments above their 50D MA ──────────────────
-    ma50_all = prices.rolling(50, min_periods=20).mean()
-    above = (prices_lv.iloc[-1] > ma50_all.iloc[-1]).sum()
-    total_avail = prices.shape[1]
-    breadth_pct = above / total_avail * 100 if total_avail > 0 else 50
+    # Breadth and Strength count tradeable price instruments only (no yields,
+    # no VOL-section series) that have both a last price and the reference level.
+    _uni  = _breadth_universe(prices.columns)
+    _last = prices_lv[_uni].iloc[-1]
+    _ma50 = prices[_uni].rolling(50, min_periods=20).mean().iloc[-1]
+    _ok   = _last.notna() & _ma50.notna()
+    above = int((_last[_ok] > _ma50[_ok]).sum())
+    breadth_n = int(_ok.sum())
+    breadth_pct = above / breadth_n * 100 if breadth_n > 0 else 50
     scores["Breadth"] = float(breadth_pct)
-    details["Breadth"] = {"value": f"{above}/{total_avail} above 50D MA", "score": scores["Breadth"]}
+    details["Breadth"] = {"value": f"{above}/{breadth_n} above 50D MA", "score": scores["Breadth"],
+                          "n_instruments": breadth_n}
 
     # ── 4. Safe Haven Demand: TLT outperformance vs SPY (20D) ────────────────
     if "TLT" in prices.columns and "SPY" in prices.columns:
@@ -2315,11 +2380,14 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
         details["Junk Bonds"] = {"value": f"HYG vs IEF 20D: {cur*100:+.1f}%", "score": scores["Junk Bonds"]}
 
     # ── 6. Market Strength: % instruments within 5% of 52W high ─────────────
-    hi52 = prices.rolling(252, min_periods=100).max()
-    near_high = ((prices_lv.iloc[-1] / hi52.iloc[-1]) >= 0.95).sum()
-    strength_pct = near_high / total_avail * 100 if total_avail > 0 else 50
+    _hi52 = prices[_uni].rolling(252, min_periods=100).max().iloc[-1]
+    _ok   = _last.notna() & _hi52.notna()
+    near_high = int(((_last[_ok] / _hi52[_ok]) >= 0.95).sum())
+    strength_n = int(_ok.sum())
+    strength_pct = near_high / strength_n * 100 if strength_n > 0 else 50
     scores["Strength"] = float(strength_pct)
-    details["Strength"] = {"value": f"{near_high}/{total_avail} within 5% of 52W high", "score": scores["Strength"]}
+    details["Strength"] = {"value": f"{near_high}/{strength_n} within 5% of 52W high", "score": scores["Strength"],
+                           "n_instruments": strength_n}
 
     # ── 7. Term Structure: VIX/VIX3M ratio (backwardation = panic) ──────────
     if "^VIX" in prices.columns and "^VIX3M" in prices.columns:
@@ -2351,6 +2419,7 @@ def compute_fear_greed(prices: pd.DataFrame) -> dict:
         "label":   label,
         "color":   color,
         "details": details,
+        "n_components": len(score_vals),
     }
 
 
@@ -6824,10 +6893,10 @@ def export_market_pulse(
             if _yt in prices_ep.columns:
                 prices_ep[_yt] = prices_ep[_yt] * 10.0
 
-        # download() returns a calendar-daily panel that is already forward-
-        # filled (weekends included). Trading-day maths (1D/5D changes, 50/200-
-        # day averages) therefore uses weekday rows only, and "does this
-        # instrument have a real close on this date" is read from the raw cache.
+        # run_once() passes the trading-day panel, so row offsets are sessions.
+        # The weekday filter only matters if a calendar panel is passed instead.
+        # "Does this instrument have a real close on this date" is read from
+        # the raw cache, because earlier rows of the panel are carried forward.
         prices_lv = prices_ep[prices_ep.index.dayofweek < 5]
         _real = None
         try:
@@ -6945,6 +7014,9 @@ def export_market_pulse(
             "components":   _comps,
             "score_1d_ago": _score_1d,
             "score_5d_ago": _score_5d,
+            "components_used":        _fg.get("n_components"),
+            "breadth_n_instruments":  ((_fg.get("details") or {}).get("Breadth") or {}).get("n_instruments"),
+            "strength_n_instruments": ((_fg.get("details") or {}).get("Strength") or {}).get("n_instruments"),
         }
     except Exception as _e:
         errors.append(f"fear_greed: {_e}")
@@ -6965,12 +7037,7 @@ def export_market_pulse(
         except Exception:
             pass
 
-        _breadth_tks = [
-            t for s, t, _, _ in UNIVERSE
-            if s not in _BREADTH_EXCL_SECTIONS
-            and t not in DISPLAY_EXCLUSIONS
-            and t in prices_lv.columns
-        ]
+        _breadth_tks = _breadth_universe(prices_lv.columns)
 
         _ma50_last  = prices_lv.rolling(50,  min_periods=20).mean().iloc[-1]
         _ma200_last = prices_lv.rolling(200, min_periods=100).mean().iloc[-1]
@@ -7105,7 +7172,10 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
     print("=" * 60)
 
     prices, volumes = download(lookback_days=lookback_days)
-    df     = compute_metrics(prices)
+    # Row-count windows (returns, vol, moving averages, breadth) need trading-day
+    # rows. Fragility, regime, backtest and the HTML tabs still take `prices`.
+    prices_td = load_trading_day_panel(prices)
+    df     = compute_metrics(prices_td)
 
     n_red   = (df["rag_label"].str.strip() == "RED").sum()
     n_amber = (df["rag_label"].str.strip() == "AMBER").sum()
@@ -7127,7 +7197,7 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
         regime_data = compute_regime(prices)
         regime_data["stress_contributors"] = compute_stress_contributors(prices)
         print("[HTML]   Computing Fear & Greed index...")
-        fg_data     = compute_fear_greed(prices)
+        fg_data     = compute_fear_greed(prices_td)
         print("[HTML]   Computing fragility trend...")
         frag_trend  = compute_fragility_trend(prices, volumes)
         print("[HTML]   Generating AI commentary...")
@@ -7206,7 +7276,7 @@ def run_once(send_email_flag: bool = False, pptx_flag: bool = False,
     # non-html runs the function computes it internally.
     _fg_export = fg_data if html_flag else None
     try:
-        export_market_pulse(prices, df, fg_data=_fg_export)
+        export_market_pulse(prices_td, df, fg_data=_fg_export)
     except Exception as _ep:
         print(f"[Pulse]  FATAL (outer guard): {_ep}")
 

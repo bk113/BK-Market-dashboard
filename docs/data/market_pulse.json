@@ -1,33 +1,36 @@
 {
   "metadata": {
-    "generated_at": "2026-11-13T09:35:54Z",
+    "generated_at": "2026-11-13T14:33:57Z",
     "price_as_of_date": "2026-11-12",
     "fresh": true,
     "instrument_count": 115,
     "source": "Yahoo Finance"
   },
   "fear_greed": {
-    "score": 38.7,
+    "score": 28.0,
     "label": "Fear",
     "components": {
-      "Volatility": 24.39,
-      "Momentum": 20.63,
-      "Breadth": 50.85,
-      "Safe Haven": 47.84,
-      "Junk Bonds": 70.38,
-      "Strength": 38.98,
-      "Term Structure": 17.66
+      "Volatility": 20.09,
+      "Momentum": 22.15,
+      "Breadth": 35.19,
+      "Safe Haven": 19.47,
+      "Junk Bonds": 38.71,
+      "Strength": 37.04,
+      "Term Structure": 23.61
     },
-    "score_1d_ago": 37.8,
-    "score_5d_ago": 16.0
+    "score_1d_ago": 28.4,
+    "score_5d_ago": 14.5,
+    "components_used": 7,
+    "breadth_n_instruments": 108,
+    "strength_n_instruments": 108
   },
   "breadth": {
     "overall": {
       "n_instruments": 108,
       "above_50dma_n": 38,
       "above_50dma_pct": 35.19,
-      "above_200dma_n": 41,
-      "above_200dma_pct": 37.96
+      "above_200dma_n": 42,
+      "above_200dma_pct": 38.89
     },
     "by_asset_class": {
       "CMD": {
@@ -48,8 +51,8 @@
         "n_instruments": 55,
         "above_50dma_n": 22,
         "above_50dma_pct": 40.0,
-        "above_200dma_n": 26,
-        "above_200dma_pct": 47.27
+        "above_200dma_n": 27,
+        "above_200dma_pct": 49.09
       },
       "FI": {
         "n_instruments": 21,

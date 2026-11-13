@@ -37,11 +37,14 @@ Machine-readable market overview written on every dashboard run by `bk_market_da
 
 | Field | Type | Unit / Notes |
 |---|---|---|
-| `score` | float | Composite 0–100 (0 = Extreme Fear, 100 = Extreme Greed); rounded to 2 dp |
+| `score` | float | Composite 0–100 (0 = Extreme Fear, 100 = Extreme Greed); rounded to 2 dp. All windows are NYSE trading days |
 | `label` | string | One of: `"Extreme Fear"`, `"Fear"`, `"Neutral"`, `"Greed"`, `"Extreme Greed"` |
 | `components` | object | Seven sub-scores (0–100 each): `Volatility`, `Momentum`, `Breadth`, `Safe Haven`, `Junk Bonds`, `Strength`, `Term Structure` |
 | `score_1d_ago` | float \| null | F&G score computed on the panel one trading day earlier; null if history is insufficient |
 | `score_5d_ago` | float \| null | F&G score computed on the panel five trading days earlier; null if history is insufficient |
+| `components_used` | integer | Number of the seven components that could be computed and were averaged into `score` |
+| `breadth_n_instruments` | integer | Instruments counted in the `Breadth` component (tradeable price instruments only: no yields, no `VOL` section) |
+| `strength_n_instruments` | integer | Instruments counted in the `Strength` component, same universe |
 
 ---
 
@@ -73,7 +76,7 @@ Each entry is an object:
 | `close` | float \| null | Official close on the last panel row, in native units (yields in percent); rounded to 2 dp. Null if the instrument has no close on that row; never forward-filled |
 | `unit` | string | Unit of the three change fields: `"%"` for prices, `"bp"` for yields, `"pts"` for volatility instruments (the `VOL` section) |
 | `chg_1d` | float \| null | 1-day change. **%**: percentage change (e.g. `1.23`), 2 dp. **bp**: basis-point change (e.g. `10.5`), 1 dp. **pts**: change in index points, 2 dp. Null if there is no official close (never intraday). |
-| `chg_5d` | float \| null | Change against the close five panel rows earlier, same units as `chg_1d` |
+| `chg_5d` | float \| null | Change against the close five NYSE sessions earlier, same units as `chg_1d` |
 | `chg_mtd` | float \| null | Month-to-date change against the last close of the previous calendar month, same units |
 
 `headline_moves` is a filtered subset of `moves` for key cross-asset tickers: 13-week T-bill (`^IRX`) and 10Y Treasury yield, HYG (HY credit), LQD (IG credit), DXY, USD/JPY, Gold, Brent (BNO), VIX, SPY, QQQ, SOXX (semiconductors), Bitcoin.
