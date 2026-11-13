@@ -3385,10 +3385,14 @@ def _build_data_health_strip(data_dir: str) -> str:
     # ── 3. FRED staleness ─────────────────────────────────────────────────────
     fred_path    = data_dir / "fred_staleness_report.csv"
     fred_entries = []
+    fred_discontinued = []
 
     if fred_path.exists():
         try:
             fred = pd.read_csv(fred_path)
+            if not fred.empty and "status" in fred.columns:
+                _disc = fred[fred["status"].astype(str).str.startswith("discontinued")]
+                fred_discontinued = [str(r.get("name", r.get("code", "?"))) for _, r in _disc.iterrows()]
             if not fred.empty and "flagged_stale" in fred.columns:
                 for _, row in fred[fred["flagged_stale"] == True].iterrows():
                     fred_entries.append((
@@ -3403,6 +3407,10 @@ def _build_data_health_strip(data_dir: str) -> str:
 
     if not fred_entries:
         fred_h = '<span style="color:#3fb950;">FRED: current</span>'
+        if fred_discontinued:
+            _disc_tip = " | ".join(f"{n} — discontinued (expected)" for n in fred_discontinued)
+            fred_h += (f'&nbsp;<span style="color:#8b949e;cursor:help;" title="{_disc_tip}">'
+                       f'(+{len(fred_discontinued)} discontinued)</span>')
     else:
         if actively_stale and legacy_retired:
             fred_col = "#e3b341"
@@ -3416,6 +3424,7 @@ def _build_data_health_strip(data_dir: str) -> str:
         tip_parts  = [f"{n} ({d}d)" for n, d in actively_stale[:8]]
         if legacy_retired:
             tip_parts += [f"{n} ({d}d — retired)" for n, d in legacy_retired]
+        tip_parts += [f"{n} — discontinued (expected)" for n in fred_discontinued]
         fred_tip = " | ".join(tip_parts)
         fred_h   = (
             f'<span style="color:{fred_col};">{fred_lbl}</span>'
@@ -3464,6 +3473,13 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
     now         = datetime.now(SGT)
     date_str    = now.strftime("%A, %d %b %Y %H:%M SGT")
     gen_ts      = now.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        _cut = pd.Timestamp(_last_completed_nyse_session())
+        _price_as_of_txt = "US close " + _panel_price_as_of(prices[prices.index <= _cut]).strftime("%Y-%m-%d")
+        if prices.index[-1] > _cut:
+            _price_as_of_txt += f" (plus intraday {prices.index[-1].strftime('%Y-%m-%d')})"
+    except Exception:
+        _price_as_of_txt = "n/a"
     market_open = bool(df["market_open"].iloc[0]) if "market_open" in df.columns else True
     GA          = ""  # Set your GA4 ID here e.g. "G-XXXXXXXXXX"
     # Derive data-review tickers from the scored df (set by compute_scores sanity checks)
@@ -6050,7 +6066,7 @@ def build_web_html(df: pd.DataFrame, frag_df: pd.DataFrame = None, prices: pd.Da
         "Signal: Self-relative to each instrument's own drawdown history (P10/P30 = red/amber) &#183; falls back to RED &lt; &#8722;15% / AMBER &#8722;15% to &#8722;7% / GREEN &gt; &#8722;7% only when history is thin (&lt;14mo)<br>"
         "Fragility: CRITICAL &#8805;70 &#183; ELEVATED 55&#8211;69 &#183; WATCH 40&#8211;54 &#183; LOW &lt;40 &#183; BK Fragility Framework<br>"
         ""
-        f"Generated: {gen_ts} SGT &#183; Prices via Yahoo Finance &#183; Updated daily before market open"
+        f"Generated: {gen_ts} SGT &#183; Prices to {_price_as_of_txt} &#183; Prices via Yahoo Finance &#183; Updated daily after the US close"
         "</div><div style='text-align:right;'>"
         "<div class='fb'>BK</div>"
         "<div class='fs'>Risk Research &#183; Singapore</div>"
@@ -6679,6 +6695,52 @@ def _now_sgt() -> str:
 #  MARKET PULSE EXPORT
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _last_completed_nyse_session(now_utc=None):
+    """Date of the latest NYSE session whose close is at or before now (UTC)."""
+    import datetime as _dt
+    now_utc = now_utc or _dt.datetime.utcnow()
+    try:
+        import pandas_market_calendars as _mcal
+        _today = now_utc.date()
+        _sched = _mcal.get_calendar("NYSE").schedule(
+            start_date=str(_today - _dt.timedelta(days=14)),
+            end_date=str(_today),
+        )
+        for _sess in reversed(_sched.index):
+            _mc = _sched.loc[_sess, "market_close"].to_pydatetime()
+            _mc = _mc.replace(tzinfo=None) if _mc.tzinfo else _mc
+            if now_utc >= _mc:
+                return _sess.date()
+    except Exception:
+        pass
+    # Weekday fallback (no holiday knowledge): 21:00 UTC approximates the close.
+    _cand = now_utc.date()
+    if now_utc.hour < 21:
+        _cand -= _dt.timedelta(days=1)
+    while _cand.weekday() >= 5:
+        _cand -= _dt.timedelta(days=1)
+    return _cand
+
+
+def _panel_price_as_of(prices: pd.DataFrame):
+    """Latest index date on which at least half the panel has an unfilled close."""
+    _valid = prices.notna().sum(axis=1)
+    _dates = prices.index[_valid >= len(prices.columns) * 0.5]
+    return _dates[-1] if len(_dates) > 0 else prices.index[-1]
+
+
+def _market_pulse_is_fresh() -> bool:
+    """True if docs/data/market_pulse.json already holds the last completed NYSE session."""
+    import json
+    try:
+        _p = _Path(__file__).resolve().parent / "docs" / "data" / "market_pulse.json"
+        _meta = json.loads(_p.read_text(encoding="utf-8")).get("metadata") or {}
+        return (_meta.get("fresh") is True
+                and _meta.get("price_as_of_date") == str(_last_completed_nyse_session()))
+    except Exception:
+        return False
+
+
 def export_market_pulse(
     prices: pd.DataFrame,
     df: pd.DataFrame,
@@ -6743,32 +6805,7 @@ def export_market_pulse(
         # Determine the latest COMPLETED NYSE session by checking market_close.
         # An in-progress session (market still open) is not counted so the file
         # never contains intraday prices.
-        _now_utc = _dt.datetime.utcnow()
-        _official_cutoff: _dt.date | None = None
-        try:
-            import pandas_market_calendars as _mcal_ep
-            _today_ep = _dt.date.today()
-            _sched_ep = _mcal_ep.get_calendar("NYSE").schedule(
-                start_date=str(_today_ep - _dt.timedelta(days=14)),
-                end_date=str(_today_ep),
-            )
-            for _sess in reversed(_sched_ep.index):
-                _mc = _sched_ep.loc[_sess, "market_close"].to_pydatetime()
-                _mc_naive = _mc.replace(tzinfo=None) if _mc.tzinfo else _mc
-                if _now_utc >= _mc_naive:
-                    _official_cutoff = _sess.date()
-                    break
-        except Exception:
-            pass
-        if _official_cutoff is None:
-            # Weekday fallback: use the UTC date (not local date) so the
-            # result is consistent regardless of the server's timezone.
-            # Treat 21:00 UTC as the approximate NYSE close (4 PM Eastern).
-            _official_cutoff = _now_utc.date()
-            if _now_utc.hour < 21:
-                _official_cutoff -= _dt.timedelta(days=1)
-            while _official_cutoff.weekday() >= 5:
-                _official_cutoff -= _dt.timedelta(days=1)
+        _official_cutoff = _last_completed_nyse_session()
 
         # Filter to official closes only; never include the current session
         # while it is still in progress.
@@ -6787,15 +6824,37 @@ def export_market_pulse(
             if _yt in prices_ep.columns:
                 prices_ep[_yt] = prices_ep[_yt] * 10.0
 
-        prices_lv  = prices_ep.ffill(limit=5)
+        # download() returns a calendar-daily panel that is already forward-
+        # filled (weekends included). Trading-day maths (1D/5D changes, 50/200-
+        # day averages) therefore uses weekday rows only, and "does this
+        # instrument have a real close on this date" is read from the raw cache.
+        prices_lv = prices_ep[prices_ep.index.dayofweek < 5]
+        _real = None
+        try:
+            _raw = pd.read_csv(CACHE_FILE, index_col=0, parse_dates=True)
+            _real = _raw[(_raw.index <= _cutoff_ts) & (_raw.index.dayofweek < 5)].notna()
+            _real = _real[[c for c in _real.columns if c in prices_lv.columns]]
+            _hits = _real.index[_real.sum(axis=1) >= len(_real.columns) * 0.5]
+            _pad_ts = _hits[-1]
+        except Exception as _re:
+            _real = None
+            _pad_ts = _panel_price_as_of(prices_lv)
+            errors.append(f"raw cache unreadable, closes may be forward-filled: {_re}")
+        prices_lv  = prices_lv[prices_lv.index <= _pad_ts]
         last_close = prices_lv.iloc[-1]
+
+        def _has_close(ticker: str) -> bool:
+            """True if the ticker has a real (not forward-filled) close on _pad_ts."""
+            if _real is None or ticker not in _real.columns:
+                return True   # synthetic proxies are not in the cache
+            return bool(_real.loc[_pad_ts, ticker])
 
         _RATE_TICKERS = set(YIELD_TICKERS)
         _VOL_TICKERS  = {t for s, t, _, _ in UNIVERSE if s == "VOL"}
 
         def _unit(ticker: str) -> str:
             if ticker in _RATE_TICKERS: return "bp"
-            if ticker in _VOL_TICKERS:  return "level"
+            if ticker in _VOL_TICKERS:  return "pts"
             return "%"
 
         def _chg(curr_v, prev_v, unit: str) -> float | None:
@@ -6829,14 +6888,12 @@ def export_market_pulse(
     try:
         generated_at = _dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Use unfilled official closes for price_as_of_date and instrument_count
-        # so stale ffilled values are not counted as fresh instruments.
-        _valid_counts = prices_official.notna().sum(axis=1)
-        _threshold    = len(prices_official.columns) * 0.5
-        _valid_dates  = prices_official.index[_valid_counts >= _threshold]
-        _pad_ts       = _valid_dates[-1] if len(_valid_dates) > 0 else prices_official.index[-1]
         price_as_of_date = str(_pad_ts.date())
-        instrument_count = int(prices_official.loc[_pad_ts].notna().sum())
+        instrument_count = sum(
+            1 for _s, _t, _n, _b in UNIVERSE
+            if _t not in DISPLAY_EXCLUSIONS and _t in prices_lv.columns
+            and _has_close(_t) and _jv(last_close.get(_t)) is not None
+        )
 
         fresh = price_as_of_date == str(_official_cutoff)
 
@@ -6853,19 +6910,27 @@ def export_market_pulse(
 
     # ── 2. Fear & Greed ───────────────────────────────────────────────────────
     try:
-        # Use fg_data from caller if available; otherwise compute from ORIGINAL
-        # prices so the score matches the main dashboard exactly.
-        _fg = fg_data if fg_data is not None else compute_fear_greed(prices)
+        # The caller's fg_data matches the dashboard exactly, so use it when the
+        # panel ends on price_as_of_date. If the panel has later rows (a run
+        # while a session is open), recompute on official closes only.
+        _fg_panel = prices[prices.index <= _pad_ts]
+        if fg_data is not None and prices.index[-1] <= _pad_ts:
+            _fg = fg_data
+        else:
+            _fg = compute_fear_greed(_fg_panel)
 
+        # 1 and 5 trading days ago: truncate the same calendar panel by date.
         _score_1d, _score_5d = None, None
         try:
-            if len(prices) >= 2:
-                _score_1d = _jv(compute_fear_greed(prices.iloc[:-1]).get("score"))
+            if len(prices_lv) >= 2:
+                _score_1d = _jv(compute_fear_greed(
+                    _fg_panel[_fg_panel.index <= prices_lv.index[-2]]).get("score"))
         except Exception:
             pass
         try:
-            if len(prices) >= 6:
-                _score_5d = _jv(compute_fear_greed(prices.iloc[:-5]).get("score"))
+            if len(prices_lv) >= 6:
+                _score_5d = _jv(compute_fear_greed(
+                    _fg_panel[_fg_panel.index <= prices_lv.index[-6]]).get("score"))
         except Exception:
             pass
 
@@ -6911,7 +6976,7 @@ def export_market_pulse(
         _ma200_last = prices_lv.rolling(200, min_periods=100).mean().iloc[-1]
 
         def _bstat(tks):
-            _valid = [t for t in tks if _jv(last_close.get(t)) is not None]
+            _valid = [t for t in tks if _has_close(t) and _jv(last_close.get(t)) is not None]
             if not _valid:
                 return {"n_instruments": 0, "above_50dma_n": 0, "above_50dma_pct": None,
                         "above_200dma_n": 0, "above_200dma_pct": None}
@@ -6945,8 +7010,8 @@ def export_market_pulse(
 
     # ── 4. Moves (all instruments) + 5. Headline moves ───────────────────────
     try:
-        # 1D: strict (no ffill) from the yield-corrected prices_ep
-        _curr_strict = prices_ep.iloc[-1]
+        # prices_lv holds weekday rows up to price_as_of_date, so row offsets
+        # are trading days.
         _prev_1d = prices_lv.iloc[-2] if len(prices_lv) >= 2 else pd.Series(dtype=float)
         _prev_5d = prices_lv.iloc[-6] if len(prices_lv) >= 6 else pd.Series(dtype=float)
 
@@ -6954,9 +7019,9 @@ def export_market_pulse(
         # Filter on BOTH year and month so a 10-year panel never picks up a
         # row from a previous November as the "first row of this November".
         _today_ts    = prices_lv.index[-1]
-        _this_m_rows = prices_ep[
-            (prices_ep.index.month == _today_ts.month) &
-            (prices_ep.index.year  == _today_ts.year)
+        _this_m_rows = prices_lv[
+            (prices_lv.index.month == _today_ts.month) &
+            (prices_lv.index.year  == _today_ts.year)
         ]
         if len(_this_m_rows) > 0:
             _first_this_m = _this_m_rows.index[0]
@@ -6970,21 +7035,18 @@ def export_market_pulse(
             if _tk in DISPLAY_EXCLUSIONS or _tk not in prices_lv.columns:
                 continue
             _u    = _unit(_tk)
-            _cl   = _jv(float(last_close.get(_tk, np.nan)))
-            _c1   = _curr_strict.get(_tk)
-            _p1   = _prev_1d.get(_tk)
-            _p5   = _prev_5d.get(_tk)
-            _pm   = _mtd_base.get(_tk)
-            _lv1d = last_close.get(_tk)
+            # An instrument with no real close on price_as_of_date gets a null
+            # close and null changes, never a forward-filled value.
+            _c    = last_close.get(_tk) if _has_close(_tk) else None
             _moves.append({
                 "name":       _NAME_OVERRIDES.get(_tk, _name),
                 "ticker":     _tk,
                 "asset_class": _sec,
-                "close":      _cl,
+                "close":      _jv(_c),
                 "unit":       _u,
-                "chg_1d":     _chg(_c1,   _p1,  _u),
-                "chg_5d":     _chg(_lv1d, _p5,  _u),
-                "chg_mtd":    _chg(_lv1d, _pm,  _u),
+                "chg_1d":     _chg(_c, _prev_1d.get(_tk),  _u),
+                "chg_5d":     _chg(_c, _prev_5d.get(_tk),  _u),
+                "chg_mtd":    _chg(_c, _mtd_base.get(_tk), _u),
             })
 
         out["moves"] = _moves
@@ -7203,9 +7265,14 @@ examples:
                         help="Run once immediately (bypasses scheduler wait)")
     parser.add_argument("--out-dir",  default=OUT_DIR, metavar="DIR",
                         help=f"Output directory for outputs (default: {OUT_DIR}/)")
+    parser.add_argument("--skip-if-fresh", action="store_true",
+                        help="Exit without running if docs/data/market_pulse.json already "
+                             "holds the last completed NYSE session")
     args = parser.parse_args()
 
-    if args.schedule and not args.now:
+    if args.skip_if_fresh and _market_pulse_is_fresh():
+        print("[Skip]   market_pulse.json already holds the last completed NYSE session — nothing to do.")
+    elif args.schedule and not args.now:
         run_scheduler(out_dir=args.out_dir)
     else:
         run_once(send_email_flag=args.email, pptx_flag=args.pptx,

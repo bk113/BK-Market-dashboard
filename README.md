@@ -70,13 +70,13 @@ Each entry is an object:
 | `name` | string | Human-readable instrument name |
 | `ticker` | string | Yahoo Finance ticker symbol |
 | `asset_class` | string | UNIVERSE section (e.g. `"EQ_US"`, `"RATES"`, `"CMD"`, `"FX"`) |
-| `close` | float \| null | Last valid close in native units; rounded to 2 dp |
-| `unit` | string | `"%"` for price instruments; `"bp"` for yield indices; `"level"` for vol indices |
-| `chg_1d` | float \| null | 1-day change. **%** instruments: percentage (e.g. `+1.23`). **bp** instruments: basis-point change (e.g. `+10.5`). **level** instruments: absolute level change. Null if no fresh close yet (official-close-only; never intraday). Rounded to 2 dp for %, 1 dp for bp. |
-| `chg_5d` | float \| null | 5-trading-day change, same units as `chg_1d` |
-| `chg_mtd` | float \| null | Month-to-date change from first valid close of the current calendar month, same units |
+| `close` | float \| null | Official close on the last panel row, in native units (yields in percent); rounded to 2 dp. Null if the instrument has no close on that row; never forward-filled |
+| `unit` | string | Unit of the three change fields: `"%"` for prices, `"bp"` for yields, `"pts"` for volatility instruments (the `VOL` section) |
+| `chg_1d` | float \| null | 1-day change. **%**: percentage change (e.g. `1.23`), 2 dp. **bp**: basis-point change (e.g. `10.5`), 1 dp. **pts**: change in index points, 2 dp. Null if there is no official close (never intraday). |
+| `chg_5d` | float \| null | Change against the close five panel rows earlier, same units as `chg_1d` |
+| `chg_mtd` | float \| null | Month-to-date change against the last close of the previous calendar month, same units |
 
-`headline_moves` is a filtered subset of `moves` for key cross-asset tickers: 2Y and 10Y Treasury yield, HYG (HY credit), LQD (IG credit), DXY, USD/JPY, Gold, WTI oil proxy (BNO), VIX, SPY, QQQ, SOXX (semiconductors), Bitcoin.
+`headline_moves` is a filtered subset of `moves` for key cross-asset tickers: 13-week T-bill (`^IRX`) and 10Y Treasury yield, HYG (HY credit), LQD (IG credit), DXY, USD/JPY, Gold, Brent (BNO), VIX, SPY, QQQ, SOXX (semiconductors), Bitcoin.
 
 ---
 
@@ -98,6 +98,7 @@ Each entry has the same fields as `moves`. Yield indices, vol indices, non-inves
 | Prices and closes | 2 dp |
 | Percentage changes | 2 dp |
 | Basis-point changes | 1 dp |
+| Volatility point changes | 2 dp |
 | F&G scores | 2 dp |
 | Breadth percentages | 2 dp |
 
