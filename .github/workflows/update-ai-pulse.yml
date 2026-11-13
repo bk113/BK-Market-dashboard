@@ -17,6 +17,13 @@ on:
 permissions:
   contents: write
 
+# One run at a time. A run that arrives while another is in progress waits
+# for it, then checks out the commit that run pushed, so the safety run sees
+# the primary's ai_pulse.json and exits early instead of overlapping it.
+concurrency:
+  group: update-ai-pulse
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest

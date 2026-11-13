@@ -206,14 +206,14 @@ def get_latest_nyse_close_date():
 
 
 def is_already_captured(json_path):
-    """Return True if the existing ai_pulse.json already reflects the most
+    """Return True if the existing ai_pulse.json has fresh=true for the most
     recently completed NYSE trading session. Used to make both scheduled runs
     idempotent so a safety re-run never double-writes stale data."""
     try:
         with open(json_path) as f:
             prior = json.load(f)
         existing = prior.get("price_as_of_date", "")
-        if not existing:
+        if not existing or prior.get("fresh") is not True:
             return False
         latest = get_latest_nyse_close_date()
         return existing == str(latest)
