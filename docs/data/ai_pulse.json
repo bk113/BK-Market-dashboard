@@ -1,24 +1,28 @@
 {
-  "as_of": "2026-11-13 03:22 UTC",
-  "basket_breadth_above_50dma_pct": 24.0,
-  "basket_avg_ann_vol_21d_pct": 72.53,
-  "basket_median_pe_ttm": 22.8,
-  "basket_median_beta": 1.39,
-  "basket_concentration_top3_pct": 47.1,
+  "as_of": "2026-11-13 09:12 UTC",
+  "generated_at": "2026-11-13T09:12:16Z",
+  "price_as_of_date": "2026-11-12",
+  "fresh": true,
+  "basket_n_equity_names": 26,
+  "basket_breadth_above_50dma_pct": 30.8,
+  "basket_avg_ann_vol_21d_pct": 68.81,
+  "basket_median_pe_ttm": 24.6,
+  "basket_median_beta": 1.23,
+  "basket_concentration_top3_pct": 47.0,
   "basket_concentration_top3_names": [
     "NVDA",
     "MSFT",
     "GOOGL"
   ],
-  "basket_avg_pairwise_corr": 0.25,
+  "basket_avg_pairwise_corr": 0.26,
   "basket_avg_pairwise_corr_window_days": 58,
   "benchmarks": {
     "basket_avg": {
-      "label": "AI basket (equal-wt, 25 names)",
-      "chg_1d": -0.22,
-      "chg_1m": -7.16,
-      "chg_3m": -9.92,
-      "vol_21d_ann": 67.51
+      "label": "AI basket (equal-wt, 26 names)",
+      "chg_1d": -0.14,
+      "chg_1m": -5.91,
+      "chg_3m": -8.82,
+      "vol_21d_ann": 63.82
     },
     "etfs": [
       {
@@ -397,21 +401,23 @@
       "basket_avg_ann_vol_21d_pct": 70.28
     },
     {
-      "date": "2026-11-12",
-      "as_of": "2026-11-12 03:45 UTC",
-      "basket_breadth_above_50dma_pct": 20.0,
-      "basket_avg_ann_vol_21d_pct": 74.32
-    },
-    {
       "date": "2026-11-13",
       "as_of": "2026-11-13 03:22 UTC",
       "basket_breadth_above_50dma_pct": 24.0,
       "basket_avg_ann_vol_21d_pct": 72.53
+    },
+    {
+      "date": "2026-11-12",
+      "as_of": "2026-11-13 09:12 UTC",
+      "basket_breadth_above_50dma_pct": 30.8,
+      "basket_avg_ann_vol_21d_pct": 68.81
     }
   ],
   "layers": [
     {
       "name": "AI Compute",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
       "tickers": [
         "NVDA",
         "AVGO",
@@ -426,20 +432,9 @@
       "blurb": "3 names (NVDA, AVGO, AMD), down -5.7% over 1M, 66.7% above their 50-day average."
     },
     {
-      "name": "Custom Silicon",
-      "tickers": [
-        "MRVL"
-      ],
-      "n_names": 1,
-      "avg_chg_1d": -2.58,
-      "avg_chg_1m": -32.95,
-      "avg_chg_3m": -25.91,
-      "avg_vol_21d_ann": 117.19,
-      "breadth_above_50dma_pct": 0.0,
-      "blurb": "1 name (MRVL), down -33.0% over 1M, 0.0% above their 50-day average."
-    },
-    {
       "name": "Foundry",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
       "tickers": [
         "TSM"
       ],
@@ -453,21 +448,25 @@
     },
     {
       "name": "Memory",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
       "tickers": [
         "MU",
         "005930.KS",
         "000660.KS"
       ],
       "n_names": 3,
-      "avg_chg_1d": -0.02,
-      "avg_chg_1m": -4.25,
-      "avg_chg_3m": -13.36,
-      "avg_vol_21d_ann": 84.96,
+      "avg_chg_1d": -0.81,
+      "avg_chg_1m": -11.54,
+      "avg_chg_3m": -12.49,
+      "avg_vol_21d_ann": 90.21,
       "breadth_above_50dma_pct": 0.0,
-      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -4.2% over 1M, 0.0% above their 50-day average."
+      "blurb": "3 names (MU, 005930.KS, 000660.KS), down -11.5% over 1M, 0.0% above their 50-day average."
     },
     {
       "name": "Hyperscaler",
+      "layer_group": "Builders",
+      "funding_profile": "cash_funded",
       "tickers": [
         "MSFT",
         "GOOGL",
@@ -484,6 +483,8 @@
     },
     {
       "name": "Networking",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
       "tickers": [
         "ANET"
       ],
@@ -497,6 +498,8 @@
     },
     {
       "name": "AI Application",
+      "layer_group": "Products",
+      "funding_profile": "cash_funded",
       "tickers": [
         "CRM",
         "CRWD",
@@ -513,6 +516,8 @@
     },
     {
       "name": "Power / Infra",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
       "tickers": [
         "VRT",
         "CEG",
@@ -528,6 +533,8 @@
     },
     {
       "name": "Cloud Compute",
+      "layer_group": "Builders",
+      "funding_profile": "debt_funded",
       "tickers": [
         "ORCL"
       ],
@@ -541,6 +548,8 @@
     },
     {
       "name": "AI Cloud Infra (public)",
+      "layer_group": "Builders",
+      "funding_profile": "debt_funded",
       "tickers": [
         "CRWV"
       ],
@@ -553,7 +562,25 @@
       "blurb": "1 name (CRWV), down -14.0% over 1M, 0.0% above their 50-day average."
     },
     {
+      "name": "Data Centre REIT",
+      "layer_group": "Suppliers",
+      "funding_profile": "cash_funded",
+      "tickers": [
+        "EQIX",
+        "DLR"
+      ],
+      "n_names": 2,
+      "avg_chg_1d": 0.86,
+      "avg_chg_1m": 7.17,
+      "avg_chg_3m": -4.96,
+      "avg_vol_21d_ann": 36.5,
+      "breadth_above_50dma_pct": 100.0,
+      "blurb": "2 names (EQIX, DLR), up +7.2% over 1M, 100.0% above their 50-day average."
+    },
+    {
       "name": "Credit \u2014 IG",
+      "layer_group": "Credit",
+      "funding_profile": "cash_funded",
       "tickers": [
         "LQD"
       ],
@@ -567,6 +594,8 @@
     },
     {
       "name": "Credit \u2014 HY",
+      "layer_group": "Credit",
+      "funding_profile": "cash_funded",
       "tickers": [
         "HYG"
       ],
@@ -580,6 +609,8 @@
     },
     {
       "name": "China AI / Low-Cost Models",
+      "layer_group": "Products",
+      "funding_profile": "cash_funded",
       "tickers": [
         "BABA",
         "BIDU",
@@ -595,10 +626,57 @@
     }
   ],
   "commentary": {
-    "synthesis": "24.0% of the AI-equity basket trades above its 50-day average, with basket volatility running at 72.53% annualised. The largest single-day move was BABA (China AI / Low-Cost Models), down 7.0%. Layer performance diverged over the trailing month: Networking (n=1) led at +5.7%, while Custom Silicon (n=1) lagged at -33.0%. Breadth was strongest in Networking (n=1) (100.0% of names above their 50-day average) and weakest in Custom Silicon (n=1) (0.0%).",
+    "synthesis": "30.8% of the AI-equity basket trades above its 50-day average, with basket volatility running at 68.81% annualised. The largest single-day move was BABA (China AI / Low-Cost Models), down 7.0%. Layer performance diverged over the trailing month: Data Centre REIT (n=2) led at +7.2%, while AI Cloud Infra (public) (n=1) lagged at -14.0%. Breadth was strongest in Networking (n=1) (100.0% of names above their 50-day average) and weakest in Foundry (n=1) (0.0%).",
     "generated_by": "fallback",
     "model": null,
     "disclaimer": "Rule-based summary computed directly from the figures on this page (no model involved). Descriptive, not a forecast, recommendation, or investment advice."
+  },
+  "fred_credit": {
+    "DGS2": {
+      "label": "2Y Treasury yield",
+      "unit": "%",
+      "value": 4.73,
+      "date": "2026-11-10",
+      "value_1m_ago": 4.8,
+      "chg_1m": -0.07,
+      "stale": false
+    },
+    "BAMLH0A0HYM2": {
+      "label": "HY OAS (all)",
+      "unit": "bps",
+      "value": 3.3,
+      "date": "2026-11-11",
+      "value_1m_ago": 3.11,
+      "chg_1m": 0.19,
+      "stale": false
+    },
+    "BAMLC0A0CM": {
+      "label": "IG OAS",
+      "unit": "bps",
+      "value": 0.9,
+      "date": "2026-11-11",
+      "value_1m_ago": 0.83,
+      "chg_1m": 0.07,
+      "stale": false
+    },
+    "BAMLH0A3HYC": {
+      "label": "HY OAS (BB)",
+      "unit": "bps",
+      "value": 13.3,
+      "date": "2026-11-11",
+      "value_1m_ago": 12.53,
+      "chg_1m": 0.77,
+      "stale": false
+    },
+    "BAMLH0A2HYB": {
+      "label": "HY OAS (BB-B)",
+      "unit": "bps",
+      "value": 3.47,
+      "date": "2026-11-11",
+      "value_1m_ago": 3.1,
+      "chg_1m": 0.37,
+      "stale": false
+    }
   },
   "constituents": [
     {
@@ -633,7 +711,7 @@
       "vol_21d_ann": 63.78,
       "above_50dma": false,
       "drawdown_90d": -22.22,
-      "pe_ttm": 3831.2,
+      "pe_ttm": 4597.4,
       "pe_fwd": 142.7,
       "ev_ebitda": 2163.7,
       "beta": 1.15,
@@ -709,7 +787,7 @@
       "vol_21d_ann": 51.42,
       "above_50dma": false,
       "drawdown_90d": -30.53,
-      "pe_ttm": 22.0,
+      "pe_ttm": 21.0,
       "pe_fwd": 10.5,
       "ev_ebitda": 19.8,
       "beta": 2.25,
@@ -823,7 +901,7 @@
       "vol_21d_ann": 77.62,
       "above_50dma": false,
       "drawdown_90d": -28.88,
-      "pe_ttm": 20.1,
+      "pe_ttm": 19.9,
       "pe_fwd": 11.5,
       "ev_ebitda": 15.2,
       "beta": 1.78,
@@ -868,23 +946,42 @@
       "market_cap": null
     },
     {
-      "ticker": "MRVL",
-      "layer": "Custom Silicon",
-      "etf": "SOXX",
+      "ticker": "EQIX",
+      "layer": "Data Centre REIT",
+      "etf": "\u2014",
       "currency": "USD",
       "non_us_session": false,
-      "last": 164.45,
-      "chg_1d": -2.58,
-      "chg_1m": -32.95,
-      "chg_3m": -25.91,
-      "vol_21d_ann": 117.19,
-      "above_50dma": false,
-      "drawdown_90d": -53.46,
-      "pe_ttm": 54.1,
-      "pe_fwd": 22.4,
-      "ev_ebitda": 51.1,
-      "beta": 2.33,
-      "market_cap": 147966492672.0
+      "last": 1072.77,
+      "chg_1d": 0.44,
+      "chg_1m": 7.72,
+      "chg_3m": -2.2,
+      "vol_21d_ann": 39.04,
+      "above_50dma": true,
+      "drawdown_90d": -13.15,
+      "pe_ttm": 64.4,
+      "pe_fwd": 51.8,
+      "ev_ebitda": 27.8,
+      "beta": 0.97,
+      "market_cap": 106191699968.0
+    },
+    {
+      "ticker": "DLR",
+      "layer": "Data Centre REIT",
+      "etf": "\u2014",
+      "currency": "USD",
+      "non_us_session": false,
+      "last": 183.47,
+      "chg_1d": 1.29,
+      "chg_1m": 6.61,
+      "chg_3m": -7.71,
+      "vol_21d_ann": 33.97,
+      "above_50dma": true,
+      "drawdown_90d": -14.01,
+      "pe_ttm": 77.4,
+      "pe_fwd": 63.4,
+      "ev_ebitda": 27.4,
+      "beta": 1.0,
+      "market_cap": 70634274816.0
     },
     {
       "ticker": "TSM",
@@ -899,7 +996,7 @@
       "vol_21d_ann": 60.67,
       "above_50dma": false,
       "drawdown_90d": -27.32,
-      "pe_ttm": 26.8,
+      "pe_ttm": 26.3,
       "pe_fwd": 17.3,
       "ev_ebitda": 3.8,
       "beta": 1.23,
@@ -994,7 +1091,7 @@
       "vol_21d_ann": 100.27,
       "above_50dma": false,
       "drawdown_90d": -40.18,
-      "pe_ttm": 10.9,
+      "pe_ttm": 10.7,
       "pe_fwd": 3.8,
       "ev_ebitda": 7.9,
       "beta": 2.4,
@@ -1006,18 +1103,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 210500.0,
-      "chg_1d": 1.2,
-      "chg_1m": 0.24,
-      "chg_3m": -10.58,
-      "vol_21d_ann": 66.27,
+      "last": 208000.0,
+      "chg_1d": 0.97,
+      "chg_1m": -10.34,
+      "chg_3m": -8.0,
+      "vol_21d_ann": 73.91,
       "above_50dma": false,
       "drawdown_90d": -39.63,
       "pe_ttm": null,
       "pe_fwd": 2.7,
       "ev_ebitda": 3.6,
       "beta": 1.59,
-      "market_cap": 1370760690008064.0
+      "market_cap": 1341457067671552.0
     },
     {
       "ticker": "000660.KS",
@@ -1025,18 +1122,18 @@
       "etf": "\u2014",
       "currency": "KRW",
       "non_us_session": true,
-      "last": 1258000.0,
-      "chg_1d": 0.32,
-      "chg_1m": -0.32,
-      "chg_3m": -11.7,
-      "vol_21d_ann": 88.33,
+      "last": 1254000.0,
+      "chg_1d": -1.8,
+      "chg_1m": -11.63,
+      "chg_3m": -11.67,
+      "vol_21d_ann": 96.45,
       "above_50dma": false,
       "drawdown_90d": -53.31,
       "pe_ttm": null,
       "pe_fwd": 2.3,
       "ev_ebitda": 3.7,
       "beta": 2.47,
-      "market_cap": 887108046684160.0
+      "market_cap": 857490757517312.0
     },
     {
       "ticker": "ANET",
