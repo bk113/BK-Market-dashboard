@@ -34,10 +34,18 @@ the page always shows something substantive, clearly labelled either way.
 
 import json
 import os
+import sys
 import datetime as dt
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+try:
+    import pandas_market_calendars as mcal
+    _HAS_MCal = True
+except ImportError:
+    _HAS_MCal = False
+    print("WARNING: pandas_market_calendars not installed — fresh flag will use weekday fallback.")
 
 # Fixed basket across the AI value chain. Each entry maps to (layer, primary
 # ETF proxy) so the page can show why a name sits where it does — a single
@@ -68,11 +76,47 @@ BASKET = {
     "GEV": ("Power / Infra", "XLI"),
     "ORCL": ("Cloud Compute", "XLK"),
     "CRWV": ("AI Cloud Infra (public)", "—"),
+    "EQIX": ("Data Centre REIT", "—"),   # Equinix — colocation and interconnection
+    "DLR": ("Data Centre REIT", "—"),    # Digital Realty — wholesale and retail colo
     "LQD": ("Credit — IG", "—"),
     "HYG": ("Credit — HY", "—"),
     "BABA": ("China AI / Low-Cost Models", "KWEB"),
     "BIDU": ("China AI / Low-Cost Models", "KWEB"),
     "TCEHY": ("China AI / Low-Cost Models", "KWEB"),
+}
+
+# Layers that carry meaningful debt to fund their AI infrastructure build
+# (Oracle: ~$50bn 2026 raise; CoreWeave: GPU-secured debt financing).
+# Additive metadata only — does not change any existing field.
+DEBT_FUNDED_LAYERS = {"Cloud Compute", "AI Cloud Infra (public)"}
+
+# Page-level grouping of layers into four thematic buckets. Display order
+# within each group follows BASKET insertion order (layer_order below).
+LAYER_GROUPS = {
+    "Suppliers": {
+        "AI Compute", "Custom Silicon", "Foundry", "Memory",
+        "Networking", "Power / Infra", "Data Centre REIT",
+    },
+    "Builders": {
+        "Hyperscaler", "Cloud Compute", "AI Cloud Infra (public)",
+    },
+    "Products": {
+        "AI Application", "China AI / Low-Cost Models",
+    },
+    "Credit": {
+        "Credit — IG", "Credit — HY",
+    },
+}
+
+# FRED keyless series for the credit/funding panel. Fetched via
+# https://fred.stlouisfed.org/graph/fredgraph.csv?id=<SERIES>
+# Failure on any individual series is non-fatal: skip + mark stale.
+FRED_SERIES = {
+    "DGS2":         {"label": "2Y Treasury yield",           "unit": "%"},
+    "BAMLH0A0HYM2": {"label": "HY OAS (all)",                "unit": "bps"},
+    "BAMLC0A0CM":   {"label": "IG OAS",                      "unit": "bps"},
+    "BAMLH0A3HYC":  {"label": "HY OAS (BB)",                 "unit": "bps"},
+    "BAMLH0A2HYB":  {"label": "HY OAS (BB-B)",               "unit": "bps"},
 }
 
 # Tickers priced in a currency other than USD -- everything else defaults to
@@ -115,6 +159,143 @@ MIN_CORR_WINDOW_DAYS = 20  # don't report a correlation built on too few days
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "").strip()
+
+
+# ---------------------------------------------------------------------------
+# NYSE trading calendar helpers
+# ---------------------------------------------------------------------------
+
+def get_latest_nyse_close_date():
+    """Return the most recently completed NYSE trading session as a date.
+    Uses pandas_market_calendars when available; falls back to the most
+    recent weekday (less accurate for US holidays).
+
+    An in-progress session (market still open) is never counted so the
+    function is safe to call at any time of day.
+    """
+    now_utc = dt.datetime.utcnow()
+    today = now_utc.date()   # use UTC date, not local, for consistency
+    if _HAS_MCal:
+        try:
+            nyse = mcal.get_calendar("NYSE")
+            start = today - dt.timedelta(days=14)
+            # end_date must be today (UTC) so today's session is included
+            # only when its market_close has already passed.
+            schedule = nyse.schedule(start_date=str(start),
+                                     end_date=str(today))
+            if not schedule.empty:
+                # Walk backwards; return the first session whose market_close
+                # is in the past so an open session is never counted.
+                for sess in reversed(schedule.index):
+                    mclose = schedule.loc[sess, "market_close"].to_pydatetime()
+                    mclose_naive = (mclose.replace(tzinfo=None)
+                                    if mclose.tzinfo else mclose)
+                    if now_utc >= mclose_naive:
+                        return sess.date()
+                # All sessions still open — fall through to weekday fallback
+        except Exception as e:
+            print(f"WARNING: NYSE calendar lookup failed: {e}")
+    # Weekday fallback: use UTC date and treat 21:00 UTC as the approximate
+    # NYSE close (4 PM Eastern) so local-timezone offsets don't shift the date.
+    candidate = today
+    if now_utc.hour < 21:
+        candidate -= dt.timedelta(days=1)
+    while candidate.weekday() >= 5:
+        candidate -= dt.timedelta(days=1)
+    return candidate
+
+
+def is_already_captured(json_path):
+    """Return True if the existing ai_pulse.json has fresh=true for the most
+    recently completed NYSE trading session. Used to make both scheduled runs
+    idempotent so a safety re-run never double-writes stale data."""
+    try:
+        with open(json_path) as f:
+            prior = json.load(f)
+        existing = prior.get("price_as_of_date", "")
+        if not existing or prior.get("fresh") is not True:
+            return False
+        latest = get_latest_nyse_close_date()
+        return existing == str(latest)
+    except Exception:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# FRED credit series
+# ---------------------------------------------------------------------------
+
+def fetch_fred_series():
+    """Fetch the five FRED credit/rate series via the keyless CSV endpoint.
+    Returns a dict keyed by series ID. Any individual fetch failure is
+    silently skipped and flagged with stale=True rather than failing the run.
+
+    Each successful series also includes value_1m_ago and chg_1m (absolute
+    change in the series' own unit, latest minus ~30-calendar-days-prior row)
+    computed from the same CSV response — no second request. If the 1m-ago
+    row cannot be found (sparse history, holiday gaps), chg_1m is null."""
+    import requests
+    import csv
+    import io
+    import datetime as _fdt
+
+    results = {}
+    for series_id, meta in FRED_SERIES.items():
+        url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+        try:
+            resp = requests.get(url, timeout=20)
+            resp.raise_for_status()
+            reader = csv.reader(io.StringIO(resp.text))
+            next(reader)  # skip header
+            rows = [(r[0], r[1]) for r in reader if r and r[1] not in ("", ".")]
+            if not rows:
+                raise ValueError("empty series")
+            date_str, val_str = rows[-1]
+            latest_val = round(float(val_str), 4)
+
+            # 1-month change: find the row closest to 30 calendar days before
+            # the latest date, within a ±10-day tolerance. Uses the already-
+            # fetched row list — no second network request.
+            value_1m_ago = None
+            chg_1m = None
+            try:
+                latest_date = _fdt.date.fromisoformat(date_str)
+                target = latest_date - _fdt.timedelta(days=30)
+                parsed = []
+                for rd, rv in rows[:-1]:  # exclude latest itself
+                    try:
+                        parsed.append((_fdt.date.fromisoformat(rd), float(rv)))
+                    except (ValueError, TypeError):
+                        pass
+                if parsed:
+                    closest = min(parsed, key=lambda x: abs((x[0] - target).days))
+                    if abs((closest[0] - target).days) <= 10:
+                        value_1m_ago = round(closest[1], 4)
+                        chg_1m = round(latest_val - value_1m_ago, 4)
+            except Exception:
+                pass  # leave value_1m_ago / chg_1m as None
+
+            results[series_id] = {
+                "label": meta["label"],
+                "unit": meta["unit"],
+                "value": latest_val,
+                "date": date_str,
+                "value_1m_ago": value_1m_ago,
+                "chg_1m": chg_1m,
+                "stale": False,
+            }
+        except Exception as e:
+            print(f"WARNING: FRED fetch failed for {series_id}: {e}")
+            results[series_id] = {
+                "label": meta["label"],
+                "unit": meta["unit"],
+                "value": None,
+                "date": None,
+                "value_1m_ago": None,
+                "chg_1m": None,
+                "stale": True,
+            }
+    return results
 
 SYNTHESIS_SYSTEM_PROMPT = """You write ONE short paragraph (3-5 sentences, plain text, no markdown, no bullet points) summarising today's AI-markets basket data for a personal, non-commercial research page.
 
@@ -232,6 +413,13 @@ def _mean(vals):
     return round(float(np.mean(vals)), 2) if vals else None
 
 
+def _layer_group(layer_name):
+    for group, members in LAYER_GROUPS.items():
+        if layer_name in members:
+            return group
+    return "Other"
+
+
 def build_layers(rows):
     """Group per-name rows into layer-level aggregates, in BASKET's
     insertion order (first-seen layer order = value-chain display order)."""
@@ -253,6 +441,8 @@ def build_layers(rows):
         )
         layers.append({
             "name": layer,
+            "layer_group": _layer_group(layer),
+            "funding_profile": "debt_funded" if layer in DEBT_FUNDED_LAYERS else "cash_funded",
             "tickers": [r["ticker"] for r in members],
             "n_names": len(members),
             "avg_chg_1d": _mean([r["chg_1d"] for r in members]),
@@ -419,24 +609,42 @@ def build_synthesis(basket_breadth, basket_vol, layers, rows):
 
 
 def main():
+    out_path = "docs/data/ai_pulse.json"
+
+    if is_already_captured(out_path):
+        print("Price data already reflects the most recent NYSE close — skipping refresh.")
+        sys.exit(0)
+
     tickers = list(BASKET.keys())
     raw = yf.download(
         tickers, period=f"{LOOKBACK_DAYS}d", interval="1d",
         auto_adjust=True, progress=False, group_by="ticker",
     )
 
+    # Compute the last completed NYSE session once so trimming, price_as_of_date,
+    # and fresh all derive from the same value — a daytime run never writes an
+    # unfinished bar or marks it fresh.
+    latest_nyse = get_latest_nyse_close_date()
+
     rows = []
     uptrend_count = 0
     all_daily_returns = []
     daily_ret_by_ticker = {}
+    price_date = None  # set from trimmed closes; never touches raw today bar
 
     for t in tickers:
         try:
             closes = raw[t]["Close"].dropna()
         except Exception:
             continue
+        # Drop any bar dated after the last completed session.  yfinance
+        # sometimes returns an intraday bar for today; this trims it so no
+        # unfinished value enters any calculation.
+        closes = closes.loc[:str(latest_nyse)]
         if len(closes) < 60:
             continue
+        if price_date is None:
+            price_date = closes.index[-1].date()
 
         last = float(closes.iloc[-1])
         d1 = pct(last, float(closes.iloc[-2])) if len(closes) >= 2 else None
@@ -556,19 +764,32 @@ def main():
     layers = build_layers(rows)
     synthesis_text, generated_by = build_synthesis(breadth, ann_vol, layers, rows)
 
+    # price_as_of_date and fresh derive from trimmed closes and latest_nyse so
+    # they are consistent with each other and with is_already_captured.
+    price_as_of_date = str(price_date) if price_date else str(latest_nyse)
+    fresh = (price_as_of_date == str(latest_nyse))
+
+    generated_at = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
     as_of = dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
     history = build_history(
-        "docs/data/ai_pulse.json",
+        out_path,
         {
-            "date": as_of[:10],
+            "date": price_as_of_date,
             "as_of": as_of,
             "basket_breadth_above_50dma_pct": breadth,
             "basket_avg_ann_vol_21d_pct": ann_vol,
         },
     )
 
+    fred_credit = fetch_fred_series()
+
     out = {
         "as_of": as_of,
+        "generated_at": generated_at,
+        "price_as_of_date": price_as_of_date,
+        "fresh": fresh,
+        "basket_n_equity_names": len(equity_rows),
         "basket_breadth_above_50dma_pct": breadth,
         "basket_avg_ann_vol_21d_pct": ann_vol,
         "basket_median_pe_ttm": median_pe_ttm,
@@ -593,6 +814,7 @@ def main():
                 "recommendation, or investment advice."
             ),
         },
+        "fred_credit": fred_credit,
         "constituents": sorted(rows, key=lambda r: r["layer"]),
         "methodology": (
             "1M/3M returns are trailing 21/63 trading-day price changes. "
@@ -655,13 +877,17 @@ def main():
 
     # NOTE: this repo publishes GitHub Pages from /docs, so the JSON has to
     # live under docs/data/ to actually be reachable by the deployed ai.html.
-    with open("docs/data/ai_pulse.json", "w") as f:
+    with open(out_path, "w") as f:
         json.dump(out, f, indent=2)
 
-    print(f"Wrote docs/data/ai_pulse.json — {len(rows)} names, {len(layers)} layers, "
-          f"breadth {breadth}%, median PE {median_pe_ttm}, concentration(top3) "
+    stale_fred = [k for k, v in fred_credit.items() if v.get("stale")]
+    print(f"Wrote {out_path} — {len(rows)} names ({len(equity_rows)} equity), {len(layers)} layers")
+    print(f"  price_as_of_date={price_as_of_date}, generated_at={generated_at}, "
+          f"fresh={fresh}, basket_n_equity_names={len(equity_rows)}")
+    print(f"  breadth {breadth}%, median PE {median_pe_ttm}, concentration(top3) "
           f"{concentration_top3_pct}%, avg corr {avg_pairwise_corr}, "
-          f"{len(benchmarks_etfs)} benchmark ETFs, synthesis via {generated_by}")
+          f"{len(benchmarks_etfs)} benchmark ETFs, synthesis via {generated_by}, "
+          f"FRED stale={stale_fred or 'none'}")
 
 
 if __name__ == "__main__":
