@@ -216,6 +216,10 @@ FRED_CODE_TO_NAME = {
 }
 
 
+# Series FRED no longer publishes. tools/refresh_fred_manual.py skips them and
+# the staleness report marks them "discontinued (expected)" instead of stale.
+FRED_DISCONTINUED = {"TEDRATE"}
+
 FRED_FFILL_LIMIT_DAYS = 5  # covers normal bond-market-holiday gaps, nothing more
 FRED_STALE_WARN_DAYS = 30  # last-real-obs gap beyond this vs. the price index end -> flagged
 
@@ -276,10 +280,14 @@ def build_levels_from_fred_manual(price_index, folder: Path = FRED_MANUAL_DIR):
         s_real = s.dropna()
         last_real_date = s_real.index.max() if len(s_real) else pd.NaT
         staleness_days = (panel_end - last_real_date).days if pd.notna(last_real_date) else None
+        discontinued = code in FRED_DISCONTINUED
+        over_limit = bool(staleness_days is not None and staleness_days > FRED_STALE_WARN_DAYS)
         staleness_rows.append({
             "code": code, "name": name, "last_real_date": last_real_date,
             "staleness_days_vs_panel_end": staleness_days,
-            "flagged_stale": bool(staleness_days is not None and staleness_days > FRED_STALE_WARN_DAYS),
+            "flagged_stale": over_limit and not discontinued,
+            "status": ("discontinued (expected)" if discontinued
+                       else "stale" if over_limit else "current"),
         })
         # Reindex onto the price panel's business-day grid, forward-fill only
         # a short grace window (FRED series are business-day-ish but not
@@ -329,7 +337,7 @@ def build_metadata(mapped_rows, excluded_rows, levels=None, staleness_report=Non
             else:                       cls = "OTHER"
             role = "regime / FSS / governance"
             st = stale_by_code.get(code)
-            if st is not None and st.get("flagged_stale"):
+            if st is not None and (st.get("flagged_stale") or code in FRED_DISCONTINUED):
                 role += (f" -- DISCONTINUED/STALE: last real obs "
                          f"{st['last_real_date'].date()}, "
                          f"{st['staleness_days_vs_panel_end']}d stale, held flat only "
