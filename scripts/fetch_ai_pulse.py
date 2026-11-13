@@ -608,6 +608,34 @@ def build_synthesis(basket_breadth, basket_vol, layers, rows):
     return _template_synthesis(basket_breadth, basket_vol, layers, movers), "fallback"
 
 
+def _closes_with_retry(raw, ticker, attempts=2):
+    """Close series for one ticker from the batch download; if the batch missed
+    it (yfinance's threaded download can fail a name with a transient
+    'database is locked' on its own cache), re-download that ticker alone."""
+    try:
+        closes = raw[ticker]["Close"].dropna()
+    except Exception:
+        closes = pd.Series(dtype=float)
+    if len(closes) >= 60:
+        return closes
+    for i in range(attempts):
+        try:
+            one = yf.download(
+                ticker, period=f"{LOOKBACK_DAYS}d", interval="1d",
+                auto_adjust=True, progress=False, threads=False,
+            )
+            col = one["Close"]
+            if isinstance(col, pd.DataFrame):
+                col = col.iloc[:, 0]
+            col = col.dropna()
+            if len(col) >= 60:
+                print(f"NOTE: {ticker} missing from batch download, recovered on retry {i + 1}")
+                return col
+        except Exception as e:
+            print(f"WARNING: retry {i + 1} failed for {ticker}: {e}")
+    return closes
+
+
 def main():
     out_path = "docs/data/ai_pulse.json"
 
@@ -632,16 +660,17 @@ def main():
     daily_ret_by_ticker = {}
     price_date = None  # set from trimmed closes; never touches raw today bar
 
+    missing_tickers = []
+
     for t in tickers:
-        try:
-            closes = raw[t]["Close"].dropna()
-        except Exception:
-            continue
+        closes = _closes_with_retry(raw, t)
         # Drop any bar dated after the last completed session.  yfinance
         # sometimes returns an intraday bar for today; this trims it so no
         # unfinished value enters any calculation.
         closes = closes.loc[:str(latest_nyse)]
         if len(closes) < 60:
+            missing_tickers.append(t)
+            print(f"WARNING: {t} dropped from this run — {len(closes)} usable closes (need 60)")
             continue
         if price_date is None:
             price_date = closes.index[-1].date()
@@ -790,6 +819,7 @@ def main():
         "price_as_of_date": price_as_of_date,
         "fresh": fresh,
         "basket_n_equity_names": len(equity_rows),
+        "basket_missing_tickers": missing_tickers,
         "basket_breadth_above_50dma_pct": breadth,
         "basket_avg_ann_vol_21d_pct": ann_vol,
         "basket_median_pe_ttm": median_pe_ttm,
