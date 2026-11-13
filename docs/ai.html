@@ -698,16 +698,26 @@ const fmtBeta = v => v == null ? '—' : v.toFixed(2);
 // ---------------------------------------------------------------------------
 // Freshness banner
 // ---------------------------------------------------------------------------
+function fmtGeneratedAt(iso) {
+  const d = new Date(iso);
+  if (!iso || isNaN(d)) return iso || '—';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()} ` +
+         `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
 function renderFreshness(data) {
   const el = document.getElementById('freshnessBanner');
   if (!data.price_as_of_date) { el.style.display = 'none'; return; }
   const fresh = data.fresh;
+  const generated = fmtGeneratedAt(data.generated_at);
   el.style.display = 'flex';
   el.className = 'freshness-banner ' + (fresh ? 'fresh' : 'stale');
   if (fresh) {
-    el.innerHTML = `<span class="freshness-label">Data to US close <strong>${data.price_as_of_date}</strong>, generated ${data.generated_at} UTC</span>`;
+    el.innerHTML = `<span class="freshness-label">Data to US close <strong>${data.price_as_of_date}</strong>, generated ${generated}</span>`;
   } else {
-    el.innerHTML = `<span class="freshness-label"><strong>Data may be stale</strong> — latest price date ${data.price_as_of_date} does not match the most recently completed NYSE session. Generated ${data.generated_at} UTC.</span>`;
+    el.innerHTML = `<span class="freshness-label"><strong>Data may be stale</strong> — latest price date ${data.price_as_of_date} does not match the most recently completed NYSE session. Generated ${generated}.</span>`;
   }
 }
 
