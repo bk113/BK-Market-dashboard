@@ -1,25 +1,25 @@
 {
   "metadata": {
-    "generated_at": "2026-11-13T14:55:24Z",
-    "price_as_of_date": "2026-11-12",
+    "generated_at": "2026-11-14T02:32:14Z",
+    "price_as_of_date": "2026-11-13",
     "fresh": true,
     "instrument_count": 115,
     "source": "Yahoo Finance"
   },
   "fear_greed": {
-    "score": 28.0,
+    "score": 30.2,
     "label": "Fear",
     "components": {
-      "Volatility": 20.09,
-      "Momentum": 22.15,
-      "Breadth": 35.19,
-      "Safe Haven": 19.47,
-      "Junk Bonds": 38.71,
-      "Strength": 37.04,
-      "Term Structure": 23.61
+      "Volatility": 16.56,
+      "Momentum": 20.73,
+      "Breadth": 33.33,
+      "Safe Haven": 27.94,
+      "Junk Bonds": 53.75,
+      "Strength": 36.11,
+      "Term Structure": 22.82
     },
-    "score_1d_ago": 28.4,
-    "score_5d_ago": 14.5,
+    "score_1d_ago": 28.0,
+    "score_5d_ago": 14.2,
     "components_used": 7,
     "breadth_n_instruments": 108,
     "strength_n_instruments": 108
@@ -27,16 +27,16 @@
   "breadth": {
     "overall": {
       "n_instruments": 108,
-      "above_50dma_n": 38,
-      "above_50dma_pct": 35.19,
-      "above_200dma_n": 42,
-      "above_200dma_pct": 38.89
+      "above_50dma_n": 36,
+      "above_50dma_pct": 33.33,
+      "above_200dma_n": 39,
+      "above_200dma_pct": 36.11
     },
     "by_asset_class": {
       "CMD": {
         "n_instruments": 18,
-        "above_50dma_n": 1,
-        "above_50dma_pct": 5.56,
+        "above_50dma_n": 0,
+        "above_50dma_pct": 0.0,
         "above_200dma_n": 5,
         "above_200dma_pct": 27.78
       },
@@ -49,10 +49,10 @@
       },
       "EQ": {
         "n_instruments": 55,
-        "above_50dma_n": 22,
-        "above_50dma_pct": 40.0,
-        "above_200dma_n": 27,
-        "above_200dma_pct": 49.09
+        "above_50dma_n": 21,
+        "above_50dma_pct": 38.18,
+        "above_200dma_n": 24,
+        "above_200dma_pct": 43.64
       },
       "FI": {
         "n_instruments": 21,
@@ -79,231 +79,231 @@
       "name": "Nasdaq 100",
       "ticker": "QQQ",
       "asset_class": "EQ_US",
-      "close": 688.17,
+      "close": 679.89,
       "unit": "%",
-      "chg_1d": -0.32,
-      "chg_5d": 6.35,
-      "chg_mtd": -0.34
+      "chg_1d": -1.2,
+      "chg_5d": 3.63,
+      "chg_mtd": -1.54
     },
     {
       "name": "Russell 2000",
       "ticker": "IWM",
       "asset_class": "EQ_US",
-      "close": 278.44,
+      "close": 277.54,
       "unit": "%",
-      "chg_1d": -1.64,
-      "chg_5d": 2.75,
-      "chg_mtd": -0.32
+      "chg_1d": -0.32,
+      "chg_5d": 1.41,
+      "chg_mtd": -0.64
     },
     {
       "name": "S&P 500",
       "ticker": "SPY",
       "asset_class": "EQ_US",
-      "close": 757.12,
+      "close": 754.37,
       "unit": "%",
-      "chg_1d": -0.35,
-      "chg_5d": 3.29,
-      "chg_mtd": 0.19
+      "chg_1d": -0.36,
+      "chg_5d": 2.59,
+      "chg_mtd": -0.18
     },
     {
       "name": "World (ACWI)",
       "ticker": "ACWI",
       "asset_class": "EQ_US",
-      "close": 156.53,
+      "close": 156.1,
       "unit": "%",
-      "chg_1d": -0.57,
-      "chg_5d": 2.69,
-      "chg_mtd": 0.31
+      "chg_1d": -0.27,
+      "chg_5d": 2.45,
+      "chg_mtd": 0.04
     },
     {
       "name": "Energy",
       "ticker": "XLE",
       "asset_class": "EQ_SECT",
-      "close": 64.33,
+      "close": 64.96,
       "unit": "%",
-      "chg_1d": 1.51,
-      "chg_5d": 4.38,
-      "chg_mtd": -8.13
+      "chg_1d": 0.98,
+      "chg_5d": 5.42,
+      "chg_mtd": -7.23
     },
     {
       "name": "Financials",
       "ticker": "XLF",
       "asset_class": "EQ_SECT",
-      "close": 58.21,
+      "close": 58.68,
       "unit": "%",
-      "chg_1d": -0.72,
-      "chg_5d": 1.23,
-      "chg_mtd": 3.01
+      "chg_1d": 0.81,
+      "chg_5d": 2.66,
+      "chg_mtd": 3.84
     },
     {
       "name": "Real Estate (REITs)",
       "ticker": "VNQ",
       "asset_class": "EQ_SECT",
-      "close": 96.44,
+      "close": 96.47,
       "unit": "%",
-      "chg_1d": -0.6,
-      "chg_5d": 0.22,
-      "chg_mtd": 2.66
+      "chg_1d": 0.03,
+      "chg_5d": 0.77,
+      "chg_mtd": 2.69
     },
     {
       "name": "Utilities",
       "ticker": "XLU",
       "asset_class": "EQ_SECT",
-      "close": 43.81,
+      "close": 44.04,
       "unit": "%",
-      "chg_1d": -0.02,
-      "chg_5d": 1.18,
-      "chg_mtd": 0.87
+      "chg_1d": 0.52,
+      "chg_5d": 2.11,
+      "chg_mtd": 1.4
     },
     {
       "name": "Healthcare",
       "ticker": "XLV",
       "asset_class": "EQ_SECT",
-      "close": 187.83,
+      "close": 188.85,
       "unit": "%",
-      "chg_1d": -0.59,
-      "chg_5d": 1.58,
-      "chg_mtd": 1.6
+      "chg_1d": 0.54,
+      "chg_5d": 2.19,
+      "chg_mtd": 2.15
     },
     {
       "name": "Technology",
       "ticker": "XLK",
       "asset_class": "EQ_SECT",
-      "close": 173.77,
+      "close": 170.28,
       "unit": "%",
-      "chg_1d": -0.34,
-      "chg_5d": 7.01,
-      "chg_mtd": -3.2
+      "chg_1d": -2.01,
+      "chg_5d": 3.36,
+      "chg_mtd": -5.14
     },
     {
       "name": "Consumer Staples",
       "ticker": "XLP",
       "asset_class": "EQ_SECT",
-      "close": 91.06,
+      "close": 92.35,
       "unit": "%",
-      "chg_1d": -0.43,
-      "chg_5d": -0.21,
-      "chg_mtd": 1.83
+      "chg_1d": 1.42,
+      "chg_5d": 2.52,
+      "chg_mtd": 3.28
     },
     {
       "name": "Consumer Discretionary",
       "ticker": "XLY",
       "asset_class": "EQ_SECT",
-      "close": 120.46,
+      "close": 119.98,
       "unit": "%",
-      "chg_1d": -0.44,
-      "chg_5d": 2.4,
-      "chg_mtd": 4.4
+      "chg_1d": -0.4,
+      "chg_5d": 2.04,
+      "chg_mtd": 3.99
     },
     {
       "name": "Industrials",
       "ticker": "XLI",
       "asset_class": "EQ_SECT",
-      "close": 169.44,
+      "close": 168.78,
       "unit": "%",
-      "chg_1d": -0.89,
-      "chg_5d": 4.29,
-      "chg_mtd": 1.22
+      "chg_1d": -0.39,
+      "chg_5d": 3.76,
+      "chg_mtd": 0.82
     },
     {
       "name": "Materials",
       "ticker": "XLB",
       "asset_class": "EQ_SECT",
-      "close": 52.34,
+      "close": 52.23,
       "unit": "%",
-      "chg_1d": -1.28,
-      "chg_5d": 0.02,
-      "chg_mtd": -0.76
+      "chg_1d": -0.21,
+      "chg_5d": 0.54,
+      "chg_mtd": -0.97
     },
     {
       "name": "Communications",
       "ticker": "XLC",
       "asset_class": "EQ_SECT",
-      "close": 107.56,
+      "close": 108.85,
       "unit": "%",
-      "chg_1d": -0.96,
-      "chg_5d": 3.09,
-      "chg_mtd": 7.67
+      "chg_1d": 1.2,
+      "chg_5d": 3.87,
+      "chg_mtd": 8.96
     },
     {
       "name": "Australia",
       "ticker": "EWA",
       "asset_class": "EQ_DM",
-      "close": 29.21,
+      "close": 29.09,
       "unit": "%",
-      "chg_1d": -0.65,
-      "chg_5d": -0.14,
-      "chg_mtd": -1.12
+      "chg_1d": -0.41,
+      "chg_5d": -0.27,
+      "chg_mtd": -1.52
     },
     {
       "name": "Europe Dev (EFA)",
       "ticker": "EFA",
       "asset_class": "EQ_DM",
-      "close": 104.01,
+      "close": 104.17,
       "unit": "%",
-      "chg_1d": -0.62,
-      "chg_5d": 1.28,
-      "chg_mtd": 0.62
+      "chg_1d": 0.15,
+      "chg_5d": 2.24,
+      "chg_mtd": 0.77
     },
     {
       "name": "Eurozone",
       "ticker": "EZU",
       "asset_class": "EQ_DM",
-      "close": 67.23,
+      "close": 67.29,
       "unit": "%",
-      "chg_1d": -0.88,
-      "chg_5d": 1.62,
-      "chg_mtd": 3.18
+      "chg_1d": 0.09,
+      "chg_5d": 2.84,
+      "chg_mtd": 3.27
     },
     {
       "name": "Germany",
       "ticker": "EWG",
       "asset_class": "EQ_DM",
-      "close": 42.81,
+      "close": 42.9,
       "unit": "%",
-      "chg_1d": -0.49,
-      "chg_5d": 0.14,
-      "chg_mtd": 2.22
+      "chg_1d": 0.21,
+      "chg_5d": 3.17,
+      "chg_mtd": 2.44
     },
     {
       "name": "Japan",
       "ticker": "EWJ",
       "asset_class": "EQ_DM",
-      "close": 91.47,
+      "close": 91.76,
       "unit": "%",
-      "chg_1d": -0.71,
-      "chg_5d": 3.64,
-      "chg_mtd": -1.55
+      "chg_1d": 0.32,
+      "chg_5d": 3.97,
+      "chg_mtd": -1.24
     },
     {
       "name": "Singapore",
       "ticker": "EWS",
       "asset_class": "EQ_DM",
-      "close": 30.29,
+      "close": 30.15,
       "unit": "%",
-      "chg_1d": -0.69,
-      "chg_5d": 1.27,
-      "chg_mtd": -1.11
+      "chg_1d": -0.46,
+      "chg_5d": 1.28,
+      "chg_mtd": -1.57
     },
     {
       "name": "UK",
       "ticker": "EWU",
       "asset_class": "EQ_DM",
-      "close": 47.76,
+      "close": 47.97,
       "unit": "%",
-      "chg_1d": -0.13,
-      "chg_5d": -0.27,
-      "chg_mtd": -0.15
+      "chg_1d": 0.44,
+      "chg_5d": 1.59,
+      "chg_mtd": 0.29
     },
     {
       "name": "FTSE 100 (UK)",
       "ticker": "FLGB",
       "asset_class": "EQ_DM",
-      "close": 36.87,
+      "close": 36.88,
       "unit": "%",
-      "chg_1d": -0.14,
-      "chg_5d": 0.16,
-      "chg_mtd": 0.08
+      "chg_1d": 0.03,
+      "chg_5d": 1.46,
+      "chg_mtd": 0.11
     },
     {
       "name": "Global X Guru ETF",
@@ -311,69 +311,69 @@
       "asset_class": "EQ_IDX",
       "close": 65.44,
       "unit": "%",
-      "chg_1d": -1.36,
-      "chg_5d": 4.22,
+      "chg_1d": 0.0,
+      "chg_5d": 3.35,
       "chg_mtd": 0.32
     },
     {
       "name": "ARK Innovation",
       "ticker": "ARKK",
       "asset_class": "EQ_IDX",
-      "close": 76.5,
+      "close": 75.07,
       "unit": "%",
-      "chg_1d": -2.51,
-      "chg_5d": 4.58,
-      "chg_mtd": -5.26
+      "chg_1d": -1.87,
+      "chg_5d": -0.52,
+      "chg_mtd": -7.03
     },
     {
       "name": "Cloud Computing",
       "ticker": "SKYY",
       "asset_class": "EQ_IDX",
-      "close": 154.19,
+      "close": 152.51,
       "unit": "%",
-      "chg_1d": -0.07,
-      "chg_5d": 4.77,
-      "chg_mtd": -3.49
+      "chg_1d": -1.09,
+      "chg_5d": 4.14,
+      "chg_mtd": -4.54
     },
     {
       "name": "Clean Energy",
       "ticker": "ICLN",
       "asset_class": "EQ_IDX",
-      "close": 15.9,
+      "close": 15.81,
       "unit": "%",
-      "chg_1d": -2.33,
-      "chg_5d": -1.49,
-      "chg_mtd": 3.85
+      "chg_1d": -0.57,
+      "chg_5d": -3.89,
+      "chg_mtd": 3.27
     },
     {
       "name": "Smart Grid Infra",
       "ticker": "GRID",
       "asset_class": "EQ_IDX",
-      "close": 161.39,
+      "close": 160.29,
       "unit": "%",
-      "chg_1d": -0.71,
-      "chg_5d": 6.17,
-      "chg_mtd": -1.9
+      "chg_1d": -0.68,
+      "chg_5d": 3.94,
+      "chg_mtd": -2.57
     },
     {
       "name": "Semiconductors",
       "ticker": "SOXX",
       "asset_class": "EQ_IDX",
-      "close": 154.99,
+      "close": 149.3,
       "unit": "%",
-      "chg_1d": -0.26,
-      "chg_5d": 17.51,
-      "chg_mtd": -1.39
+      "chg_1d": -3.67,
+      "chg_5d": 9.35,
+      "chg_mtd": -5.01
     },
     {
       "name": "Brazil",
       "ticker": "EWZ",
       "asset_class": "EQ_EM",
-      "close": 31.78,
+      "close": 32.22,
       "unit": "%",
-      "chg_1d": -2.03,
-      "chg_5d": 0.06,
-      "chg_mtd": -2.09
+      "chg_1d": 1.38,
+      "chg_5d": 0.75,
+      "chg_mtd": -0.74
     },
     {
       "name": "China",
@@ -381,639 +381,639 @@
       "asset_class": "EQ_EM",
       "close": 33.48,
       "unit": "%",
-      "chg_1d": -1.3,
-      "chg_5d": -4.18,
+      "chg_1d": 0.0,
+      "chg_5d": -4.21,
       "chg_mtd": 1.21
     },
     {
       "name": "EM Broad",
       "ticker": "EEM",
       "asset_class": "EQ_EM",
-      "close": 61.14,
+      "close": 60.92,
       "unit": "%",
-      "chg_1d": -1.45,
-      "chg_5d": 5.32,
-      "chg_mtd": 0.16
+      "chg_1d": -0.36,
+      "chg_5d": 2.68,
+      "chg_mtd": -0.2
     },
     {
       "name": "India",
       "ticker": "INDA",
       "asset_class": "EQ_EM",
-      "close": 51.55,
+      "close": 51.31,
       "unit": "%",
-      "chg_1d": -0.08,
-      "chg_5d": 3.06,
-      "chg_mtd": 8.03
+      "chg_1d": -0.47,
+      "chg_5d": 0.83,
+      "chg_mtd": 7.52
     },
     {
       "name": "Korea",
       "ticker": "EWY",
       "asset_class": "EQ_EM",
-      "close": 145.38,
+      "close": 142.78,
       "unit": "%",
-      "chg_1d": -1.64,
-      "chg_5d": 10.43,
-      "chg_mtd": -4.91
+      "chg_1d": -1.79,
+      "chg_5d": 4.21,
+      "chg_mtd": -6.61
     },
     {
       "name": "South Africa",
       "ticker": "EZA",
       "asset_class": "EQ_EM",
-      "close": 65.36,
+      "close": 64.58,
       "unit": "%",
-      "chg_1d": -2.24,
-      "chg_5d": -2.3,
-      "chg_mtd": 5.79
+      "chg_1d": -1.19,
+      "chg_5d": -3.7,
+      "chg_mtd": 4.53
     },
     {
       "name": "Taiwan",
       "ticker": "EWT",
       "asset_class": "EQ_EM",
-      "close": 97.25,
+      "close": 97.38,
       "unit": "%",
-      "chg_1d": -2.93,
-      "chg_5d": 13.24,
-      "chg_mtd": -3.82
+      "chg_1d": 0.13,
+      "chg_5d": 9.12,
+      "chg_mtd": -3.69
     },
     {
       "name": "Mexico",
       "ticker": "EWW",
       "asset_class": "EQ_EM",
-      "close": 77.62,
+      "close": 77.13,
       "unit": "%",
-      "chg_1d": -0.12,
-      "chg_5d": 2.05,
-      "chg_mtd": 4.23
+      "chg_1d": -0.63,
+      "chg_5d": 0.51,
+      "chg_mtd": 3.57
     },
     {
       "name": "Indonesia",
       "ticker": "EIDO",
       "asset_class": "EQ_EM",
-      "close": 10.47,
+      "close": 10.6,
       "unit": "%",
-      "chg_1d": 2.55,
-      "chg_5d": 6.51,
-      "chg_mtd": 5.12
+      "chg_1d": 1.24,
+      "chg_5d": 5.26,
+      "chg_mtd": 6.43
     },
     {
       "name": "Vietnam",
       "ticker": "VNM",
       "asset_class": "EQ_EM",
-      "close": 17.02,
+      "close": 16.93,
       "unit": "%",
-      "chg_1d": -0.99,
-      "chg_5d": 1.19,
-      "chg_mtd": 2.22
+      "chg_1d": -0.53,
+      "chg_5d": -1.17,
+      "chg_mtd": 1.68
     },
     {
       "name": "Saudi Arabia",
       "ticker": "KSA",
       "asset_class": "EQ_EM",
-      "close": 36.13,
+      "close": 36.07,
       "unit": "%",
-      "chg_1d": 0.25,
-      "chg_5d": 3.38,
-      "chg_mtd": 5.58
+      "chg_1d": -0.17,
+      "chg_5d": 2.97,
+      "chg_mtd": 5.41
     },
     {
       "name": "India Small Cap",
       "ticker": "SMIN",
       "asset_class": "EQ_EM",
-      "close": 71.26,
+      "close": 70.57,
       "unit": "%",
-      "chg_1d": 0.62,
-      "chg_5d": 3.02,
-      "chg_mtd": 6.74
+      "chg_1d": -0.97,
+      "chg_5d": 1.95,
+      "chg_mtd": 5.71
     },
     {
       "name": "Asia ex-Japan",
       "ticker": "AAXJ",
       "asset_class": "EQ_APAC",
-      "close": 105.76,
+      "close": 105.45,
       "unit": "%",
-      "chg_1d": -1.57,
-      "chg_5d": 5.82,
-      "chg_mtd": -0.39
+      "chg_1d": -0.29,
+      "chg_5d": 3.06,
+      "chg_mtd": -0.68
     },
     {
       "name": "Hang Seng / HK",
       "ticker": "EWH",
       "asset_class": "EQ_APAC",
-      "close": 23.17,
+      "close": 23.06,
       "unit": "%",
-      "chg_1d": 0.48,
-      "chg_5d": -0.17,
-      "chg_mtd": 2.89
+      "chg_1d": -0.47,
+      "chg_5d": -1.11,
+      "chg_mtd": 2.4
     },
     {
       "name": "Asia Pacific",
       "ticker": "VPL",
       "asset_class": "EQ_APAC",
-      "close": 106.88,
+      "close": 106.57,
       "unit": "%",
-      "chg_1d": -0.73,
-      "chg_5d": 4.1,
-      "chg_mtd": -1.68
+      "chg_1d": -0.29,
+      "chg_5d": 3.33,
+      "chg_mtd": -1.97
     },
     {
       "name": "China A-Shares",
       "ticker": "CNYA",
       "asset_class": "EQ_APAC",
-      "close": 30.99,
+      "close": 30.76,
       "unit": "%",
-      "chg_1d": -0.82,
-      "chg_5d": -0.39,
-      "chg_mtd": 1.87
+      "chg_1d": -0.74,
+      "chg_5d": -0.61,
+      "chg_mtd": 1.12
     },
     {
       "name": "ASEAN",
       "ticker": "ASEA",
       "asset_class": "EQ_APAC",
-      "close": 19.48,
+      "close": 19.53,
       "unit": "%",
-      "chg_1d": 0.0,
-      "chg_5d": 0.83,
-      "chg_mtd": -1.81
+      "chg_1d": 0.26,
+      "chg_5d": 1.51,
+      "chg_mtd": -1.56
     },
     {
       "name": "Thailand",
       "ticker": "THD",
       "asset_class": "EQ_APAC",
-      "close": 67.64,
+      "close": 67.98,
       "unit": "%",
-      "chg_1d": -0.69,
-      "chg_5d": 0.8,
-      "chg_mtd": -1.2
+      "chg_1d": 0.5,
+      "chg_5d": 2.53,
+      "chg_mtd": -0.7
     },
     {
       "name": "Philippines",
       "ticker": "EPHE",
       "asset_class": "EQ_APAC",
-      "close": 22.18,
+      "close": 21.99,
       "unit": "%",
-      "chg_1d": -1.42,
-      "chg_5d": -2.68,
-      "chg_mtd": -0.67
+      "chg_1d": -0.86,
+      "chg_5d": -3.97,
+      "chg_mtd": -1.52
     },
     {
       "name": "BAE Aerospace & Defence",
       "ticker": "XAR",
       "asset_class": "DEFENCE",
-      "close": 233.44,
+      "close": 230.69,
       "unit": "%",
-      "chg_1d": -2.76,
-      "chg_5d": 8.97,
-      "chg_mtd": 2.67
+      "chg_1d": -1.18,
+      "chg_5d": 2.98,
+      "chg_mtd": 1.46
     },
     {
       "name": "US Aerospace & Defence",
       "ticker": "ITA",
       "asset_class": "DEFENCE",
-      "close": 71.73,
+      "close": 71.51,
       "unit": "%",
-      "chg_1d": -2.06,
-      "chg_5d": 5.31,
-      "chg_mtd": 2.6
+      "chg_1d": -0.31,
+      "chg_5d": 3.67,
+      "chg_mtd": 2.28
     },
     {
       "name": "Cash (T-Bills)",
       "ticker": "BIL",
       "asset_class": "FI",
-      "close": 91.5,
+      "close": 91.53,
       "unit": "%",
-      "chg_1d": 0.0,
+      "chg_1d": 0.03,
       "chg_5d": 0.08,
-      "chg_mtd": 0.12
+      "chg_mtd": 0.15
     },
     {
       "name": "EM Local Currency",
       "ticker": "EMLC",
       "asset_class": "FI",
-      "close": 24.41,
+      "close": 24.37,
       "unit": "%",
-      "chg_1d": -0.49,
-      "chg_5d": -0.97,
-      "chg_mtd": -0.08
+      "chg_1d": -0.16,
+      "chg_5d": -1.02,
+      "chg_mtd": -0.24
     },
     {
       "name": "EM USD Sovereign",
       "ticker": "EMB",
       "asset_class": "FI",
-      "close": 91.34,
+      "close": 91.13,
       "unit": "%",
-      "chg_1d": -0.79,
-      "chg_5d": -0.67,
-      "chg_mtd": -0.33
+      "chg_1d": -0.23,
+      "chg_5d": -0.9,
+      "chg_mtd": -0.56
     },
     {
       "name": "HY Credit",
       "ticker": "HYG",
       "asset_class": "FI",
-      "close": 76.98,
+      "close": 76.94,
       "unit": "%",
-      "chg_1d": -0.48,
-      "chg_5d": -0.39,
-      "chg_mtd": -0.06
+      "chg_1d": -0.05,
+      "chg_5d": -0.38,
+      "chg_mtd": -0.12
     },
     {
       "name": "IG Credit",
       "ticker": "LQD",
       "asset_class": "FI",
-      "close": 103.05,
+      "close": 102.81,
       "unit": "%",
-      "chg_1d": -0.88,
-      "chg_5d": -1.54,
-      "chg_mtd": -0.79
+      "chg_1d": -0.23,
+      "chg_5d": -1.65,
+      "chg_mtd": -1.02
     },
     {
       "name": "Senior Loans",
       "ticker": "BKLN",
       "asset_class": "FI",
-      "close": 20.53,
+      "close": 20.52,
       "unit": "%",
-      "chg_1d": -0.1,
-      "chg_5d": 0.54,
-      "chg_mtd": 0.49
+      "chg_1d": -0.05,
+      "chg_5d": 0.24,
+      "chg_mtd": 0.44
     },
     {
       "name": "Treasuries 0-3Y",
       "ticker": "SHY",
       "asset_class": "FI",
-      "close": 81.14,
+      "close": 81.17,
       "unit": "%",
-      "chg_1d": -0.21,
-      "chg_5d": -0.65,
-      "chg_mtd": -0.38
+      "chg_1d": 0.04,
+      "chg_5d": -0.56,
+      "chg_mtd": -0.34
     },
     {
       "name": "Treasuries 20Y+",
       "ticker": "TLT",
       "asset_class": "FI",
-      "close": 79.72,
+      "close": 79.38,
       "unit": "%",
-      "chg_1d": -1.48,
-      "chg_5d": -2.7,
-      "chg_mtd": -2.18
+      "chg_1d": -0.43,
+      "chg_5d": -3.1,
+      "chg_mtd": -2.6
     },
     {
       "name": "Treasuries 7-10Y",
       "ticker": "IEF",
       "asset_class": "FI",
-      "close": 90.21,
+      "close": 90.04,
       "unit": "%",
-      "chg_1d": -0.8,
-      "chg_5d": -1.91,
-      "chg_mtd": -1.35
+      "chg_1d": -0.19,
+      "chg_5d": -1.98,
+      "chg_mtd": -1.54
     },
     {
       "name": "US Aggregate",
       "ticker": "AGG",
       "asset_class": "FI",
-      "close": 95.22,
+      "close": 95.09,
       "unit": "%",
-      "chg_1d": -0.65,
-      "chg_5d": -1.45,
-      "chg_mtd": -0.83
+      "chg_1d": -0.14,
+      "chg_5d": -1.51,
+      "chg_mtd": -0.97
     },
     {
       "name": "US TIPS",
       "ticker": "TIP",
       "asset_class": "FI",
-      "close": 104.77,
+      "close": 104.61,
       "unit": "%",
-      "chg_1d": -0.47,
-      "chg_5d": -1.4,
-      "chg_mtd": -1.65
+      "chg_1d": -0.15,
+      "chg_5d": -1.56,
+      "chg_mtd": -1.8
     },
     {
       "name": "Municipal Bonds",
       "ticker": "MUB",
       "asset_class": "FI",
-      "close": 103.95,
+      "close": 103.58,
       "unit": "%",
-      "chg_1d": -0.83,
-      "chg_5d": -0.82,
-      "chg_mtd": 0.05
+      "chg_1d": -0.36,
+      "chg_5d": -1.27,
+      "chg_mtd": -0.3
     },
     {
       "name": "Convertible Bonds",
       "ticker": "CWB",
       "asset_class": "FI",
-      "close": 92.69,
+      "close": 92.07,
       "unit": "%",
-      "chg_1d": -1.23,
-      "chg_5d": 2.16,
-      "chg_mtd": -1.92
+      "chg_1d": -0.67,
+      "chg_5d": 0.79,
+      "chg_mtd": -2.58
     },
     {
       "name": "ST IG Corporates",
       "ticker": "VCSH",
       "asset_class": "FI",
-      "close": 77.26,
+      "close": 77.25,
       "unit": "%",
-      "chg_1d": -0.27,
-      "chg_5d": -0.8,
-      "chg_mtd": -0.42
+      "chg_1d": -0.01,
+      "chg_5d": -0.71,
+      "chg_mtd": -0.43
     },
     {
       "name": "Preferred Securities",
       "ticker": "PFF",
       "asset_class": "FI",
-      "close": 27.98,
+      "close": 27.88,
       "unit": "%",
-      "chg_1d": -1.17,
-      "chg_5d": -0.57,
-      "chg_mtd": -1.11
+      "chg_1d": -0.36,
+      "chg_5d": -1.34,
+      "chg_mtd": -1.46
     },
     {
       "name": "Municipal HY",
       "ticker": "HYD",
       "asset_class": "FI",
-      "close": 49.25,
+      "close": 49.23,
       "unit": "%",
-      "chg_1d": -0.83,
-      "chg_5d": -0.75,
-      "chg_mtd": -0.43
+      "chg_1d": -0.04,
+      "chg_5d": -1.05,
+      "chg_mtd": -0.47
     },
     {
       "name": "Global Aggregate",
       "ticker": "BNDW",
       "asset_class": "FI_INTL",
-      "close": 66.42,
+      "close": 66.32,
       "unit": "%",
-      "chg_1d": -0.45,
-      "chg_5d": -0.95,
-      "chg_mtd": -0.37
+      "chg_1d": -0.14,
+      "chg_5d": -1.1,
+      "chg_mtd": -0.51
     },
     {
       "name": "Intl High Yield",
       "ticker": "IHY",
       "asset_class": "FI_INTL",
-      "close": 20.62,
+      "close": 20.59,
       "unit": "%",
-      "chg_1d": -0.53,
-      "chg_5d": -0.82,
-      "chg_mtd": -0.01
+      "chg_1d": -0.15,
+      "chg_5d": -0.63,
+      "chg_mtd": -0.16
     },
     {
       "name": "US IG Credit (Intl)",
       "ticker": "IGIB",
       "asset_class": "FI_INTL",
-      "close": 50.64,
+      "close": 50.57,
       "unit": "%",
-      "chg_1d": -0.76,
-      "chg_5d": -1.36,
-      "chg_mtd": -0.76
+      "chg_1d": -0.14,
+      "chg_5d": -1.38,
+      "chg_mtd": -0.9
     },
     {
       "name": "Intl Bonds",
       "ticker": "BNDX",
       "asset_class": "FI_INTL",
-      "close": 47.31,
+      "close": 47.26,
       "unit": "%",
-      "chg_1d": -0.34,
-      "chg_5d": -0.53,
-      "chg_mtd": 0.08
+      "chg_1d": -0.1,
+      "chg_5d": -0.68,
+      "chg_mtd": -0.01
     },
     {
       "name": "Intl Govt Bonds",
       "ticker": "IGOV",
       "asset_class": "FI_INTL",
-      "close": 39.69,
+      "close": 39.58,
       "unit": "%",
-      "chg_1d": -1.02,
-      "chg_5d": -2.22,
-      "chg_mtd": -1.32
+      "chg_1d": -0.28,
+      "chg_5d": -1.71,
+      "chg_mtd": -1.59
     },
     {
       "name": "10Y Treasury Yield",
       "ticker": "^TNX",
       "asset_class": "RATES",
-      "close": 5.1,
+      "close": 5.15,
       "unit": "bp",
-      "chg_1d": 10.5,
-      "chg_5d": 26.6,
-      "chg_mtd": 17.4
+      "chg_1d": 5.1,
+      "chg_5d": 29.5,
+      "chg_mtd": 22.5
     },
     {
       "name": "13-week T-bill",
       "ticker": "^IRX",
       "asset_class": "RATES",
-      "close": 4.13,
+      "close": 4.12,
       "unit": "bp",
-      "chg_1d": 1.3,
-      "chg_5d": 14.1,
-      "chg_mtd": 15.5
+      "chg_1d": -0.6,
+      "chg_5d": 12.2,
+      "chg_mtd": 14.9
     },
     {
       "name": "5Y Treasury Yield",
       "ticker": "^FVX",
       "asset_class": "RATES",
-      "close": 4.95,
+      "close": 4.98,
       "unit": "bp",
-      "chg_1d": 11.8,
-      "chg_5d": 33.7,
-      "chg_mtd": 22.4
+      "chg_1d": 3.6,
+      "chg_5d": 33.3,
+      "chg_mtd": 26.0
     },
     {
       "name": "30Y Treasury Yield",
       "ticker": "^TYX",
       "asset_class": "RATES",
-      "close": 5.43,
+      "close": 5.48,
       "unit": "bp",
-      "chg_1d": 7.7,
-      "chg_5d": 18.2,
-      "chg_mtd": 12.4
+      "chg_1d": 4.8,
+      "chg_5d": 22.1,
+      "chg_mtd": 17.2
     },
     {
       "name": "Agriculture",
       "ticker": "DBA",
       "asset_class": "CMD",
-      "close": 26.3,
+      "close": 26.55,
       "unit": "%",
-      "chg_1d": -0.23,
-      "chg_5d": 0.54,
-      "chg_mtd": -2.19
+      "chg_1d": 0.95,
+      "chg_5d": 1.69,
+      "chg_mtd": -1.26
     },
     {
       "name": "Broad Commodities",
       "ticker": "DBC",
       "asset_class": "CMD",
-      "close": 30.91,
+      "close": 30.79,
       "unit": "%",
-      "chg_1d": 0.23,
-      "chg_5d": -1.78,
-      "chg_mtd": -8.03
+      "chg_1d": -0.39,
+      "chg_5d": -2.38,
+      "chg_mtd": -8.39
     },
     {
       "name": "Copper Miners",
       "ticker": "COPX",
       "asset_class": "CMD",
-      "close": 71.01,
+      "close": 69.23,
       "unit": "%",
-      "chg_1d": -3.28,
-      "chg_5d": 1.11,
-      "chg_mtd": -1.32
+      "chg_1d": -2.51,
+      "chg_5d": -2.84,
+      "chg_mtd": -3.79
     },
     {
       "name": "Gold",
       "ticker": "GLD",
       "asset_class": "CMD",
-      "close": 354.89,
+      "close": 355.45,
       "unit": "%",
-      "chg_1d": -2.82,
-      "chg_5d": -5.49,
-      "chg_mtd": -0.25
+      "chg_1d": 0.16,
+      "chg_5d": -4.58,
+      "chg_mtd": -0.09
     },
     {
       "name": "Natural Gas",
       "ticker": "UNG",
       "asset_class": "CMD",
-      "close": 10.46,
+      "close": 10.15,
       "unit": "%",
-      "chg_1d": 2.35,
-      "chg_5d": 12.84,
-      "chg_mtd": 15.2
+      "chg_1d": -2.96,
+      "chg_5d": 8.56,
+      "chg_mtd": 11.78
     },
     {
       "name": "Silver",
       "ticker": "SLV",
       "asset_class": "CMD",
-      "close": 45.12,
+      "close": 44.13,
       "unit": "%",
-      "chg_1d": -3.28,
-      "chg_5d": -3.86,
-      "chg_mtd": 1.17
+      "chg_1d": -2.19,
+      "chg_5d": -5.85,
+      "chg_mtd": -1.05
     },
     {
       "name": "Brent (BNO)",
       "ticker": "BNO",
       "asset_class": "CMD",
-      "close": 61.01,
+      "close": 61.06,
       "unit": "%",
-      "chg_1d": 3.85,
-      "chg_5d": -2.43,
-      "chg_mtd": -14.54
+      "chg_1d": 0.08,
+      "chg_5d": -1.86,
+      "chg_mtd": -14.47
     },
     {
       "name": "Platinum",
       "ticker": "PPLT",
       "asset_class": "CMD",
-      "close": 13.71,
+      "close": 13.5,
       "unit": "%",
-      "chg_1d": -1.37,
-      "chg_5d": -0.36,
-      "chg_mtd": 5.38
+      "chg_1d": -1.53,
+      "chg_5d": -2.6,
+      "chg_mtd": 3.77
     },
     {
       "name": "Uranium",
       "ticker": "URA",
       "asset_class": "CMD",
-      "close": 32.36,
+      "close": 31.84,
       "unit": "%",
-      "chg_1d": -3.8,
-      "chg_5d": 4.45,
-      "chg_mtd": -4.06
+      "chg_1d": -1.61,
+      "chg_5d": -1.55,
+      "chg_mtd": -5.6
     },
     {
       "name": "Wheat",
       "ticker": "WEAT",
       "asset_class": "CMD",
-      "close": 21.57,
+      "close": 21.86,
       "unit": "%",
-      "chg_1d": -2.75,
-      "chg_5d": -1.64,
-      "chg_mtd": -2.84
+      "chg_1d": 1.34,
+      "chg_5d": 0.6,
+      "chg_mtd": -1.53
     },
     {
       "name": "Lithium",
       "ticker": "LIT",
       "asset_class": "CMD",
-      "close": 59.43,
+      "close": 58.76,
       "unit": "%",
-      "chg_1d": -2.69,
-      "chg_5d": -1.25,
-      "chg_mtd": -0.64
+      "chg_1d": -1.13,
+      "chg_5d": -3.53,
+      "chg_mtd": -1.76
     },
     {
       "name": "Iron Ore (VALE)",
       "ticker": "VALE",
       "asset_class": "CMD",
-      "close": 11.28,
+      "close": 11.22,
       "unit": "%",
-      "chg_1d": -2.59,
-      "chg_5d": -1.48,
-      "chg_mtd": -0.97
+      "chg_1d": -0.53,
+      "chg_5d": -3.19,
+      "chg_mtd": -1.49
     },
     {
       "name": "Corn",
       "ticker": "CORN",
       "asset_class": "CMD",
-      "close": 17.09,
+      "close": 17.18,
       "unit": "%",
-      "chg_1d": -1.61,
-      "chg_5d": -0.35,
-      "chg_mtd": -1.44
+      "chg_1d": 0.53,
+      "chg_5d": -0.06,
+      "chg_mtd": -0.92
     },
     {
       "name": "Soybeans",
       "ticker": "SOYB",
       "asset_class": "CMD",
-      "close": 25.72,
+      "close": 25.97,
       "unit": "%",
-      "chg_1d": -0.89,
-      "chg_5d": 1.66,
-      "chg_mtd": -1.61
+      "chg_1d": 0.97,
+      "chg_5d": 2.57,
+      "chg_mtd": -0.65
     },
     {
       "name": "Palladium",
       "ticker": "PALL",
       "asset_class": "CMD",
-      "close": 18.02,
+      "close": 18.13,
       "unit": "%",
-      "chg_1d": -3.74,
-      "chg_5d": -4.4,
-      "chg_mtd": 1.35
+      "chg_1d": 0.61,
+      "chg_5d": -2.32,
+      "chg_mtd": 1.97
     },
     {
       "name": "Copper ETF",
       "ticker": "CPER",
       "asset_class": "CMD",
-      "close": 37.24,
+      "close": 36.53,
       "unit": "%",
-      "chg_1d": -1.3,
-      "chg_5d": -0.32,
-      "chg_mtd": -4.49
+      "chg_1d": -1.91,
+      "chg_5d": -3.03,
+      "chg_mtd": -6.31
     },
     {
       "name": "Bitcoin",
       "ticker": "BTC-USD",
       "asset_class": "CRYPTO",
-      "close": 71342.97,
+      "close": 68792.89,
       "unit": "%",
-      "chg_1d": -3.54,
-      "chg_5d": -6.06,
-      "chg_mtd": -7.58
+      "chg_1d": -3.57,
+      "chg_5d": -9.18,
+      "chg_mtd": -10.89
     },
     {
       "name": "Ethereum",
       "ticker": "ETH-USD",
       "asset_class": "CRYPTO",
-      "close": 2016.83,
+      "close": 1946.63,
       "unit": "%",
-      "chg_1d": -1.9,
-      "chg_5d": -9.74,
-      "chg_mtd": -10.01
+      "chg_1d": -3.48,
+      "chg_5d": -12.9,
+      "chg_mtd": -13.14
     },
     {
       "name": "Solana",
       "ticker": "SOL-USD",
       "asset_class": "CRYPTO",
-      "close": 81.66,
+      "close": 80.64,
       "unit": "%",
-      "chg_1d": -1.99,
-      "chg_5d": -8.39,
-      "chg_mtd": -15.13
+      "chg_1d": -1.25,
+      "chg_5d": -10.46,
+      "chg_mtd": -16.19
     },
     {
       "name": "AUD/USD",
@@ -1021,9 +1021,9 @@
       "asset_class": "FX",
       "close": 0.68,
       "unit": "%",
-      "chg_1d": -0.39,
-      "chg_5d": -2.31,
-      "chg_mtd": -2.62
+      "chg_1d": -0.52,
+      "chg_5d": -1.79,
+      "chg_mtd": -3.13
     },
     {
       "name": "EUR/USD",
@@ -1031,199 +1031,199 @@
       "asset_class": "FX",
       "close": 1.11,
       "unit": "%",
-      "chg_1d": -0.66,
-      "chg_5d": -1.24,
-      "chg_mtd": -0.78
+      "chg_1d": -0.41,
+      "chg_5d": -1.59,
+      "chg_mtd": -1.19
     },
     {
       "name": "GBP/USD",
       "ticker": "GBPUSD=X",
       "asset_class": "FX",
-      "close": 1.33,
+      "close": 1.32,
       "unit": "%",
-      "chg_1d": -0.54,
-      "chg_5d": -1.49,
-      "chg_mtd": -0.76
+      "chg_1d": -0.34,
+      "chg_5d": -1.67,
+      "chg_mtd": -1.1
     },
     {
       "name": "US Dollar Index",
       "ticker": "DX-Y.NYB",
       "asset_class": "FX",
-      "close": 103.17,
+      "close": 103.41,
       "unit": "%",
-      "chg_1d": 0.25,
-      "chg_5d": 1.6,
-      "chg_mtd": 1.27
+      "chg_1d": 0.23,
+      "chg_5d": 1.09,
+      "chg_mtd": 1.5
     },
     {
       "name": "USD/CHF",
       "ticker": "CHF=X",
       "asset_class": "FX",
-      "close": 0.83,
+      "close": 0.84,
       "unit": "%",
-      "chg_1d": 0.9,
-      "chg_5d": 1.94,
-      "chg_mtd": 1.05
+      "chg_1d": 0.44,
+      "chg_5d": 2.52,
+      "chg_mtd": 1.5
     },
     {
       "name": "USD/JPY",
       "ticker": "JPY=X",
       "asset_class": "FX",
-      "close": 159.73,
+      "close": 159.88,
       "unit": "%",
-      "chg_1d": 0.65,
-      "chg_5d": 0.87,
-      "chg_mtd": 1.22
+      "chg_1d": 0.09,
+      "chg_5d": 1.51,
+      "chg_mtd": 1.31
     },
     {
       "name": "USD/SGD",
       "ticker": "SGD=X",
       "asset_class": "FX",
-      "close": 1.28,
+      "close": 1.29,
       "unit": "%",
-      "chg_1d": 0.17,
-      "chg_5d": 0.4,
-      "chg_mtd": 0.32
+      "chg_1d": 0.24,
+      "chg_5d": 0.69,
+      "chg_mtd": 0.56
     },
     {
       "name": "Canadian Dollar",
       "ticker": "CAD=X",
       "asset_class": "FX",
-      "close": 1.42,
+      "close": 1.43,
       "unit": "%",
-      "chg_1d": 0.44,
-      "chg_5d": 1.98,
-      "chg_mtd": 1.87
+      "chg_1d": 0.09,
+      "chg_5d": 1.74,
+      "chg_mtd": 1.96
     },
     {
       "name": "Mexican Peso",
       "ticker": "MXN=X",
       "asset_class": "FX",
-      "close": 18.62,
+      "close": 18.59,
       "unit": "%",
-      "chg_1d": 0.1,
-      "chg_5d": 0.05,
-      "chg_mtd": -1.24
+      "chg_1d": -0.14,
+      "chg_5d": -1.01,
+      "chg_mtd": -1.38
     },
     {
       "name": "Korean Won",
       "ticker": "KRW=X",
       "asset_class": "FX",
-      "close": 1336.26,
+      "close": 1333.78,
       "unit": "%",
-      "chg_1d": -0.42,
-      "chg_5d": -0.28,
-      "chg_mtd": -0.13
+      "chg_1d": -0.19,
+      "chg_5d": -1.66,
+      "chg_mtd": -0.31
     },
     {
       "name": "Brazilian Real",
       "ticker": "BRL=X",
       "asset_class": "FX",
-      "close": 5.58,
+      "close": 5.64,
       "unit": "%",
-      "chg_1d": -0.01,
-      "chg_5d": 2.26,
-      "chg_mtd": 3.66
+      "chg_1d": 1.05,
+      "chg_5d": 2.49,
+      "chg_mtd": 4.75
     },
     {
       "name": "VIX Index",
       "ticker": "^VIX",
       "asset_class": "VOL",
-      "close": 18.7,
+      "close": 19.3,
       "unit": "pts",
-      "chg_1d": 1.21,
-      "chg_5d": -9.48,
-      "chg_mtd": -0.72
+      "chg_1d": 0.6,
+      "chg_5d": -6.34,
+      "chg_mtd": -0.12
     },
     {
       "name": "VIX Futures ETN",
       "ticker": "VXX",
       "asset_class": "VOL",
-      "close": 18.31,
+      "close": 18.57,
       "unit": "pts",
-      "chg_1d": 0.56,
-      "chg_5d": -3.89,
-      "chg_mtd": -0.9
+      "chg_1d": 0.26,
+      "chg_5d": -3.38,
+      "chg_mtd": -0.64
     },
     {
       "name": "ST VIX ETF",
       "ticker": "VIXY",
       "asset_class": "VOL",
-      "close": 17.51,
+      "close": 17.94,
       "unit": "pts",
-      "chg_1d": 0.58,
-      "chg_5d": -3.71,
-      "chg_mtd": -0.9
+      "chg_1d": 0.43,
+      "chg_5d": -3.09,
+      "chg_mtd": -0.47
     },
     {
       "name": "US Infrastructure",
       "ticker": "IFRA",
       "asset_class": "ALT",
-      "close": 58.01,
+      "close": 58.08,
       "unit": "%",
-      "chg_1d": -0.17,
-      "chg_5d": 3.69,
-      "chg_mtd": -0.5
+      "chg_1d": 0.12,
+      "chg_5d": 3.88,
+      "chg_mtd": -0.38
     },
     {
       "name": "Listed Private Equity",
       "ticker": "PSP",
       "asset_class": "ALT",
-      "close": 59.53,
+      "close": 59.66,
       "unit": "%",
-      "chg_1d": -1.64,
-      "chg_5d": -0.07,
-      "chg_mtd": 1.19
+      "chg_1d": 0.22,
+      "chg_5d": 1.5,
+      "chg_mtd": 1.41
     },
     {
       "name": "Energy Infrastructure",
       "ticker": "AMLP",
       "asset_class": "ALT",
-      "close": 50.3,
+      "close": 50.7,
       "unit": "%",
-      "chg_1d": 0.0,
-      "chg_5d": 2.62,
-      "chg_mtd": -5.03
+      "chg_1d": 0.8,
+      "chg_5d": 3.0,
+      "chg_mtd": -4.28
     },
     {
       "name": "Global REITs",
       "ticker": "REET",
       "asset_class": "ALT",
-      "close": 27.08,
+      "close": 27.17,
       "unit": "%",
-      "chg_1d": -0.48,
-      "chg_5d": 0.22,
-      "chg_mtd": 2.46
+      "chg_1d": 0.35,
+      "chg_5d": 0.83,
+      "chg_mtd": 2.82
     },
     {
       "name": "Commodities Index",
       "ticker": "BCI",
       "asset_class": "ALT",
-      "close": 24.57,
+      "close": 24.62,
       "unit": "%",
-      "chg_1d": 0.37,
-      "chg_5d": -0.53,
-      "chg_mtd": -4.55
+      "chg_1d": 0.22,
+      "chg_5d": -0.06,
+      "chg_mtd": -4.33
     },
     {
       "name": "Diversified Commodity",
       "ticker": "PDBC",
       "asset_class": "ALT",
-      "close": 18.41,
+      "close": 18.45,
       "unit": "%",
-      "chg_1d": 0.33,
-      "chg_5d": -1.76,
-      "chg_mtd": -8.04
+      "chg_1d": 0.22,
+      "chg_5d": -1.7,
+      "chg_mtd": -7.84
     },
     {
       "name": "High Yield REIT",
       "ticker": "KBWY",
       "asset_class": "ALT",
-      "close": 16.44,
+      "close": 16.56,
       "unit": "%",
-      "chg_1d": -1.38,
-      "chg_5d": -1.67,
-      "chg_mtd": 0.37
+      "chg_1d": 0.73,
+      "chg_5d": -0.36,
+      "chg_mtd": 1.1
     }
   ],
   "headline_moves": [
@@ -1231,236 +1231,236 @@
       "name": "13-week T-bill",
       "ticker": "^IRX",
       "asset_class": "RATES",
-      "close": 4.13,
+      "close": 4.12,
       "unit": "bp",
-      "chg_1d": 1.3,
-      "chg_5d": 14.1,
-      "chg_mtd": 15.5
+      "chg_1d": -0.6,
+      "chg_5d": 12.2,
+      "chg_mtd": 14.9
     },
     {
       "name": "10Y Treasury Yield",
       "ticker": "^TNX",
       "asset_class": "RATES",
-      "close": 5.1,
+      "close": 5.15,
       "unit": "bp",
-      "chg_1d": 10.5,
-      "chg_5d": 26.6,
-      "chg_mtd": 17.4
+      "chg_1d": 5.1,
+      "chg_5d": 29.5,
+      "chg_mtd": 22.5
     },
     {
       "name": "HY Credit",
       "ticker": "HYG",
       "asset_class": "FI",
-      "close": 76.98,
+      "close": 76.94,
       "unit": "%",
-      "chg_1d": -0.48,
-      "chg_5d": -0.39,
-      "chg_mtd": -0.06
+      "chg_1d": -0.05,
+      "chg_5d": -0.38,
+      "chg_mtd": -0.12
     },
     {
       "name": "IG Credit",
       "ticker": "LQD",
       "asset_class": "FI",
-      "close": 103.05,
+      "close": 102.81,
       "unit": "%",
-      "chg_1d": -0.88,
-      "chg_5d": -1.54,
-      "chg_mtd": -0.79
+      "chg_1d": -0.23,
+      "chg_5d": -1.65,
+      "chg_mtd": -1.02
     },
     {
       "name": "US Dollar Index",
       "ticker": "DX-Y.NYB",
       "asset_class": "FX",
-      "close": 103.17,
+      "close": 103.41,
       "unit": "%",
-      "chg_1d": 0.25,
-      "chg_5d": 1.6,
-      "chg_mtd": 1.27
+      "chg_1d": 0.23,
+      "chg_5d": 1.09,
+      "chg_mtd": 1.5
     },
     {
       "name": "USD/JPY",
       "ticker": "JPY=X",
       "asset_class": "FX",
-      "close": 159.73,
+      "close": 159.88,
       "unit": "%",
-      "chg_1d": 0.65,
-      "chg_5d": 0.87,
-      "chg_mtd": 1.22
+      "chg_1d": 0.09,
+      "chg_5d": 1.51,
+      "chg_mtd": 1.31
     },
     {
       "name": "Gold",
       "ticker": "GLD",
       "asset_class": "CMD",
-      "close": 354.89,
+      "close": 355.45,
       "unit": "%",
-      "chg_1d": -2.82,
-      "chg_5d": -5.49,
-      "chg_mtd": -0.25
+      "chg_1d": 0.16,
+      "chg_5d": -4.58,
+      "chg_mtd": -0.09
     },
     {
       "name": "Brent (BNO)",
       "ticker": "BNO",
       "asset_class": "CMD",
-      "close": 61.01,
+      "close": 61.06,
       "unit": "%",
-      "chg_1d": 3.85,
-      "chg_5d": -2.43,
-      "chg_mtd": -14.54
+      "chg_1d": 0.08,
+      "chg_5d": -1.86,
+      "chg_mtd": -14.47
     },
     {
       "name": "VIX Index",
       "ticker": "^VIX",
       "asset_class": "VOL",
-      "close": 18.7,
+      "close": 19.3,
       "unit": "pts",
-      "chg_1d": 1.21,
-      "chg_5d": -9.48,
-      "chg_mtd": -0.72
+      "chg_1d": 0.6,
+      "chg_5d": -6.34,
+      "chg_mtd": -0.12
     },
     {
       "name": "S&P 500",
       "ticker": "SPY",
       "asset_class": "EQ_US",
-      "close": 757.12,
+      "close": 754.37,
       "unit": "%",
-      "chg_1d": -0.35,
-      "chg_5d": 3.29,
-      "chg_mtd": 0.19
+      "chg_1d": -0.36,
+      "chg_5d": 2.59,
+      "chg_mtd": -0.18
     },
     {
       "name": "Nasdaq 100",
       "ticker": "QQQ",
       "asset_class": "EQ_US",
-      "close": 688.17,
+      "close": 679.89,
       "unit": "%",
-      "chg_1d": -0.32,
-      "chg_5d": 6.35,
-      "chg_mtd": -0.34
+      "chg_1d": -1.2,
+      "chg_5d": 3.63,
+      "chg_mtd": -1.54
     },
     {
       "name": "Semiconductors",
       "ticker": "SOXX",
       "asset_class": "EQ_IDX",
-      "close": 154.99,
+      "close": 149.3,
       "unit": "%",
-      "chg_1d": -0.26,
-      "chg_5d": 17.51,
-      "chg_mtd": -1.39
+      "chg_1d": -3.67,
+      "chg_5d": 9.35,
+      "chg_mtd": -5.01
     },
     {
       "name": "Bitcoin",
       "ticker": "BTC-USD",
       "asset_class": "CRYPTO",
-      "close": 71342.97,
+      "close": 68792.89,
       "unit": "%",
-      "chg_1d": -3.54,
-      "chg_5d": -6.06,
-      "chg_mtd": -7.58
+      "chg_1d": -3.57,
+      "chg_5d": -9.18,
+      "chg_mtd": -10.89
     }
   ],
   "top_movers": {
     "losers": [
       {
-        "name": "Uranium",
-        "ticker": "URA",
-        "asset_class": "CMD",
-        "close": 32.36,
+        "name": "Semiconductors",
+        "ticker": "SOXX",
+        "asset_class": "EQ_IDX",
+        "close": 149.3,
         "unit": "%",
-        "chg_1d": -3.8,
-        "chg_5d": 4.45,
-        "chg_mtd": -4.06
-      },
-      {
-        "name": "Palladium",
-        "ticker": "PALL",
-        "asset_class": "CMD",
-        "close": 18.02,
-        "unit": "%",
-        "chg_1d": -3.74,
-        "chg_5d": -4.4,
-        "chg_mtd": 1.35
+        "chg_1d": -3.67,
+        "chg_5d": 9.35,
+        "chg_mtd": -5.01
       },
       {
         "name": "Bitcoin",
         "ticker": "BTC-USD",
         "asset_class": "CRYPTO",
-        "close": 71342.97,
+        "close": 68792.89,
         "unit": "%",
-        "chg_1d": -3.54,
-        "chg_5d": -6.06,
-        "chg_mtd": -7.58
+        "chg_1d": -3.57,
+        "chg_5d": -9.18,
+        "chg_mtd": -10.89
       },
       {
-        "name": "Copper Miners",
-        "ticker": "COPX",
-        "asset_class": "CMD",
-        "close": 71.01,
+        "name": "Ethereum",
+        "ticker": "ETH-USD",
+        "asset_class": "CRYPTO",
+        "close": 1946.63,
         "unit": "%",
-        "chg_1d": -3.28,
-        "chg_5d": 1.11,
-        "chg_mtd": -1.32
-      },
-      {
-        "name": "Silver",
-        "ticker": "SLV",
-        "asset_class": "CMD",
-        "close": 45.12,
-        "unit": "%",
-        "chg_1d": -3.28,
-        "chg_5d": -3.86,
-        "chg_mtd": 1.17
-      }
-    ],
-    "gainers": [
-      {
-        "name": "Brent (BNO)",
-        "ticker": "BNO",
-        "asset_class": "CMD",
-        "close": 61.01,
-        "unit": "%",
-        "chg_1d": 3.85,
-        "chg_5d": -2.43,
-        "chg_mtd": -14.54
-      },
-      {
-        "name": "Indonesia",
-        "ticker": "EIDO",
-        "asset_class": "EQ_EM",
-        "close": 10.47,
-        "unit": "%",
-        "chg_1d": 2.55,
-        "chg_5d": 6.51,
-        "chg_mtd": 5.12
+        "chg_1d": -3.48,
+        "chg_5d": -12.9,
+        "chg_mtd": -13.14
       },
       {
         "name": "Natural Gas",
         "ticker": "UNG",
         "asset_class": "CMD",
-        "close": 10.46,
+        "close": 10.15,
         "unit": "%",
-        "chg_1d": 2.35,
-        "chg_5d": 12.84,
-        "chg_mtd": 15.2
+        "chg_1d": -2.96,
+        "chg_5d": 8.56,
+        "chg_mtd": 11.78
       },
       {
-        "name": "Energy",
-        "ticker": "XLE",
+        "name": "Copper Miners",
+        "ticker": "COPX",
+        "asset_class": "CMD",
+        "close": 69.23,
+        "unit": "%",
+        "chg_1d": -2.51,
+        "chg_5d": -2.84,
+        "chg_mtd": -3.79
+      }
+    ],
+    "gainers": [
+      {
+        "name": "Consumer Staples",
+        "ticker": "XLP",
         "asset_class": "EQ_SECT",
-        "close": 64.33,
+        "close": 92.35,
         "unit": "%",
-        "chg_1d": 1.51,
-        "chg_5d": 4.38,
-        "chg_mtd": -8.13
+        "chg_1d": 1.42,
+        "chg_5d": 2.52,
+        "chg_mtd": 3.28
       },
       {
-        "name": "India Small Cap",
-        "ticker": "SMIN",
+        "name": "Brazil",
+        "ticker": "EWZ",
         "asset_class": "EQ_EM",
-        "close": 71.26,
+        "close": 32.22,
         "unit": "%",
-        "chg_1d": 0.62,
-        "chg_5d": 3.02,
-        "chg_mtd": 6.74
+        "chg_1d": 1.38,
+        "chg_5d": 0.75,
+        "chg_mtd": -0.74
+      },
+      {
+        "name": "Wheat",
+        "ticker": "WEAT",
+        "asset_class": "CMD",
+        "close": 21.86,
+        "unit": "%",
+        "chg_1d": 1.34,
+        "chg_5d": 0.6,
+        "chg_mtd": -1.53
+      },
+      {
+        "name": "Indonesia",
+        "ticker": "EIDO",
+        "asset_class": "EQ_EM",
+        "close": 10.6,
+        "unit": "%",
+        "chg_1d": 1.24,
+        "chg_5d": 5.26,
+        "chg_mtd": 6.43
+      },
+      {
+        "name": "Communications",
+        "ticker": "XLC",
+        "asset_class": "EQ_SECT",
+        "close": 108.85,
+        "unit": "%",
+        "chg_1d": 1.2,
+        "chg_5d": 3.87,
+        "chg_mtd": 8.96
       }
     ]
   }

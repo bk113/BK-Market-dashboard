@@ -1,15 +1,15 @@
 code,name,last_real_date,staleness_days_vs_panel_end,flagged_stale,status
-T5YIE,Inflation Breakeven 5Y,2026-11-12,1,False,current
-T10YIE,Inflation Breakeven 10Y,2026-11-12,1,False,current
-T5YIFR,Inflation 5Y5Y Forward,2026-11-12,1,False,current
-DGS3MO,US Treasury 3M Yield,2026-11-10,3,False,current
-DGS2,US Treasury 2Y Yield,2026-11-10,3,False,current
-DGS5,US Treasury 5Y Yield,2026-11-10,3,False,current
-DGS10,US Treasury 10Y Yield,2026-11-10,3,False,current
-DGS30,US Treasury 30Y Yield,2026-11-10,3,False,current
+T5YIE,Inflation Breakeven 5Y,2026-11-13,0,False,current
+T10YIE,Inflation Breakeven 10Y,2026-11-13,0,False,current
+T5YIFR,Inflation 5Y5Y Forward,2026-11-13,0,False,current
+DGS3MO,US Treasury 3M Yield,2026-11-12,1,False,current
+DGS2,US Treasury 2Y Yield,2026-11-12,1,False,current
+DGS5,US Treasury 5Y Yield,2026-11-12,1,False,current
+DGS10,US Treasury 10Y Yield,2026-11-12,1,False,current
+DGS30,US Treasury 30Y Yield,2026-11-12,1,False,current
 VIXCLS,VIX,2026-11-12,1,False,current
-DFF,Federal Funds Rate,2026-11-11,2,False,current
+DFF,Federal Funds Rate,2026-11-12,1,False,current
 SOFR,Secured Overnight Rate,2026-11-12,1,False,current
 TEDRATE,TED Spread (legacy),2022-01-21,1757,False,discontinued (expected)
 DTWEXBGS,USD Trade Weighted Broad,2026-11-06,7,False,current
-BAMLH0A0HYM2,ICE BofA US HY Index OAS,2026-11-11,2,False,current
+BAMLH0A0HYM2,ICE BofA US HY Index OAS,2026-11-12,1,False,current
